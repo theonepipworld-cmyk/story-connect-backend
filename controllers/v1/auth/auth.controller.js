@@ -14,30 +14,23 @@ const { sendEmail } = require('../../../utils/email.util.js');
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body
-
     const emailExist = await checkEmailExist(email)
     if (!emailExist) {
       return res.status(400)
         .json(errorResponse(resMessages.notFound.emailNotFound))
     }
-
-
     if (emailExist.passwordHash == null) {
       return res.status(400)
         .json(errorResponse(resMessages.validation.registrationIncomplete))
     }
-
     const correctPassword = await comparePassword(emailExist.passwordHash, password)
     if (!correctPassword) { return res.status(400).json(errorResponse(resMessages.validation.incorrectPassword)) }
-
     const token = await getJWT(email, emailExist.id)
     if (!token) {
       return res.status(400)
         .json(errorResponse(resMessages.generalError.somethingWentWrong))
     }
-
     return res.status(200).json(successResponse(resMessages.success.loginSuccessful, token))
-
   } catch (error) {
     console.log('ERROR::', error)
     return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message))
@@ -46,13 +39,19 @@ exports.login = async (req, res) => {
 
 exports.signup = async (req, res) => {
   try {
-    const { email, password, confirmPassword } = req.body;
+    const { email, password, confirmPassword, username, phone, dateOfBirth } = req.body;
 
     // Check required fields
-    if (!email || !password || !confirmPassword) {
-      return res
-        .status(400)
-        .json(errorResponse(resMessages.validation.missingFields));
+    const requiredFields = { email, password, confirmPassword, username, phone, dateOfBirth };
+
+    const missing = Object.keys(requiredFields).filter(key => !requiredFields[key]);
+
+    if (missing.length > 0) {
+      return res.status(400).json(
+        errorResponse(
+          `${resMessages.validation.missingFields}: ${missing.join(', ')}`
+        )
+      );
     }
 
     // Check password match
@@ -70,12 +69,27 @@ exports.signup = async (req, res) => {
         .json(errorResponse(resMessages.validation.emailAlreadyExist));
     }
 
+    const dob = new Date(dateOfBirth);
+    if (isNaN(dob.getTime())) {
+      return res.status(400).json(errorResponse(resMessages.validation.invalidDateOfBirth));
+    }
+
+    // Phone validation
+    const phoneRegex = /^[0-9]{4,15}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json(errorResponse(resMessages.validation.invalidPhoneNumber));
+    }
+
+
     // Hash the password
     const hashedPassword = await hashPassword(password);
 
     // Create user
     const newUser = new User({
       email,
+      username,
+      phone,
+      dateOfBirth,
       passwordHash: hashedPassword,
       status: 'active',
       lastSeen: new Date()
@@ -135,7 +149,6 @@ exports.forgotPassword = async (req, res) => {
       template: 'reset-password',
       context: { resetLink }
     });
-
     return res.status(200).json(successResponse('Reset link sent to email.'));
   } catch (error) {
     console.error('Forgot password error:', error);

@@ -16,6 +16,9 @@ const userSchema = new Schema({
     lowercase: true,
     trim: true
   },
+  phone: {
+    type: Number
+  },
   passwordHash: {
     type: String,
     required: true
@@ -58,6 +61,7 @@ const userSchema = new Schema({
     type: Date,
     default: Date.now
   },
+  dateOfBirth: { type: Date },
   status: {
     type: String,
     enum: ['active', 'inactive', 'banned'],

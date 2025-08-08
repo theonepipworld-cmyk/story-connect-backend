@@ -12,8 +12,9 @@ module.exports = {
         emailAlreadyExist: "This email is already in use.",
         passwordsDoNotMatch: "Confirm password must be the same as the password",
         emailValidate: "Please enter a valid email address.",
-        passwordMinLength: "Password must be at least 6 characters long."
-
+        passwordMinLength: "Password must be at least 6 characters long.",
+        invalidPhoneNumber: "Phone number invalid",
+        invalidDateOfBirth: "DOB invalid",
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
