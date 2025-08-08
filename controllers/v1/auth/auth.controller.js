@@ -1,14 +1,14 @@
 const crypto = require('crypto');
-const { errorResponse, successResponse } = require('../../utils/responseHandler.util.js')
-const resMessages = require("../../constants/resMessages.constants.js")
-const { checkEmailExist } = require("../../helpers/dbHelpers.js")
-const { hashPassword, comparePassword, getJWT } = require("../../utils/commonFunctions.util.js")
-const User = require('../../models/User.model.js');
-const { google_client_id } = require("../../config/secretVariables.js");
-const { sendEmail } = require('../../utils/email.util.js');
 const path = require('path');
 const fs = require('fs');
 const handlebars = require('handlebars');
+const { errorResponse, successResponse } = require('../../../utils/responseHandler.util.js')
+const resMessages = require("../../../constants/resMessages.constants.js")
+const { checkEmailExist } = require("../../../helpers/dbHelpers.js")
+const { hashPassword, comparePassword, getJWT } = require("../../../utils/commonFunctions.util.js")
+const User = require('../../../models/User.model.js');
+const { google_client_id } = require("../../../config/secretVariables.js");
+const { sendEmail } = require('../../../utils/email.util.js');
 
 
 exports.login = async (req, res) => {
