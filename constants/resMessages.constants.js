@@ -15,6 +15,9 @@ module.exports = {
         passwordMinLength: "Password must be at least 6 characters long.",
         invalidPhoneNumber: "Phone number invalid",
         invalidDateOfBirth: "DOB invalid",
+        authTokenMissing: "Authorization token missing",
+        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD."
+
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

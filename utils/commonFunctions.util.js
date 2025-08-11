@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt')
-const envVariables = require('../config/secretVariables.js')
+const { jwt_secret } = require('../config/secretVariables.js')
 const jwt = require('jsonwebtoken')
 
 
@@ -15,21 +15,21 @@ exports.hashPassword = async (password) => {
 };
 
 
-exports.comparePassword = async (hashedPassword,password) => {
-    try {
+exports.comparePassword = async (hashedPassword, password) => {
+  try {
     const isMatch = await bcrypt.compare(password, hashedPassword);
-    return isMatch; 
-    } catch (error) {
+    return isMatch;
+  } catch (error) {
     console.error('Error hashing password:', error);
     throw new Error('Failed to hash password');
   }
 }
 
 
-exports.getJWT = async (email, role, id) => {
+exports.getJWT = async (email, id) => {
   try {
-    const payload = { email, role, userId:id };
-    const token = jwt.sign(payload, envVariables.jwt_secret)
+    const payload = { email, id: id.toString() };
+    const token = jwt.sign(payload, jwt_secret)
     return token;
   } catch (error) {
     console.error('Error generating JWT:', error);

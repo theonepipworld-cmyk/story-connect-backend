@@ -1,7 +1,8 @@
 const { body, validationResult } = require('express-validator');
 const { jwt_secret } = require('../../../config/secretVariables');
-
-
+const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
+const resMessages = require("../../../constants/resMessages.constants.js")
+const jwt = require('jsonwebtoken');
 
 exports.updateProfileValidator = [
     // allow optional fields; add constraints as needed
@@ -25,17 +26,12 @@ exports.updateProfileValidator = [
 exports.authenticate = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json(errorResponse('Authorization token missing'));
+      return res.status(401).json(errorResponse(resMessages.validation.authTokenMissing));
     }
-
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, secretVariables.JWT_SECRET);
-
-    // Attach decoded token to request
-    req.user = { id: decoded.id, email: decoded.email };
-
+    const decoded = jwt.verify(token, jwt_secret);
+    req.user = { userId: decoded.id, email: decoded.email };
     next();
   } catch (err) {
     return res.status(401).json(errorResponse('Invalid or expired token'));

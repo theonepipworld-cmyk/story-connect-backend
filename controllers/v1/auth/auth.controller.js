@@ -7,8 +7,10 @@ const resMessages = require("../../../constants/resMessages.constants.js")
 const { checkEmailExist } = require("../../../helpers/dbHelpers.js")
 const { hashPassword, comparePassword, getJWT } = require("../../../utils/commonFunctions.util.js")
 const User = require('../../../models/User.model.js');
-const { google_client_id } = require("../../../config/secretVariables.js");
+const { google_client_id, jwt_secret } = require("../../../config/secretVariables.js");
 const { sendEmail } = require('../../../utils/email.util.js');
+const jwt = require('jsonwebtoken');
+
 
 
 exports.login = async (req, res) => {
@@ -25,7 +27,7 @@ exports.login = async (req, res) => {
     }
     const correctPassword = await comparePassword(emailExist.passwordHash, password)
     if (!correctPassword) { return res.status(400).json(errorResponse(resMessages.validation.incorrectPassword)) }
-    const token = await getJWT(email, emailExist.id)
+    const token = await getJWT(email, emailExist._id)
     if (!token) {
       return res.status(400)
         .json(errorResponse(resMessages.generalError.somethingWentWrong))
@@ -73,6 +75,15 @@ exports.signup = async (req, res) => {
     if (isNaN(dob.getTime())) {
       return res.status(400).json(errorResponse(resMessages.validation.invalidDateOfBirth));
     }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+    if (!dateRegex.test(dateOfBirth)) {
+      return res.status(400).json(
+        errorResponse(resMessages.validation.invalidDateOfBirthFormat)
+      );
+    }
+
 
     // Phone validation
     const phoneRegex = /^[0-9]{4,15}$/;

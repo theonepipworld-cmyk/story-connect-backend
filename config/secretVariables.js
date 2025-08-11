@@ -6,5 +6,10 @@ module.exports = {
   google_client_id: process.env.GOOGLE_CLIENT_ID,
   smtp_user: process.env.SMTP_USER,
   smtp_pass: process.env.SMTP_PASS,
-  MONGO_URI: process.env.MONGO_URI
+  aws_s3_access_key:process.env.AWS_S3_ACCESS_KEY,
+  aws_s3_secret_key:process.env.AWS_S3_SECRET_KEY,
+  aws_s3_bucket_name:process.env.AWS_S3_BUCKET_NAME,
+  aws_s3_region:process.env.AWS_S3_REGION,
+  MONGO_URI: process.env.MONGO_URI,
+
 };

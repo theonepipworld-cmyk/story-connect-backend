@@ -39,6 +39,10 @@ const userSchema = new Schema({
     enum: ['Engineer', 'Designer', 'Other'],
     default: 'Other'
   },
+  relationship: {
+    type: String,
+    enum: ['Single', 'Married'],
+  },
   education: {
     type: [String],
     default: []
@@ -68,6 +72,15 @@ const userSchema = new Schema({
     default: 'active'
   },
   resetPasswordToken: {
+    type: String,
+  },
+  countryOfOrigin: {
+    type: String,
+  },
+  currentCountry: {
+    type: String,
+  },
+  entryYear: {
     type: String,
   },
   resetPasswordExpires: {
