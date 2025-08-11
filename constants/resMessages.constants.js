@@ -30,6 +30,7 @@ module.exports = {
     generalError: {
         somethingWentWrong: "Something went wrong. Please try again later.",
         idMissMatch: "Id miss-matched.",
-        calledFunctionError: "Getting error from called Function"
+        calledFunctionError: "Getting error from called Function",
+        uploading:"Error uploading file"
     },
 };

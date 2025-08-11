@@ -1,6 +1,7 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 const envVariables = require('../config/secretVariables');
+const resMessages = require('../constants/resMessages.constants')
 
 const s3 = new S3Client({
     region: envVariables?.aws_s3_region,
@@ -41,7 +42,6 @@ const uploadFileToS3 = async (file, folder = '') => {
             Location: `https://${envVariables?.aws_s3_bucket_name}.s3.${envVariables?.aws_s3_region}.amazonaws.com/${key}`,
         };
     } catch (error) {
-        console.error('Error uploading file:', error);
         throw new Error(`Error uploading file: ${error.message}`);
     }
 };

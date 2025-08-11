@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const resMessages = require("../../../constants/resMessages.constants.js");
-const User = require('../../../models/User.model.js');
+const { DEFAULT_AVATAR_URL } = require("../../../constants/variables.constants.js");
+const User = require('../../../models/user.model.js');
 const { uploadFileToS3, removeS3Object } = require('../../../utils/s3.util.js');
+const uploadQueue = require("../../../job/uploadAvatar.js")
 
 exports.getProfile = async (req, res) => {
   try {
@@ -41,12 +43,22 @@ exports.updateProfile = async (req, res) => {
       }
       patch.dateOfBirth = payload.dateOfBirth;
     }
-
-    if (files.avatar && files.avatar[0]) {
-      const avatarFile = files.avatar[0];
-      const s3Res = await uploadFileToS3(avatarFile);
-      patch.avatarUrl = s3Res.Location;
+    if (files.avatar?.[0]) {
+      try {
+        const avatarFile = files.avatar[0];
+        const s3Res = await uploadFileToS3(avatarFile);
+        patch.avatarUrl = s3Res?.Location || DEFAULT_AVATAR_URL;
+      } catch (uploadErr) {
+        console.error('Avatar upload failed:', uploadErr);
+        patch.avatarUrl = DEFAULT_AVATAR_URL;
+      }
     }
+
+    // await uploadQueue.add('uploadAvatar', {
+    //   userId,
+    //   files
+    // });
+    // console.log("Profile update initiated. Avatar will be processed shortly")
 
     const updated = await User.findByIdAndUpdate(
       userId,
@@ -98,7 +110,7 @@ exports.updateProfile = async (req, res) => {
 //         const avatarFile = files.avatar[0];
 //         const avatarKey = `users/${userId}/avatar-${Date.now()}-${avatarFile.originalname}`;
 //         console.log(avatarFile,"file");
-        
+
 //         // const s3Res = await uploadFileToS3(avatarFile.buffer || avatarFile.path, avatarKey, avatarFile.mimetype);
 //         // patch.avatar= s3Res.Location;
 //       }

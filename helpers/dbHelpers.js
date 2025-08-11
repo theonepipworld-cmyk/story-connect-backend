@@ -1,10 +1,10 @@
-const User = require('../models/User.model.js');
+const User = require('../models/user.model.js');
 const { validationResult } = require('express-validator');
 
 exports.checkEmailExist = async (email, forUpdate = false) => {
   try {
     let query = User.findOne({ email });
-    if (!forUpdate) query = query.lean(); // only lean for read
+    if (!forUpdate) query = query.lean();
     const user = await query.exec();
     return user;
   } catch (error) {

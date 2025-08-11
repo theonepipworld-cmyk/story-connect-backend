@@ -1,7 +1,7 @@
 var createError = require('http-errors');
 var express = require('express');
-const authRoutes = require('./routes/v1/auth.routes.js')
-const profileRoutes = require('./routes/v1/profile.routes.js')
+const authRoutes = require('./routes/v1/user/auth.routes.js')
+const profileRoutes = require('./routes/v1/user/profile.routes.js')
 const secretVariables = require('./config/secretVariables');
 require('./config/db'); 
 

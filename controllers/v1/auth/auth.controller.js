@@ -6,129 +6,38 @@ const { errorResponse, successResponse } = require('../../../utils/responseHandl
 const resMessages = require("../../../constants/resMessages.constants.js")
 const { checkEmailExist } = require("../../../helpers/dbHelpers.js")
 const { hashPassword, comparePassword, getJWT } = require("../../../utils/commonFunctions.util.js")
-const User = require('../../../models/User.model.js');
+const User = require('../../../models/user.model.js');
 const { google_client_id, jwt_secret } = require("../../../config/secretVariables.js");
 const { sendEmail } = require('../../../utils/email.util.js');
 const jwt = require('jsonwebtoken');
-
+const authService = require("../../../service/user/auth.service.js")
 
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body
-    const emailExist = await checkEmailExist(email)
-    if (!emailExist) {
-      return res.status(400)
-        .json(errorResponse(resMessages.notFound.emailNotFound))
-    }
-    if (emailExist.passwordHash == null) {
-      return res.status(400)
-        .json(errorResponse(resMessages.validation.registrationIncomplete))
-    }
-    const correctPassword = await comparePassword(emailExist.passwordHash, password)
-    if (!correctPassword) { return res.status(400).json(errorResponse(resMessages.validation.incorrectPassword)) }
-    const token = await getJWT(email, emailExist._id)
-    if (!token) {
-      return res.status(400)
-        .json(errorResponse(resMessages.generalError.somethingWentWrong))
-    }
-    return res.status(200).json(successResponse(resMessages.success.loginSuccessful, token))
+    const result = await authService.login(req.body);
+    return res.status(200).json(successResponse(resMessages.success.loginSuccessful, result.token));
   } catch (error) {
-    console.log('ERROR::', error)
-    return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message))
+    return res.status(error.statusCode || 500).json(errorResponse(error.message || resMessages.generalError.somethingWentWrong));
   }
-}
+};
 
 exports.signup = async (req, res) => {
   try {
-    const { email, password, confirmPassword, username, phone, dateOfBirth } = req.body;
-
-    // Check required fields
-    const requiredFields = { email, password, confirmPassword, username, phone, dateOfBirth };
-
-    const missing = Object.keys(requiredFields).filter(key => !requiredFields[key]);
-
-    if (missing.length > 0) {
-      return res.status(400).json(
-        errorResponse(
-          `${resMessages.validation.missingFields}: ${missing.join(', ')}`
-        )
-      );
-    }
-
-    // Check password match
-    if (password !== confirmPassword) {
-      return res
-        .status(400)
-        .json(errorResponse(resMessages.validation.passwordsDoNotMatch));
-    }
-
-    // Check if email already exists
-    const emailExist = await checkEmailExist(email);
-    if (emailExist) {
-      return res
-        .status(400)
-        .json(errorResponse(resMessages.validation.emailAlreadyExist));
-    }
-
-    const dob = new Date(dateOfBirth);
-    if (isNaN(dob.getTime())) {
-      return res.status(400).json(errorResponse(resMessages.validation.invalidDateOfBirth));
-    }
-
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-
-    if (!dateRegex.test(dateOfBirth)) {
-      return res.status(400).json(
-        errorResponse(resMessages.validation.invalidDateOfBirthFormat)
-      );
-    }
-
-
-    // Phone validation
-    const phoneRegex = /^[0-9]{4,15}$/;
-    if (!phoneRegex.test(phone)) {
-      return res.status(400).json(errorResponse(resMessages.validation.invalidPhoneNumber));
-    }
-
-
-    // Hash the password
-    const hashedPassword = await hashPassword(password);
-
-    // Create user
-    const newUser = new User({
-      email,
-      username,
-      phone,
-      dateOfBirth,
-      passwordHash: hashedPassword,
-      status: 'active',
-      lastSeen: new Date()
-    });
-
-    await newUser.save();
-
-    // Generate JWT
-    const token = await getJWT(email, newUser._id);
-
+    const result = await authService.signup(req.body);
     return res
-      .status(201)
-      .json(successResponse(resMessages.success.registrationSuccessful, token));
+      .status(200)
+      .json(successResponse(resMessages.success.registrationSuccessful, result.token));
   } catch (error) {
-    console.error('Signup error:', error);
+    const status = error.statusCode || 500;
     return res
-      .status(500)
-      .json(
-        errorResponse(
-          resMessages.generalError.somethingWentWrong,
-          error.message
-        )
-      );
+      .status(status)
+      .json(errorResponse(error.message || resMessages.generalError.somethingWentWrong));
   }
 };
 
 
-exports.forgotPassword = async (req, res) => {
+exports.forgotPasswords = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -167,8 +76,19 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
+exports.forgotPassword = async (req, res) => {
+  try {
+    const result = await authService.forgotPassword(req.body);
+    return res.status(200).json(successResponse(result.message));
+  } catch (error) {
+    return res.status(error.statusCode || 500).json(
+      errorResponse(error.message || resMessages.generalError.somethingWentWrong)
+    );
+  }
+};
 
-exports.resetPassword = async (req, res) => {
+
+exports.resetPasswords = async (req, res) => {
   try {
     const { token, newPassword, confirmPassword } = req.body;
 
@@ -201,8 +121,19 @@ exports.resetPassword = async (req, res) => {
 
     return res.status(200).json(successResponse('Password reset successful.'));
   } catch (error) {
-    console.error('Reset password error:', error);
     return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
+  }
+};
+
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const result = await authService.resetPassword(req.body);
+    return res.status(200).json(successResponse(result.message));
+  } catch (error) {
+    return res.status(error.statusCode || 500).json(
+      errorResponse(error.message || resMessages.generalError.somethingWentWrong)
+    );
   }
 };
 
