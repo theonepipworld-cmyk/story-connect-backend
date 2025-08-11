@@ -1,10 +1,10 @@
 const express = require('express')
 const router = express.Router()
-const authController = require('../../../controllers/v1/auth/auth.controller.js')
+const authController = require('../../../controllers/v1/user/auth.controller.js')
 
 const {
     loginValidator, signupValidator,forgotPasswordValidator,resetPasswordValidator
-} = require("../../../middlewares/requestValidations/auth/commonAuth.middleware.js")
+} = require("../../../middlewares/requestValidations/user/commonAuth.middleware.js")
 
 //Authentication
 router.post('/login', loginValidator, authController.login);

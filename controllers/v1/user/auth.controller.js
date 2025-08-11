@@ -37,45 +37,6 @@ exports.signup = async (req, res) => {
 };
 
 
-exports.forgotPasswords = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json(errorResponse(resMessages.validation.missingFields));
-    }
-
-    const user = await checkEmailExist(email, true);
-    if (!user) {
-      return res.status(404).json(errorResponse(resMessages.notFound.emailNotFound));
-    }
-
-    // Generate token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-
-    // Save to DB with expiry
-    user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; // 15 min
-    await user.save();
-
-    // Create reset link
-    const resetLink = `http://localhost:4000/api/v1/reset-password/${resetToken}`;
-
-    // Send email
-    await sendEmail({
-      to: email,
-      subject: 'Password Reset Request',
-      template: 'reset-password',
-      context: { resetLink }
-    });
-    return res.status(200).json(successResponse('Reset link sent to email.'));
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
-  }
-};
-
 exports.forgotPassword = async (req, res) => {
   try {
     const result = await authService.forgotPassword(req.body);
@@ -84,44 +45,6 @@ exports.forgotPassword = async (req, res) => {
     return res.status(error.statusCode || 500).json(
       errorResponse(error.message || resMessages.generalError.somethingWentWrong)
     );
-  }
-};
-
-
-exports.resetPasswords = async (req, res) => {
-  try {
-    const { token, newPassword, confirmPassword } = req.body;
-
-    if (!token || !newPassword || !confirmPassword) {
-      return res.status(400).json(errorResponse(resMessages.validation.missingFields));
-    }
-
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json(errorResponse(resMessages.validation.passwordsDoNotMatch));
-    }
-
-    // Hash token before search
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-
-    // Find user with valid token
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
-    });
-
-    if (!user) {
-      return res.status(400).json(errorResponse('Invalid or expired reset token'));
-    }
-
-    // Update password
-    user.passwordHash = await hashPassword(newPassword);
-    user.resetPasswordToken = "";
-    user.resetPasswordExpires = "";
-    await user.save();
-
-    return res.status(200).json(successResponse('Password reset successful.'));
-  } catch (error) {
-    return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
   }
 };
 

@@ -1,29 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const profileController = require('../../../controllers/v1/profile/profile.controller.js');
-const { authenticate } = require('../../../middlewares/requestValidations/profile/profile.middleware.js');
-const multer = require('multer');
-// memory storage so we can stream to S3
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error('Only image files are allowed'), false);
-    }
-    cb(null, true);
-  }
+const profileController = require('../../../controllers/v1/user/profile.controller.js');
+const { authenticate ,avatarUpload} = require('../../../middlewares/requestValidations/user/profile.middleware.js');
 
-});
 
 router.get('/getProfile', authenticate, profileController.getProfile);
-
 router.put(
   '/updateProfile',
   authenticate,
-  upload.fields([{ name: 'avatar', maxCount: 1 }]),
+  avatarUpload,
   profileController.updateProfile
 );
 

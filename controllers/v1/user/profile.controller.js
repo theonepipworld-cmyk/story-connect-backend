@@ -5,20 +5,18 @@ const { DEFAULT_AVATAR_URL } = require("../../../constants/variables.constants.j
 const User = require('../../../models/user.model.js');
 const { uploadFileToS3, removeS3Object } = require('../../../utils/s3.util.js');
 const uploadQueue = require("../../../job/uploadAvatar.js")
+const profileService = require("../../../service/user/profile.service.js")
 
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-passwordHash');
-    if (!user) {
-      return res.status(404).json(errorResponse('User not found'));
-    }
-    return res.status(200).json(successResponse('Profile fetched successfully', user));
-  } catch (error) {
-    return res.status(500).json(('Something went wrong', error.message));
+    const user = await profileService.getProfile(req.user.userId);
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, user));
+  } catch (err) {
+    return res.status(400).json(errorResponse(err.message));
   }
 };
 
-exports.updateProfile = async (req, res) => {
+exports.updateProfiles = async (req, res) => {
   try {
     const userId = req.user.userId;
     const payload = req.body || {};
@@ -81,7 +79,24 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+exports.updateProfile = async (req, res) => {
+  try {
+    const result = await profileService.updateProfile(req.user.userId, req.body, req.files);
+    return res.status(200).json(successResponse(resMessages.success.updateSuccessful, result));
+  } catch (err) {
+    return res.status(400).json(errorResponse(err.message));
+  }
+};
 
+
+exports.deleteProfile = async (req, res) => {
+  try {
+    const result = await profileService.deleteProfile(req.user.userId);
+    return res.status(200).json(successResponse(resMessages.success.deleteSuccessful, result));
+  } catch (err) {
+    return res.status(400).json(errorResponse(err.message));
+  }
+};
 // exports.updateProfile = async (req, res) => {
 //   try {
 //     const userId = req.user.userId;
@@ -141,19 +156,19 @@ exports.updateProfile = async (req, res) => {
 // };
 
 
-exports.deleteProfile = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    // Soft delete pattern: mark status = deactivated and keep data for audit/restore
-    const updated = await User.findByIdAndUpdate(userId, {
-      $set: { status: 'deactivated' }
-    }, { new: true, select: 'status' });
+// exports.deleteProfile = async (req, res) => {
+//   try {
+//     const userId = req.user.userId;
+//     // Soft delete pattern: mark status = deactivated and keep data for audit/restore
+//     const updated = await User.findByIdAndUpdate(userId, {
+//       $set: { status: 'deactivated' }
+//     }, { new: true, select: 'status' });
 
-    if (!updated) return res.status(404).json(errorResponse(resMessages.notFound.userNotFound));
-    // Optionally: enqueue background tasks to scrub PII, remove media from S3 after retention
-    return res.status(200).json(successResponse(resMessages.success.deletionSuccessful, { status: updated.status }));
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, err.message));
-  }
-};
+//     if (!updated) return res.status(404).json(errorResponse(resMessages.notFound.userNotFound));
+//     // Optionally: enqueue background tasks to scrub PII, remove media from S3 after retention
+//     return res.status(200).json(successResponse(resMessages.success.deletionSuccessful, { status: updated.status }));
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, err.message));
+//   }
+// };
