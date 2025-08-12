@@ -22,11 +22,12 @@ exports.signup = async (data) => {
     dateOfBirth,
     passwordHash: hashedPassword,
     status: 'active',
+    role: 'user',
     lastSeen: new Date()
   });
 
   await newUser.save();
-  const token = await getJWT(email, newUser._id);
+  const token = await getJWT(email, newUser._id, newUser.role);
 
   return { token };
 };
@@ -53,7 +54,7 @@ exports.login = async ({ email, password }) => {
     throw err;
   }
 
-  const token = await getJWT(email, user._id);
+  const token = await getJWT(email, user._id, user.role);
   if (!token) {
     const err = new Error(resMessages.generalError.somethingWentWrong);
     err.statusCode = 400;

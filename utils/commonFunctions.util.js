@@ -26,9 +26,9 @@ exports.comparePassword = async (hashedPassword, password) => {
 }
 
 
-exports.getJWT = async (email, id) => {
+exports.getJWT = async (email, id, role) => {
   try {
-    const payload = { email, id: id.toString() };
+    const payload = { email, id: id.toString(), role };
     const token = jwt.sign(payload, jwt_secret)
     return token;
   } catch (error) {
