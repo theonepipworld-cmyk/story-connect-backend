@@ -1,10 +1,13 @@
 module.exports = {
     success: {
-        loginSuccessful: "Success"
+        loginSuccessful: "Success",
+        updateSuccessful:"update successfully",
+        createSuccessful:"create Sucessfully"
 
     },
     notFound: {
-        emailNotFound: "Email not found"
+        emailNotFound: "Email not found",
+        postNotFound:"post not found"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -17,7 +20,7 @@ module.exports = {
         invalidDateOfBirth: "DOB invalid",
         authTokenMissing: "Authorization token missing",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD."
-
+       
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

@@ -1,4 +1,5 @@
 const User = require('../models/user.model.js');
+const Post = require('../models/post.model.js')
 const { validationResult } = require('express-validator');
 
 exports.checkEmailExist = async (email, forUpdate = false) => {
@@ -24,4 +25,16 @@ exports.validate = async (req, res, next) => {
     });
   }
   next();
+}
+
+exports.isPostExist = async(id) =>{
+  try{
+  const result= await Post.findById(id);
+  return result;
+  }
+  catch(error){
+    console.error('Error in checkPostExist:', error.message);
+    throw new Error(error.message || 'Failed to check existing email.');
+  }
+
 }
