@@ -49,7 +49,7 @@ exports.updateCommentService = async (postId, commentId, parentCommentId, conten
 
         const updatedComment = await Comment.findOneAndUpdate(
             filter,
-            { content },
+            { content ,isEdited: true},
             { new: true }
         );
 
