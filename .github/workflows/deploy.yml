@@ -16,9 +16,9 @@ jobs:
         username: ${{ secrets.EC2_DEV_USER }}
         key: ${{ secrets.EC2_DEV_SSH_KEY }}
         script: |
-          cd /var/www/html/backend-mobile-apps
+          cd /var/www/html/story-connect-backend
           git fetch --all
           git reset --hard origin/development
           git pull origin development --force
           npm install
-          pm2 restart mobile-api
+          pm2 restart story-connect-api
