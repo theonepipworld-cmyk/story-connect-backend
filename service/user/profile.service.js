@@ -3,17 +3,13 @@ const User = require('../../models/user.model');
 const { uploadFileToS3 } = require('../../utils/s3.util');
 const { DEFAULT_AVATAR_URL } = require('../../constants/variables.constants');
 const { errorResponse, successResponse } = require('../../utils/responseHandler.util');
-const resMessages = require('../../utils/responseHandler.util');
+const resMessages = require('../../constants/resMessages.constants');
 
 exports.getProfile = async (userId) => {
-    const user = await User.findById(userId)
-        .select('name email bio profession education relationship countryOfOrigin currentCountry entryYear dateOfBirth avatarUrl')
-        .lean();
-
+    const user = await User.findById(userId).lean();
     if (!user) {
-        throw new Error(resMessages.generalError.userNotFound);
+        throw new Error(resMessages.notFound.userNotFound);
     }
-
     return user;
 };
 
@@ -36,8 +32,7 @@ exports.updateProfile = async (userId, payload, files) => {
         }
         patch.dateOfBirth = payload.dateOfBirth;
     }
-
-    if (files.avatar?.[0]) {
+    if (files && files.avatar?.[0]) {
         try {
             const avatarFile = files.avatar[0];
             const s3Res = await uploadFileToS3(avatarFile);
@@ -46,7 +41,6 @@ exports.updateProfile = async (userId, payload, files) => {
             patch.avatarUrl = DEFAULT_AVATAR_URL;
         }
     }
-
     const updated = await User.findByIdAndUpdate(
         userId,
         { $set: patch },

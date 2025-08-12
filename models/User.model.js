@@ -39,6 +39,11 @@ const userSchema = new Schema({
     enum: ['Engineer', 'Designer', 'Other'],
     default: 'Other'
   },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
   relationship: {
     type: String,
     enum: ['Single', 'Married'],

@@ -102,7 +102,7 @@ exports.googleAuth = async (req, res) => {
       await user.save();
     }
 
-    const jwtToken = await getJWT(email, user._id);
+    const jwtToken = await getJWT(email, user._id,user.role);
 
     return res.status(200).json(successResponse(resMessages.success.loginSuccessful, {
       token: jwtToken,

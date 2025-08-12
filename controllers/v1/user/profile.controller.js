@@ -9,79 +9,18 @@ const profileService = require("../../../service/user/profile.service.js")
 
 exports.getProfile = async (req, res) => {
   try {
-    const user = await profileService.getProfile(req.user.userId);
+    const user = await profileService.getProfile(req.user.id);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, user));
   } catch (err) {
     return res.status(400).json(errorResponse(err.message));
   }
 };
 
-exports.updateProfiles = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const payload = req.body || {};
-    const files = req.files || {};
 
-    const patch = {};
-    if (payload.name) patch.username = payload.name;
-    if (payload.bio) patch.bio = payload.bio;
-    if (payload.profession) patch.profession = payload.profession;
-    if (payload.education) patch.education = payload.education;
-    if (payload.relationship) patch.relationship = payload.relationship;
-    if (payload.countryOfOrigin) patch.countryOfOrigin = payload.countryOfOrigin;
-    if (payload.currentCountry) patch.currentCountry = payload.currentCountry;
-    if (payload.entryYear) patch.entryYear = payload.entryYear;
-
-    if (payload.dateOfBirth) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(payload.dateOfBirth)) {
-        return res.status(400).json(
-          errorResponse(resMessages.validation.invalidDateOfBirthFormat)
-        );
-      }
-      patch.dateOfBirth = payload.dateOfBirth;
-    }
-    if (files.avatar?.[0]) {
-      try {
-        const avatarFile = files.avatar[0];
-        const s3Res = await uploadFileToS3(avatarFile);
-        patch.avatarUrl = s3Res?.Location || DEFAULT_AVATAR_URL;
-      } catch (uploadErr) {
-        console.error('Avatar upload failed:', uploadErr);
-        patch.avatarUrl = DEFAULT_AVATAR_URL;
-      }
-    }
-
-    // await uploadQueue.add('uploadAvatar', {
-    //   userId,
-    //   files
-    // });
-    // console.log("Profile update initiated. Avatar will be processed shortly")
-
-    const updated = await User.findByIdAndUpdate(
-      userId,
-      { $set: patch },
-      { new: true, runValidators: true, select: 'name email profile profession' }
-    ).lean();
-
-    if (!updated) {
-      return res.status(404).json(errorResponse(resMessages.generalError.userNotFound));
-    }
-
-    return res.status(200).json(
-      successResponse(resMessages.success.updateSuccessful, { message: 'Profile updated' })
-    );
-  } catch (err) {
-    console.error('Update profile error', err);
-    return res.status(500).json(
-      errorResponse(resMessages.generalError.somethingWentWrong, err.message)
-    );
-  }
-};
 
 exports.updateProfile = async (req, res) => {
   try {
-    const result = await profileService.updateProfile(req.user.userId, req.body, req.files);
+    const result = await profileService.updateProfile(req.user.id, req.body, req.files);
     return res.status(200).json(successResponse(resMessages.success.updateSuccessful, result));
   } catch (err) {
     return res.status(400).json(errorResponse(err.message));
@@ -91,7 +30,7 @@ exports.updateProfile = async (req, res) => {
 
 exports.deleteProfile = async (req, res) => {
   try {
-    const result = await profileService.deleteProfile(req.user.userId);
+    const result = await profileService.deleteProfile(req.user.id);
     return res.status(200).json(successResponse(resMessages.success.deleteSuccessful, result));
   } catch (err) {
     return res.status(400).json(errorResponse(err.message));
