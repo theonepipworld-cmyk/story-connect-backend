@@ -1,25 +1,22 @@
 const { body } = require("express-validator");
 const { validate } = require("../../../middlewares/requestValidations/user/validate")
+const resMessages = require("../../../constants/resMessages.constants.js")
+
 
 
 exports.createPostValidator = [
   body("type")
-    .notEmpty()
-    .withMessage("Post type is required")
+    .notEmpty().withMessage(`${resMessages.validation.missingFields}: type`)
     .isIn(["video", "image"])
-    .withMessage("Type must be either 'video' or 'image'"),
+    .withMessage(`${resMessages.validation.typeError}`),
 
   body("postHeading")
     .notEmpty()
-    .withMessage("Post heading is required")
-    .isLength({ min: 3 })
-    .withMessage("Post heading must be at least 3 characters long"),
+    .withMessage(`${resMessages.validation.missingFields}: postHeading`),
 
   body("postDescription")
     .notEmpty()
-    .withMessage("Post description is required")
-    .isLength({ min: 10 })
-    .withMessage("Post description must be at least 10 characters long"),
+    .withMessage(`${resMessages.validation.missingFields}: postDescription`),
 
-    validate
+  validate
 ];

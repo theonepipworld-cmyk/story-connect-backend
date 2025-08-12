@@ -1,5 +1,4 @@
 const User = require('../models/user.model.js');
-const { validationResult } = require('express-validator');
 
 exports.checkEmailExist = async (email, forUpdate = false) => {
   try {

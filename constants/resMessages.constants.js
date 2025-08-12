@@ -5,7 +5,7 @@ module.exports = {
     },
     notFound: {
         emailNotFound: "Email not found",
-        userNotFound:"User not found"
+        userNotFound: "User not found"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -17,7 +17,8 @@ module.exports = {
         invalidPhoneNumber: "Phone number invalid",
         invalidDateOfBirth: "DOB invalid",
         authTokenMissing: "Authorization token missing",
-        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD."
+        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
+        typeError: "Type must be either 'video' or 'image'"
 
     },
     auth: {
@@ -32,6 +33,6 @@ module.exports = {
         somethingWentWrong: "Something went wrong. Please try again later.",
         idMissMatch: "Id miss-matched.",
         calledFunctionError: "Getting error from called Function",
-        uploading:"Error uploading file"
+        uploading: "Error uploading file"
     },
 };
