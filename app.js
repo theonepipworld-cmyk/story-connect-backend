@@ -12,6 +12,24 @@ var app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/api/v1/test', (req, res) => {
+  console.log("Server is running successfully")
+  res.status(200).json({
+    success: true,
+    message: 'Server is running successfully 🚀',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+
+app.get('/api/v1/test', (req, res) => {
+  console.log("Server is running successfully")
+  res.status(200).json({
+    success: true,
+    message: 'Server is running successfully 🚀',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 
 // user section routes
