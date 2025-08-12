@@ -11,9 +11,15 @@ var app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
+
+// user section routes
 app.use('/api/v1/user/auth', authRoutes);
 app.use('/api/v1/user/profile', profileRoutes);
 app.use('/api/v1/user/post', postRoutes);
+
+
+
 
 // Global 404 handler (for unknown routes)
 app.use((req, res, next) => {
