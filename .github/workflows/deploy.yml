@@ -17,8 +17,8 @@ jobs:
         key: ${{ secrets.EC2_DEV_SSH_KEY }}
         script: |
           cd /var/www/html/story-connect-backend
-          git fetch --all
-          git reset --hard origin/development
-          git pull origin development --force
-          npm install
-          pm2 restart story-connect-api
+          sudo git fetch --all
+          sudo git reset --hard origin/development
+          sudo git pull origin development --force
+          sudo npm install
+          sudo pm2 restart story-connect-api
