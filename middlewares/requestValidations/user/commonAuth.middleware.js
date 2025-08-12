@@ -1,6 +1,6 @@
 const { check, validationResult } = require('express-validator');
 const resMessages = require("../../../constants/resMessages.constants.js")
-const { validate } = require("../../../helpers/dbHelpers.js")
+const { validate } = require("../../../middlewares/requestValidations/user/validate")
 
 // Login Validator
 const loginValidator = [
@@ -92,10 +92,6 @@ const resetPasswordValidator = [
     }),
   validate
 ];
-
-
-
-
 
 module.exports = {
   loginValidator,
