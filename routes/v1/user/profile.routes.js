@@ -15,7 +15,7 @@ router.put(
 );
 
 // Soft delete user profile (deactivate)
-router.delete('/deleteProfile', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);
+router.delete('/', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);
 
 
 module.exports = router;
