@@ -48,7 +48,7 @@ exports.updateProfile = async (userId, payload, files) => {
     ).lean();
 
     if (!updated) {
-        throw new Error(resMessages.generalError.userNotFound);
+        throw new Error(resMessages.notFound.userNotFound);
     }
 
     return { message: 'Profile updated' };
@@ -57,12 +57,12 @@ exports.updateProfile = async (userId, payload, files) => {
 exports.deleteProfile = async (userId) => {
 
     const deleted = await User.findByIdAndUpdate(userId, {
-        $set: { status: 'deactivated' }
+        $set: { status: 'deleted' }
     }, { new: true, select: 'status' });
 
 
     if (!deleted) {
-        throw new Error(resMessages.generalError.userNotFound);
+        throw new Error(resMessages.notFound.userNotFound);
     }
 
     return { message: 'Profile deleted' };

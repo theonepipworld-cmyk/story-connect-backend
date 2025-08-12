@@ -6,9 +6,9 @@ const { isAuthenticated } = require('../../../middlewares/requestValidations/use
 const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
 
 
-router.get('/getProfile', isAuthenticated, authorizeRoles('user'), profileController.getProfile);
+router.get('/', isAuthenticated, authorizeRoles('user','admin'), profileController.getProfile);
 router.put(
-  '/updateProfile',
+  '/',
   avatarUpload,
   isAuthenticated, authorizeRoles('user'),
   profileController.updateProfile

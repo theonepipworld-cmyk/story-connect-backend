@@ -16,8 +16,6 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-
-
 exports.updateProfile = async (req, res) => {
   try {
     const result = await profileService.updateProfile(req.user.id, req.body, req.files);

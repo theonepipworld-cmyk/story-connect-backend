@@ -73,7 +73,7 @@ const userSchema = new Schema({
   dateOfBirth: { type: Date },
   status: {
     type: String,
-    enum: ['active', 'inactive', 'banned'],
+    enum: ['active', 'inactive', 'banned', 'deleted'],
     default: 'active'
   },
   resetPasswordToken: {
