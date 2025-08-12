@@ -1,11 +1,12 @@
 const postService = require("../../../service/user/post.service.js")
-
+const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
+const resMessages = require("../../../constants/resMessages.constants.js");
 // Create Post
 exports.createPost = async (req, res) => {
   try {
     req.body.userId = req.user.id;
     const post = await postService.createPost(req.body);
-    res.status(201).json({ success: true, data: post });
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -15,7 +16,7 @@ exports.createPost = async (req, res) => {
 exports.getPosts = async (req, res) => {
   try {
     const posts = await postService.getAllPosts();
-    res.status(200).json({ success: true, data: posts });
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, posts));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -26,8 +27,8 @@ exports.getPostById = async (req, res) => {
   try {
     const post = await postService.getPostById(req.params.id);
     if (!post)
-      return res.status(404).json({ success: false, message: "Post not found" });
-    res.status(200).json({ success: true, data: post });
+      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -38,8 +39,8 @@ exports.updatePost = async (req, res) => {
   try {
     const post = await postService.updatePost(req.params.id, req.body);
     if (!post)
-      return res.status(404).json({ success: false, message: "Post not found" });
-    res.status(200).json({ success: true, data: post });
+      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -50,9 +51,9 @@ exports.deletePost = async (req, res) => {
   try {
     const post = await postService.deletePost(req.params.id);
     if (!post)
-      return res.status(404).json({ success: false, message: "Post not found" });
-    res.status(200).json({ success: true, message: "Post deleted successfully" });
+      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
+    return res.status(200).json(successResponse(resMessages.success.deleteSuccessful, post));
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(400).json(errorResponse(err.message));
   }
 };

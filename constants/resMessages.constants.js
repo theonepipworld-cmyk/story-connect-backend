@@ -1,11 +1,13 @@
 module.exports = {
     success: {
-        loginSuccessful: "Success"
+        loginSuccessful: "Success",
+        deleteSuccessful: "delete successfully"
 
     },
     notFound: {
         emailNotFound: "Email not found",
-        userNotFound: "User not found"
+        userNotFound: "User not found",
+        postNotFound: "Post Not Found"
     },
     validation: {
         missingFields: "Missing required fields",
