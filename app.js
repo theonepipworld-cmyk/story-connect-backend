@@ -1,8 +1,9 @@
 var createError = require('http-errors');
 var express = require('express');
+const secretVariables = require('./config/secretVariables');
 const authRoutes = require('./routes/v1/user/auth.routes.js')
 const profileRoutes = require('./routes/v1/user/profile.routes.js')
-const secretVariables = require('./config/secretVariables');
+const postRoutes = require('./routes/v1/user/post.routes.js')
 require('./config/db'); 
 
 var app = express();
@@ -10,8 +11,9 @@ var app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/profile', profileRoutes);
+app.use('/api/v1/user/auth', authRoutes);
+app.use('/api/v1/user/profile', profileRoutes);
+app.use('/api/v1/user/post', postRoutes);
 
 // Global 404 handler (for unknown routes)
 app.use((req, res, next) => {
