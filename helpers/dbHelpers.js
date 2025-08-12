@@ -1,6 +1,8 @@
 const User = require('../models/user.model.js');
+
 const Post = require('../models/post.model.js')
 const { validationResult } = require('express-validator');
+
 
 exports.checkEmailExist = async (email, forUpdate = false) => {
   try {
@@ -38,3 +40,5 @@ exports.isPostExist = async(id) =>{
   }
 
 }
+
+

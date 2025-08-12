@@ -13,7 +13,11 @@ const postSchema = new mongoose.Schema(
       ref: "Community",
       index: true,
     },
-    content: {
+    postDescription: {
+      type: String,
+      trim: true,
+    },
+    postHeading: {
       type: String,
       trim: true,
     },

@@ -7,7 +7,8 @@ module.exports = {
     },
     notFound: {
         emailNotFound: "Email not found",
-        postNotFound:"post not found"
+        postNotFound:"post not found",
+        userNotFound:"user not found with this userid"
     },
     validation: {
         missingFields: "Missing required fields",

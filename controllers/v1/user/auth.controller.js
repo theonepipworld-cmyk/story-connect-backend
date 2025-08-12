@@ -1,15 +1,11 @@
-const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const handlebars = require('handlebars');
 const { errorResponse, successResponse } = require('../../../utils/responseHandler.util.js')
 const resMessages = require("../../../constants/resMessages.constants.js")
-const { checkEmailExist } = require("../../../helpers/dbHelpers.js")
-const { hashPassword, comparePassword, getJWT } = require("../../../utils/commonFunctions.util.js")
+const {getJWT } = require("../../../utils/commonFunctions.util.js")
 const User = require('../../../models/user.model.js');
-const { google_client_id, jwt_secret } = require("../../../config/secretVariables.js");
-const { sendEmail } = require('../../../utils/email.util.js');
-const jwt = require('jsonwebtoken');
+const { google_client_id } = require("../../../config/secretVariables.js");
 const authService = require("../../../service/user/auth.service.js")
 
 
@@ -102,7 +98,7 @@ exports.googleAuth = async (req, res) => {
       await user.save();
     }
 
-    const jwtToken = await getJWT(email, user._id);
+    const jwtToken = await getJWT(email, user._id,user.role);
 
     return res.status(200).json(successResponse(resMessages.success.loginSuccessful, {
       token: jwtToken,
