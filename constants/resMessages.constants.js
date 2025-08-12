@@ -8,7 +8,11 @@ module.exports = {
     notFound: {
         emailNotFound: "Email not found",
         postNotFound:"post not found",
+<<<<<<< HEAD
         userNotFound:"user not found with this userid"
+=======
+        userNotFound:"User not found"
+>>>>>>> origin/feature/profile-rahul
     },
     validation: {
         missingFields: "Missing required fields",
