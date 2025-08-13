@@ -1,9 +1,7 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client,  DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { Upload } = require('@aws-sdk/lib-storage');
-
 const path = require('path');
 const envVariables = require('../config/secretVariables');
-const resMessages = require('../constants/resMessages.constants')
 
 const s3 = new S3Client({
     region: envVariables?.aws_s3_region,
@@ -38,39 +36,25 @@ const uploadFileToS3 = async (file, folder = '') => {
     };
 };
 
-const uploadFileToS31 = async (file, folder = '') => {
-    if (!file) {
-        throw new Error('File data is missing.');
+
+
+const deleteFileFromS3 = async (fileUrl) => {
+    if (!fileUrl) return;
+    const bucketUrl = `https://${envVariables.aws_s3_bucket_name}.s3.${envVariables.aws_s3_region}.amazonaws.com/`;
+    const fileKey = fileUrl.replace(bucketUrl, '');
+
+    if (!fileKey) {
+        console.warn(`Could not extract S3 key from: ${fileUrl}`);
+        return;
     }
 
-    const timestamp = Date.now();
-    const extension = path.extname(file.originalname);
-    const baseName = path.basename(file.originalname, extension).replace(/\s+/g, '_');
-    const uniqueFileName = `${baseName}_${timestamp}${extension}`;
+    await s3.send(new DeleteObjectCommand({
+        Bucket: envVariables.aws_s3_bucket_name,
+        Key: fileKey,
+    }));
 
-
-    const key = folder ? `${folder}/${uniqueFileName}` : uniqueFileName;
-
-    const uploadParams = {
-        Bucket: envVariables?.aws_s3_bucket_name,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-    };
-
-    console.log(uploadParams, "uploadParams")
-
-    try {
-        const command = new PutObjectCommand(uploadParams);
-        const result = await s3.send(command);
-        return {
-            ...result,
-            key,
-            Location: `https://${envVariables?.aws_s3_bucket_name}.s3.${envVariables?.aws_s3_region}.amazonaws.com/${key}`,
-        };
-    } catch (error) {
-        throw new Error(`Error uploading file: ${error.message}`);
-    }
+    console.log(`Deleted from S3: ${fileKey}`);
 };
 
-module.exports = { uploadFileToS3, s3 };
+
+module.exports = { uploadFileToS3, s3, deleteFileFromS3 };

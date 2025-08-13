@@ -22,7 +22,8 @@ module.exports = {
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         typeError: "Type must be either 'video' or 'image'",
         postForError: "Type must be either 'profile' or 'community'",
-        invalidFileType: "invalid type"
+        invalidFileType: "invalid type",
+
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
@@ -31,6 +32,7 @@ module.exports = {
     serverError: {
         internalError: "Internal server error",
         processingError: "Error while processing request",
+        limitExccessedError: "You can upload up to 5 media files only."
     },
     generalError: {
         somethingWentWrong: "Something went wrong. Please try again later.",

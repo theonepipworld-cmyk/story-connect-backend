@@ -68,6 +68,7 @@ exports.deletePost = async (req, res) => {
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     return res.status(200).json(successResponse(resMessages.success.deleteSuccessful, post));
   } catch (error) {
-    return res.status(400).json(errorResponse(err.message));
+    console.log(error,"error")
+    return res.status(400).json(errorResponse(resMessages.serverError.processingError));
   }
 };
