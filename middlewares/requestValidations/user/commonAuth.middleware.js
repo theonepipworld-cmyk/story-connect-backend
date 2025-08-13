@@ -1,4 +1,4 @@
-const { check, validationResult } = require('express-validator');
+const { check } = require('express-validator');
 const resMessages = require("../../../constants/resMessages.constants.js")
 const { validate } = require("../../../middlewares/requestValidations/user/validate")
 

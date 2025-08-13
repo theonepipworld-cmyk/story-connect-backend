@@ -1,8 +1,6 @@
-// services/profile/profile.service.js
 const User = require('../../models/user.model');
 const { uploadFileToS3 } = require('../../utils/s3.util');
 const { DEFAULT_AVATAR_URL } = require('../../constants/variables.constants');
-const { errorResponse, successResponse } = require('../../utils/responseHandler.util');
 const resMessages = require('../../constants/resMessages.constants');
 
 exports.getProfile = async (userId) => {

@@ -1,8 +1,8 @@
+const crypto = require('crypto');
 const User = require('../../models/user.model.js');
 const { hashPassword, comparePassword, getJWT } = require("../../utils/commonFunctions.util.js")
 const { checkEmailExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require('../../constants/resMessages.constants.js');
-const crypto = require('crypto');
 const { sendEmail } = require('../../utils/email.util.js');
 const { RESET_PASS_LINK } = require("../../constants/variables.constants.js")
 
