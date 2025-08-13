@@ -37,6 +37,7 @@ const postSchema = new mongoose.Schema(
     storyOfTheMonth: {
       type: Boolean,
       default: false,
+      
     },
     type: {
       type: String,
