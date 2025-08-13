@@ -13,7 +13,8 @@ exports.isAuthenticated = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, jwt_secret);
     // console.log(decoded,"decode")
-    req.user = decoded; // contains { email, userId, role }
+    req.user = decoded; // contains { email, userId, role ,username }
+    console.log("decode",decoded)
     next();
   } catch (err) {
     return res.status(401).json(errorResponse(resMessages.auth.invalidToken));
