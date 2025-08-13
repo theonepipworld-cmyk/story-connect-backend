@@ -54,7 +54,7 @@ exports.login = async ({ email, password }) => {
     throw err;
   }
 
-  const token = await getJWT(email, user._id, user.role);
+  const token = await getJWT(email, user._id, "user");
   if (!token) {
     const err = new Error(resMessages.generalError.somethingWentWrong);
     err.statusCode = 400;
