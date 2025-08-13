@@ -2,8 +2,10 @@ module.exports = {
     success: {
         loginSuccessful: "Success",
         updateSuccessful:"update successfully",
-        createSuccessful:"create Sucessfully"
-
+        createSuccessful:"create Sucessfully",
+        getSuccessful:"get Sucessfully",
+        deleteSuccessful:"delete Sucessfully",
+        addSuccessful:"added Sucessfully"
     },
     notFound: {
         emailNotFound: "Email not found",

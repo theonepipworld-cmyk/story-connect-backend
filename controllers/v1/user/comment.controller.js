@@ -3,11 +3,9 @@ const { successResponse, errorResponse } = require('../../../utils/responseHandl
 const resMessages = require("../../../constants/resMessages.constants.js");
 const { DEFAULT_AVATAR_URL } = require("../../../constants/variables.constants.js");
 const User = require('../../../models/user.model.js');
-const { uploadFileToS3, removeS3Object } = require('../../../utils/s3.util.js');
-const uploadQueue = require("../../../job/uploadAvatar.js")
-const isPostExist = require('../../../helpers/dbHelpers.js');
+const {isPostExist} = require('../../../helpers/dbHelpers.js');
 const { addCommentService, updateCommentService, deleteCommentService ,getCommentService} = require("../../../service/user/comment.service.js")
-exports.addComment = async (req, res) => {
+exports.addComment = async(req, res) => {
     try {
         const { postId, comment, parentCommentId } = req.body;
 
@@ -30,7 +28,7 @@ exports.addComment = async (req, res) => {
         }
         const newComment = await addCommentService(
             postId,
-            req.user.userId,
+            req.user.id,
             comment,
             parentCommentId
         );
@@ -46,7 +44,7 @@ exports.addComment = async (req, res) => {
 exports.updateComment = async (req, res) => {
     try {
         const { postId, commentId, parentCommentId, content } = req.body;
-        const userId = req.user.userId;
+        const userId = req.user.id;
 
         if (!userId) {
             return res.status(401).json(
@@ -86,7 +84,7 @@ exports.updateComment = async (req, res) => {
 exports.deleteComment = async (req, res) => {
     try {
         const { postId, commentId, parentCommentId } = req.body;
-          const userId = req.user.userId;
+          const userId = req.user.id;
 
         if (!userId) {
             return res.status(401).json(
@@ -115,7 +113,7 @@ exports.deleteComment = async (req, res) => {
 
         const result = await deleteCommentService(postId, commentId, parentCommentId,userId)
         return res.status(200).json(
-            successResponse(resMessages.success.updateSuccessful, updateComment)
+            successResponse(resMessages.success.deleteSuccessful, result)
         );
 
 
@@ -129,9 +127,8 @@ exports.deleteComment = async (req, res) => {
 
 exports.getComment =async(req,res)=>{
     try{
-      const{postId} = req.body
-        const userId = req.user.userId;
-
+        const{postId} = req.query
+        const userId = req.user.id;
         if (!userId) {
             return res.status(401).json(
                 errorResponse(resMessages.generalError.somethingWentWrong,
@@ -156,10 +153,11 @@ exports.getComment =async(req,res)=>{
                 )
             );
         }
+        const result= await getCommentService(postId);
 
-
-        const result= await getCommentService(postId)
-
+       return res.status(200).json(
+            successResponse(resMessages.success.getSuccessful, result)
+        );
     }
     catch (err) {
         return res.status(400).json(errorResponse(err.message));

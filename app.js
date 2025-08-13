@@ -5,6 +5,7 @@ const authRoutes = require('./routes/v1/user/auth.routes.js')
 const profileRoutes = require('./routes/v1/user/profile.routes.js')
 const postRoutes = require('./routes/v1/user/post.routes.js');
 const commentRoutes = require("./routes/v1/user/comments.routes.js")
+const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
 require('./config/db'); 
 
 var app = express();
@@ -37,7 +38,7 @@ app.use('/api/v1/user/auth', authRoutes);
 app.use('/api/v1/user/profile', profileRoutes);
 app.use('/api/v1/user/post', postRoutes);
 app.use('/api/v1/user/comment', commentRoutes);
-
+app.use('/api/v1/user/stats', userStatsRoutes);
 
 
 
