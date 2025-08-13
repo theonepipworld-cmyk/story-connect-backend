@@ -6,12 +6,15 @@ const { errorResponse, successResponse } = require('../../utils/responseHandler.
 const resMessages = require('../../constants/resMessages.constants');
 
 exports.getProfile = async (userId) => {
-    const user = await User.findById(userId).lean();
+     const user = await User.findById(userId)
+        .select('-passwordHash -resetPasswordExpires -resetPasswordToken')
+        .lean();
     if (!user) {
         throw new Error(resMessages.notFound.userNotFound);
     }
     return user;
 };
+
 
 exports.updateProfile = async (userId, payload, files) => {
     const patch = {};
@@ -35,7 +38,7 @@ exports.updateProfile = async (userId, payload, files) => {
     if (files && files.avatar?.[0]) {
         try {
             const avatarFile = files.avatar[0];
-            const s3Res = await uploadFileToS3(avatarFile);
+            const s3Res = await uploadFileToS3(avatarFile, "profile");
             patch.avatarUrl = s3Res?.Location || DEFAULT_AVATAR_URL;
         } catch (uploadErr) {
             patch.avatarUrl = DEFAULT_AVATAR_URL;

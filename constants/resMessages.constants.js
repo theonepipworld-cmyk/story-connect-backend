@@ -11,6 +11,8 @@ module.exports = {
         emailNotFound: "Email not found",
         postNotFound:"post not found",
         userNotFound: "User not found",
+        deleteSuccessful: "delete successfully"
+
     },
     validation: {
         missingFields: "Missing required fields",
@@ -24,7 +26,9 @@ module.exports = {
         authTokenMissing: "Authorization token missing",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         typeError: "Type must be either 'video' or 'image'",
-        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD."
+        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
+        postForError: "Type must be either 'profile' or 'community'",
+        invalidFileType: "invalid type",
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
@@ -33,6 +37,7 @@ module.exports = {
     serverError: {
         internalError: "Internal server error",
         processingError: "Error while processing request",
+        limitExccessedError: "You can upload up to 5 media files only."
     },
     generalError: {
         somethingWentWrong: "Something went wrong. Please try again later.",
