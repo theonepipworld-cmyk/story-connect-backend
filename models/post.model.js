@@ -45,7 +45,6 @@ const postSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: ["video", "image","both"],
-      required: true,
     },
     videoOfTheMonth: {
       type: Boolean,
