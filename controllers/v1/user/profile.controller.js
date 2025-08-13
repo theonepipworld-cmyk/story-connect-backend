@@ -1,10 +1,5 @@
-const mongoose = require('mongoose');
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const resMessages = require("../../../constants/resMessages.constants.js");
-const { DEFAULT_AVATAR_URL } = require("../../../constants/variables.constants.js");
-const User = require('../../../models/user.model.js');
-const { uploadFileToS3, removeS3Object } = require('../../../utils/s3.util.js');
-const uploadQueue = require("../../../job/uploadAvatar.js")
 const profileService = require("../../../service/user/profile.service.js")
 
 exports.getProfile = async (req, res) => {
