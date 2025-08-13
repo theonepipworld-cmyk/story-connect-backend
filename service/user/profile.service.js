@@ -6,7 +6,9 @@ const { errorResponse, successResponse } = require('../../utils/responseHandler.
 const resMessages = require('../../constants/resMessages.constants');
 
 exports.getProfile = async (userId) => {
-    const user = await User.findById(userId).lean();
+     const user = await User.findById(userId)
+        .select('-passwordHash -resetPasswordExpires -resetPasswordToken')
+        .lean();
     if (!user) {
         throw new Error(resMessages.notFound.userNotFound);
     }
