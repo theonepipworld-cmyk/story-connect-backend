@@ -1,11 +1,13 @@
 module.exports = {
     success: {
-        loginSuccessful: "Success"
+        loginSuccessful: "Success",
+        deleteSuccessful: "delete successfully"
 
     },
     notFound: {
         emailNotFound: "Email not found",
-        userNotFound: "User not found"
+        userNotFound: "User not found",
+        postNotFound: "Post Not Found"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -18,7 +20,9 @@ module.exports = {
         invalidDateOfBirth: "DOB invalid",
         authTokenMissing: "Authorization token missing",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
-        typeError: "Type must be either 'video' or 'image'"
+        typeError: "Type must be either 'video' or 'image'",
+        postForError: "Type must be either 'profile' or 'community'",
+        invalidFileType: "invalid type",
 
     },
     auth: {
@@ -28,6 +32,7 @@ module.exports = {
     serverError: {
         internalError: "Internal server error",
         processingError: "Error while processing request",
+        limitExccessedError: "You can upload up to 5 media files only."
     },
     generalError: {
         somethingWentWrong: "Something went wrong. Please try again later.",

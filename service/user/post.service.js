@@ -1,4 +1,5 @@
 const Post = require("../../models/post.model");
+const { deleteFileFromS3 } = require("../../utils/s3.util")
 
 // Create Post
 exports.createPost = async (data) => {
@@ -30,5 +31,15 @@ exports.updatePost = async (id, updateData) => {
 
 // Delete Post
 exports.deletePost = async (id) => {
-  return await Post.findByIdAndDelete(id);
+  const post = await Post.findById(id);
+  if (!post) return null;
+
+  // Delete each media file from S3
+  if (post.mediaUrls && post.mediaUrls.length > 0) {
+    await Promise.all(post.mediaUrls.map(url => deleteFileFromS3(url)));
+  }
+
+  // Delete post from DB
+  await Post.findByIdAndDelete(id);
+  return post;
 };
