@@ -13,6 +13,7 @@ exports.getProfile = async (userId) => {
     return user;
 };
 
+
 exports.updateProfile = async (userId, payload, files) => {
     const patch = {};
 
