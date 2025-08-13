@@ -6,8 +6,8 @@ const resMessages = require('../constants/resMessages.constants')
 const s3 = new S3Client({
     region: envVariables?.aws_s3_region,
     credentials: {
-        accessKeyId: envVariables?.aws_s3_access_key,//username
-        secretAccessKey: envVariables?.aws_s3_secret_key,//password
+        accessKeyId: envVariables?.aws_s3_access_key,
+        secretAccessKey: envVariables?.aws_s3_secret_key,
     },
 });
 
@@ -31,7 +31,6 @@ const uploadFileToS3 = async (file, folder = '') => {
         ContentType: file.mimetype,
     };
 
-    console.log(uploadParams, "uploadParams")
 
     try {
         const command = new PutObjectCommand(uploadParams);

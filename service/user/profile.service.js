@@ -35,7 +35,7 @@ exports.updateProfile = async (userId, payload, files) => {
     if (files && files.avatar?.[0]) {
         try {
             const avatarFile = files.avatar[0];
-            const s3Res = await uploadFileToS3(avatarFile);
+            const s3Res = await uploadFileToS3(avatarFile, "profile");
             patch.avatarUrl = s3Res?.Location || DEFAULT_AVATAR_URL;
         } catch (uploadErr) {
             patch.avatarUrl = DEFAULT_AVATAR_URL;

@@ -1,14 +1,28 @@
 const postService = require("../../../service/user/post.service.js")
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const resMessages = require("../../../constants/resMessages.constants.js");
+const { uploadFileToS3, removeS3Object } = require('../../../utils/s3.util.js');
+
 // Create Post
 exports.createPost = async (req, res) => {
-  try {
+  try {    
     req.body.userId = req.user.id;
-    const post = await postService.createPost(req.body);
+    let mediaUrls = [];
+    if (req.files && req.files.length > 0) {
+      const uploadPromises = req.files.map(file => uploadFileToS3(file, "posts"));
+      const uploadResults = await Promise.all(uploadPromises);
+      mediaUrls = uploadResults.map(result => result.Location);
+    }
+    const postData = {
+      ...req.body,
+      mediaUrls
+    };
+
+    const post = await postService.createPost(postData);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    console.log(error,"error")
+    return res.status(500).json(errorResponse(resMessages.serverError.processingError));
   }
 };
 

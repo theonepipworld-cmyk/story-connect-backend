@@ -20,8 +20,9 @@ module.exports = {
         invalidDateOfBirth: "DOB invalid",
         authTokenMissing: "Authorization token missing",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
-        typeError: "Type must be either 'video' or 'image'"
-
+        typeError: "Type must be either 'video' or 'image'",
+        postForError: "Type must be either 'profile' or 'community'",
+        invalidFileType: "invalid type"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

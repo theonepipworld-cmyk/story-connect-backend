@@ -21,6 +21,10 @@ const postSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    postFor: {
+      type: String,
+      trim: true,
+    },
     mediaUrls: [
       {
         type: String,
@@ -40,7 +44,7 @@ const postSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["video", "image"],
+      enum: ["video", "image","both"],
       required: true,
     },
     videoOfTheMonth: {
