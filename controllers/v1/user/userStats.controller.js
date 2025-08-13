@@ -9,7 +9,6 @@ exports.addUserStats = async (req, res) => {
     try {
         const { postId, type, commentId , parentCommentId } = req.body;
         const { id, username } = req.user
-        console.log(req.user)
         if (!id || !username) {
             return res.status(400).json(
                 errorResponse(
