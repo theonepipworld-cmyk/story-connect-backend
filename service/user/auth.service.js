@@ -1,19 +1,31 @@
 const crypto = require('crypto');
 const User = require('../../models/user.model.js');
 const { hashPassword, comparePassword, getJWT } = require("../../utils/commonFunctions.util.js")
-const { checkEmailExist } = require("../../helpers/dbHelpers.js")
+const { checkFieldExists } = require("../../helpers/dbHelpers.js")
 const resMessages = require('../../constants/resMessages.constants.js');
 const { sendEmail } = require('../../utils/email.util.js');
 const { RESET_PASS_LINK } = require("../../constants/variables.constants.js")
 
 exports.signup = async (data) => {
   const { email, password, username, phone, dateOfBirth } = data;
-  const emailExist = await checkEmailExist(email);
+
+  const [emailExist, usernameExist] = await Promise.all([
+    checkFieldExists('email', email),
+    checkFieldExists('username', username),
+  ]);
+
   if (emailExist) {
     const err = new Error(resMessages.validation.emailAlreadyExist);
     err.statusCode = 400;
     throw err;
   }
+
+  if (usernameExist) {
+    const err = new Error(resMessages.validation.usernameAlreadyExist);
+    err.statusCode = 400;
+    throw err;
+  }
+
   const hashedPassword = await hashPassword(password);
   const newUser = new User({
     email,
@@ -21,8 +33,6 @@ exports.signup = async (data) => {
     phone,
     dateOfBirth,
     passwordHash: hashedPassword,
-    status: 'active',
-    role: 'user',
     lastSeen: new Date()
   });
 
@@ -34,7 +44,7 @@ exports.signup = async (data) => {
 
 
 exports.login = async ({ email, password }) => {
-  const user = await checkEmailExist(email);
+  const user = await checkFieldExists('email', email);
   if (!user) {
     const err = new Error(resMessages.notFound.emailNotFound);
     err.statusCode = 400;
@@ -64,7 +74,7 @@ exports.login = async ({ email, password }) => {
 };
 
 exports.forgotPassword = async ({ email }) => {
-  const user = await checkEmailExist(email, true);
+  const user = await checkFieldExists('email', email, true);
   if (!user) {
     const err = new Error(resMessages.notFound.emailNotFound);
     err.statusCode = 404;

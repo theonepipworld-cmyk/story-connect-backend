@@ -2,9 +2,11 @@ const User = require('../../models/user.model');
 const { uploadFileToS3 } = require('../../utils/s3.util');
 const { DEFAULT_AVATAR_URL } = require('../../constants/variables.constants');
 const resMessages = require('../../constants/resMessages.constants');
+const { checkFieldExists } = require("../../helpers/dbHelpers.js")
+
 
 exports.getProfile = async (userId) => {
-     const user = await User.findById(userId)
+    const user = await User.findById(userId)
         .select('-passwordHash -resetPasswordExpires -resetPasswordToken')
         .lean();
     if (!user) {
@@ -17,7 +19,7 @@ exports.getProfile = async (userId) => {
 exports.updateProfile = async (userId, payload, files) => {
     const patch = {};
 
-    if (payload.name) patch.username = payload.name;
+    if (payload.username) patch.username = payload.username;
     if (payload.bio) patch.bio = payload.bio;
     if (payload.profession) patch.profession = payload.profession;
     if (payload.education) patch.education = payload.education;
@@ -25,6 +27,27 @@ exports.updateProfile = async (userId, payload, files) => {
     if (payload.countryOfOrigin) patch.countryOfOrigin = payload.countryOfOrigin;
     if (payload.currentCountry) patch.currentCountry = payload.currentCountry;
     if (payload.entryYear) patch.entryYear = payload.entryYear;
+    if (payload.relationshipDescription) patch.relationshipDescription = payload.relationshipDescription;
+
+
+    const [emailExist, usernameExist] = await Promise.all([
+        checkFieldExists('email', payload.email),
+        checkFieldExists('username', payload.username),
+    ]);
+
+    if (emailExist) {
+        const err = new Error(resMessages.validation.emailAlreadyExist);
+        err.statusCode = 400;
+        throw err;
+    }
+
+    if (usernameExist) {
+        const err = new Error(resMessages.validation.usernameAlreadyExist);
+        err.statusCode = 400;
+        throw err;
+    }
+
+
 
     if (payload.dateOfBirth) {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,19 +75,15 @@ exports.updateProfile = async (userId, payload, files) => {
         throw new Error(resMessages.notFound.userNotFound);
     }
 
-    return { message: 'Profile updated' };
+    return { message: resMessages.success.updateSuccessful };
 };
 
 exports.deleteProfile = async (userId) => {
-
     const deleted = await User.findByIdAndUpdate(userId, {
         $set: { status: 'deleted' }
     }, { new: true, select: 'status' });
-
-
     if (!deleted) {
         throw new Error(resMessages.notFound.userNotFound);
     }
-
-    return { message: 'Profile deleted' };
+    return { message: resMessages.success.deleteSuccessful };
 };

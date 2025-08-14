@@ -15,9 +15,14 @@ const loginValidator = [
 
 // Signup Validator
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-const phoneRegex = /^[0-9]{4,15}$/;
+const phoneRegex = /^\+?[0-9]{4,15}$/;
 
 const signupValidator = [
+
+  // Username
+  check("username")
+    .notEmpty().withMessage(`${resMessages.validation.missingFields}: username`),
+
   // Email
   check("email")
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: email`)
@@ -38,9 +43,7 @@ const signupValidator = [
       return true;
     }),
 
-  // Username
-  check("username")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: username`),
+
 
   // Phone number
   check("phone")
@@ -56,6 +59,11 @@ const signupValidator = [
       }
       const dob = new Date(value);
       if (isNaN(dob.getTime())) {
+        throw new Error(resMessages.validation.invalidDateOfBirth);
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dob > today) {
         throw new Error(resMessages.validation.invalidDateOfBirth);
       }
       return true;

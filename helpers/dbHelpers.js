@@ -1,26 +1,26 @@
 const User = require('../models/user.model.js');
 const Post = require('../models/post.model.js')
-const { validationResult } = require('express-validator');
 
-exports.checkEmailExist = async (email, forUpdate = false) => {
+exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
   try {
-    let query = User.findOne({ email });
+    let query = User.findOne({ [fieldName]: value });
     if (!forUpdate) query = query.lean();
     const user = await query.exec();
     return user;
   } catch (error) {
-    throw new Error(error.message || 'Failed to check existing email.');
+    throw error; 
   }
 };
 
-exports.isPostExist = async(id) =>{
-  try{
-  const result= await Post.findById(id);
-  return result;
-  }
-  catch(error){
-    throw new Error(error.message || 'Failed to check existing email.');
-  }
+
+exports.isPostExist = async (id) => {
+    try {
+        const result = await Post.findById(id);
+        return result;
+    }
+    catch (error) {
+        throw new Error(error.message || 'Failed to check existing email.');
+    }
 };
 
 exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) => {
@@ -60,7 +60,7 @@ exports.togglePostLike = (stats, userId, username) => {
     } else {
         stats.likes.splice(existingIndex, 1);
     }
-      stats.totallikes = stats.likes.length;
+    stats.totallikes = stats.likes.length;
 };
 
 

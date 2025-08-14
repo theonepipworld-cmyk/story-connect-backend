@@ -36,8 +36,7 @@ const userSchema = new Schema({
   },
   profession: {
     type: String,
-    enum: ['Engineer', 'Designer', 'Other'],
-    default: 'Other'
+    enum: ['nurse', 'doctor', 'scientist', 'professor', 'artist', 'chef', 'manager', 'pilot', 'firefighter', 'developer', 'other'],
   },
   role: {
     type: String,
@@ -46,7 +45,14 @@ const userSchema = new Schema({
   },
   relationship: {
     type: String,
-    enum: ['Single', 'Married'],
+    enum: ['single', 'married', 'divorced', 'widowed', 'separated', 'other'],
+  },
+  relationshipDescription: {
+    type: String,
+  },
+  professionSymbol: {
+    type: String,  // Will store S3 URL or path to the symbol image
+    default: ''
   },
   education: {
     type: [String],

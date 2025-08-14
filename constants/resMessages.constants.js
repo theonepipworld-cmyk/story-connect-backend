@@ -29,7 +29,9 @@ module.exports = {
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         postForError: "Type must be either 'profile' or 'community'",
         invalidFileType: "invalid type",
-        invalidOrExpiredToken: "Invalid or expired reset tokens"
+        invalidOrExpiredToken: "Invalid or expired reset tokens",
+        usernameAlreadyExist: "username is already exists",
+        invalidEnum: "Invalid value. Please provide a valid option from the allowed values"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
@@ -45,5 +47,6 @@ module.exports = {
         idMissMatch: "Id miss-matched.",
         calledFunctionError: "Getting error from called Function",
         uploading: "Error uploading file"
+
     },
 };
