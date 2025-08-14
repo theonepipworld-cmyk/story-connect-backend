@@ -27,7 +27,12 @@ exports.updateProfile = async (userId, payload, files) => {
     if (payload.countryOfOrigin) patch.countryOfOrigin = payload.countryOfOrigin;
     if (payload.currentCountry) patch.currentCountry = payload.currentCountry;
     if (payload.entryYear) patch.entryYear = payload.entryYear;
+    if (payload.phone) patch.phone = payload.phone;
+    if (payload.dateOfBirth) patch.dateOfBirth = payload.dateOfBirth;
+    if (payload.status) patch.status = payload.status;
     if (payload.relationshipDescription) patch.relationshipDescription = payload.relationshipDescription;
+    if (payload.email) patch.email = payload.email;
+    if (payload.professionSymbol) patch.professionSymbol = payload.professionSymbol;
 
 
     const [emailExist, usernameExist] = await Promise.all([

@@ -31,6 +31,15 @@ exports.updateProfileValidator = [
     })
     .withMessage(`${resMessages.validation.invalidEnum} : In relationship`),
 
+  check("status")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .custom(value => {
+      const allowedValues = ['active', 'inactive', 'banned', 'deleted'];
+      return allowedValues.includes(value.toLowerCase());
+    })
+    .withMessage(`${resMessages.validation.invalidEnum} : In status`),
+
   check("profession")
     .optional()
     .if((value) => value !== undefined && value !== null && value !== '')
@@ -66,7 +75,7 @@ exports.updateProfileValidator = [
     }),
 
 
-check("phone")
+  check("phone")
     .optional()
     .if((value) => value !== undefined && value !== null && value !== '')
     .matches(phoneRegex)
