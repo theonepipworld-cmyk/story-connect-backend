@@ -30,6 +30,10 @@ const userSchema = new Schema({
     type: String,
     default: ''
   },
+  profileCoverImage: {
+    type: String,
+    default: ''
+  },
   bio: {
     type: String,
     default: ''

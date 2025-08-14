@@ -69,6 +69,15 @@ exports.updateProfile = async (userId, payload, files) => {
         } catch (uploadErr) {
             patch.avatarUrl = DEFAULT_AVATAR_URL;
         }
+    }  
+    if (files && files.profileCoverImage?.[0]) {
+        try {
+            const profileCoverImage = files.profileCoverImage[0];
+            const s3Res = await uploadFileToS3(profileCoverImage, "profileCoverImage");
+            patch.profileCoverImage = s3Res?.Location || DEFAULT_AVATAR_URL;
+        } catch (uploadErr) {
+            patch.profileCoverImage = DEFAULT_AVATAR_URL;
+        }
     }
     const updated = await User.findByIdAndUpdate(
         userId,

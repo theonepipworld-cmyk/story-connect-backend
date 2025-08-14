@@ -18,7 +18,7 @@ const avatarUpload = multer({
   }
 });
 
-exports.avatarUpload = avatarUpload.fields([{ name: 'avatar', maxCount: 1 }]);
+exports.avatarUpload = avatarUpload.fields([{ name: 'avatar', maxCount: 1 }, { name: 'profileCoverImage', maxCount: 1 }]);
 
 
 exports.updateProfileValidator = [
@@ -62,8 +62,6 @@ exports.updateProfileValidator = [
       if (year > currentYear) {
         throw new Error(resMessages.validation.invalidYearFormat);
       }
-
-
       return true;
     }),
 
