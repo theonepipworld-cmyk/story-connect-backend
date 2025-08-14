@@ -104,7 +104,7 @@ exports.resetPassword = async ({ token, newPassword }) => {
   });
 
   if (!user) {
-    const err = new Error(resMessages.validation.invalidOrExpiredToken || 'Invalid or expired reset token');
+    const err = new Error(resMessages.validation.invalidOrExpiredToken);
     err.statusCode = 400;
     throw err;
   }

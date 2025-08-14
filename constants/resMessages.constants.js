@@ -1,15 +1,15 @@
 module.exports = {
     success: {
         loginSuccessful: "Success",
-        updateSuccessful:"update successfully",
-        createSuccessful:"create Sucessfully",
-        getSuccessful:"get Sucessfully",
-        deleteSuccessful:"delete Sucessfully",
-        addSuccessful:"added Sucessfully"
+        updateSuccessful: "update successfully",
+        createSuccessful: "create Sucessfully",
+        getSuccessful: "get Sucessfully",
+        deleteSuccessful: "delete Sucessfully",
+        addSuccessful: "added Sucessfully"
     },
     notFound: {
         emailNotFound: "Email not found",
-        postNotFound:"post not found",
+        postNotFound: "post not found",
         userNotFound: "User not found",
         deleteSuccessful: "delete successfully"
 
@@ -29,6 +29,7 @@ module.exports = {
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         postForError: "Type must be either 'profile' or 'community'",
         invalidFileType: "invalid type",
+        invalidOrExpiredToken: "Invalid or expired reset tokens"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
@@ -43,6 +44,6 @@ module.exports = {
         somethingWentWrong: "Something went wrong. Please try again later.",
         idMissMatch: "Id miss-matched.",
         calledFunctionError: "Getting error from called Function",
-        uploading:"Error uploading file"
+        uploading: "Error uploading file"
     },
 };

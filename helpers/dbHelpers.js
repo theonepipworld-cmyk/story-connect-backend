@@ -9,7 +9,6 @@ exports.checkEmailExist = async (email, forUpdate = false) => {
     const user = await query.exec();
     return user;
   } catch (error) {
-    console.error('Error in checkEmailExist:', error.message);
     throw new Error(error.message || 'Failed to check existing email.');
   }
 };
@@ -20,7 +19,6 @@ exports.isPostExist = async(id) =>{
   return result;
   }
   catch(error){
-    console.error('Error in checkPostExist:', error.message);
     throw new Error(error.message || 'Failed to check existing email.');
   }
 };
