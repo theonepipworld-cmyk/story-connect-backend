@@ -50,6 +50,23 @@ exports.updateProfileValidator = [
     .withMessage(`${resMessages.validation.invalidEnum} : In profession`),
 
 
+  check("entryYear")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .custom(value => {
+      if (!/^\d{4}$/.test(value)) {
+        throw new Error(resMessages.validation.invalidYearFormat);
+      }
+      const year = parseInt(value);
+      const currentYear = new Date().getFullYear();
+      if (year > currentYear) {
+        throw new Error(resMessages.validation.invalidYearFormat);
+      }
+
+
+      return true;
+    }),
+
   check("dateOfBirth")
     .optional()
     .if((value) => value !== undefined && value !== null && value !== '')

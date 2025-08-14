@@ -26,12 +26,12 @@ module.exports = {
         authTokenMissing: "Authorization token missing",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         typeError: "Type must be either 'video' or 'image'",
-        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         postForError: "Type must be either 'profile' or 'community'",
         invalidFileType: "invalid type",
         invalidOrExpiredToken: "Invalid or expired reset tokens",
         usernameAlreadyExist: "username is already exists",
-        invalidEnum: "Invalid value. Please provide a valid option from the allowed values"
+        invalidEnum: "Invalid value. Please provide a valid option from the allowed values",
+        invalidYearFormat: "invalid year format"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
