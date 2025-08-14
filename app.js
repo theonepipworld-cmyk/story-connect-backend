@@ -6,7 +6,8 @@ const profileRoutes = require('./routes/v1/user/profile.routes.js')
 const postRoutes = require('./routes/v1/user/post.routes.js');
 const commentRoutes = require("./routes/v1/user/comments.routes.js")
 const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
-require('./config/db'); 
+const countryListRoutes = require("./routes/v1/user/countryList.routes.js")
+require('./config/db');
 
 var app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/v1/user/profile', profileRoutes);
 app.use('/api/v1/user/post', postRoutes);
 app.use('/api/v1/user/comment', commentRoutes);
 app.use('/api/v1/user/stats', userStatsRoutes);
+app.use('/api/v1/user/countryList', countryListRoutes);
 
 
 
@@ -46,6 +48,6 @@ app.use((err, req, res, next) => {
 
 const PORT = secretVariables.port;
 app.listen(PORT, () => {
-console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 module.exports = app;

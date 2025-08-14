@@ -40,7 +40,7 @@ const userSchema = new Schema({
   },
   profession: {
     type: String,
-    enum: ['nurse', 'doctor', 'scientist', 'professor', 'artist', 'chef', 'manager', 'pilot', 'firefighter', 'developer', 'other'],
+    enum: ['nurse', 'doctor', 'scientist', 'professor', 'artist', 'chef', 'manager', 'pilot', 'firefighter', 'developer', 'other']
   },
   role: {
     type: String,
