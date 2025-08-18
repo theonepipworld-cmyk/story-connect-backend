@@ -1,0 +1,74 @@
+const mongoose = require("mongoose");
+const fs = require("fs");
+const path = require("path");
+const ProfessionList = require("./models/Profession");
+const { uploadFileToS3 } = require("./utils/s3Helper");
+const envVariables = require("./config/secretVariables");
+
+// Professions data
+const professions = [
+  { name: "nurse", code: "NR" },
+  { name: "doctor", code: "DR" },
+  { name: "scientist", code: "SC" },
+  { name: "professor", code: "PF" },
+  { name: "artist", code: "AR" },
+  { name: "chef", code: "CH" },
+  { name: "manager", code: "MG" },
+  { name: "pilot", code: "PL" },
+  { name: "firefighter", code: "FF" },
+  { name: "developer", code: "DEV" },
+  { name: "other", code: "OTH" },
+];
+
+async function seedProfessions() {
+  try {
+    await mongoose.connect(envVariables.mongo_uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    console.log("✅ Connected to MongoDB");
+
+    await ProfessionList.deleteMany({});
+    console.log("🗑 Old professions cleared");
+
+    const seeded = [];
+
+    for (const prof of professions) {
+      const iconPath = path.join(__dirname, "icons", `${prof.name}.svg`);
+
+      let iconUrl = null;
+
+      if (fs.existsSync(iconPath)) {
+        // convert local file to "file object" format like multer
+        const fileBuffer = fs.readFileSync(iconPath);
+        const file = {
+          originalname: path.basename(iconPath),
+          buffer: fileBuffer,
+          mimetype: "image/svg+xml",
+        };
+
+        const uploadRes = await uploadFileToS3(file, "professions");
+        iconUrl = uploadRes.Location;
+        console.log(`⬆️ Uploaded ${prof.name} icon: ${iconUrl}`);
+      } else {
+        console.warn(`⚠️ No icon found for: ${prof.name}`);
+      }
+
+      const newProf = await ProfessionList.create({
+        ...prof,
+        iconUrl,
+      });
+
+      seeded.push(newProf);
+    }
+
+    console.log("🎉 Professions seeded successfully:", seeded.length);
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ Error seeding professions", err);
+    process.exit(1);
+  }
+}
+
+seedProfessions();

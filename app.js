@@ -8,7 +8,7 @@ const commentRoutes = require("./routes/v1/user/comments.routes.js")
 const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
 const fileUpload = require("express-fileupload")
 require('./config/db'); 
-
+const countryListRoutes = require("./routes/v1/user/countryList.routes.js")
 var app = express();
 
 app.use(express.json());
