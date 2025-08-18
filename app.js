@@ -6,13 +6,14 @@ const profileRoutes = require('./routes/v1/user/profile.routes.js')
 const postRoutes = require('./routes/v1/user/post.routes.js');
 const commentRoutes = require("./routes/v1/user/comments.routes.js")
 const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
+const fileUpload = require("express-fileupload")
 require('./config/db'); 
 
 var app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(fileUpload())
 app.get('/api/v1/test', (req, res) => {
   console.log("Server is running successfully")
   res.status(200).json({

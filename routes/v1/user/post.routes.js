@@ -6,8 +6,8 @@ const { isAuthenticated } = require('../../../middlewares/requestValidations/use
 const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
 
 
-router.post("/", isAuthenticated, authorizeRoles('user'), createPostValidator, postController.createPost);
-router.get("/", isAuthenticated, authorizeRoles('user,admin'), createPostValidator, postController.getPosts);
+router.post("/", isAuthenticated, authorizeRoles('user'), postController.createPost);
+router.get("/", isAuthenticated, authorizeRoles('user','admin'), postController.getPosts);
 
 
 module.exports = router;

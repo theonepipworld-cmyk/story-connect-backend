@@ -1,7 +1,13 @@
 const User = require('../models/user.model.js');
 const Post = require('../models/post.model.js')
 const { validationResult } = require('express-validator');
+const resMessages = require("../constants/resMessages.constants.js")
+const Comment =require("../models/Comments.model.js")
+const UserStats = require("../models/userActivityStats.model.js")
 
+
+
+//check email exist for user
 exports.checkEmailExist = async (email, forUpdate = false) => {
   try {
     let query = User.findOne({ email });
@@ -14,19 +20,20 @@ exports.checkEmailExist = async (email, forUpdate = false) => {
   }
 };
 
+
+//check post exist for postId
 exports.isPostExist = async(id) =>{
   try{
   const result= await Post.findById(id);
   return result;
   }
   catch(error){
-    console.error('Error in checkPostExist:', error.message);
-    throw new Error(error.message || 'Failed to check existing email.');
+    throw error;
   }
 };
 
+//handle like and dislike comments section
 exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) => {
-    if (!commentId) throw new Error("commentId required");
     let commentEntry = stats.commentLikes.find(
         cl => cl.commentId.toString() === commentId.toString()
     );
@@ -55,14 +62,102 @@ exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) 
     }
 };
 
+
+//handle like and dislike of post
 exports.togglePostLike = (stats, userId, username) => {
     const existingIndex = stats.likes.findIndex(l => l.userId.toString() === userId.toString());
+    console.log(existingIndex);
     if (existingIndex === -1) {
         stats.likes.push({ userId, userName: username });
+         stats.totalLikes = stats.likes.length;
     } else {
         stats.likes.splice(existingIndex, 1);
-    }
-      stats.totallikes = stats.likes.length;
+         stats.totalLikes = stats.likes.length;
+    }     
+};
+
+exports.validateComment = async(postId, commentId, parentCommentId, isReply = false)=> {
+  if (parentCommentId) {
+    const parentComment = await Comment.findOne({ _id: parentCommentId, postId });
+    if (!parentComment) throw new Error(resMessages.customError.parentCommentIdInvalid);
+
+    const childComment = await Comment.findOne({ _id: commentId, parentCommentId, postId });
+    if (!childComment) throw new Error(resMessages.customError.commentIdNotMatch);
+  } else {
+    const comment = await Comment.findOne({ _id: commentId, postId });
+    if (!comment) throw new Error(resMessages.notFound.commentNotFound);
+  }
+}
+
+exports.createError = (status, message) => {
+  const err = new Error(resMessages.generalError.somethingWentWrong + " - " + message);
+  err.statusCode = status;
+  return err;
+}
+
+
+exports.postAggregationPipeline = (match = {}) => {
+  return [
+    { $match: match },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "userstats",
+        localField: "_id",
+        foreignField: "postId",
+        as: "stats",
+      },
+    },
+    {
+      $addFields: {
+        totalLikes: { $ifNull: [{ $sum: "$stats.totalLikes" }, 0] },
+        totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
+      },
+    },
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "postId",
+        as: "comments",
+      },
+    },
+    {
+      $addFields: {
+        totalComments: { $size: "$comments" },
+      },
+    },
+
+    {
+      $project: {
+        _id: 1,
+        postHeading: 1,
+        postDescription: 1,
+        mediaUrls: 1,
+        hashtags: 1,
+        communityId: 1,
+        type: 1,
+        storyOfTheMonth: 1,
+        videoOfTheMonth: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        "user._id": 1,
+        "user.username": 1,
+        "user.email": 1,
+        totalLikes: 1,
+        totalViews: 1,
+        totalComments: 1,
+      },
+    },
+  ];
 };
 
 

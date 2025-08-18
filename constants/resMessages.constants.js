@@ -5,12 +5,14 @@ module.exports = {
         createSuccessful:"create Sucessfully",
         getSuccessful:"get Sucessfully",
         deleteSuccessful:"delete Sucessfully",
-        addSuccessful:"added Sucessfully"
+        addSuccessful:"added Sucessfully",
+        deleteSuccessful:"deleted Sucessfully"
     },
     notFound: {
         emailNotFound: "Email not found",
         postNotFound:"post not found",
         userNotFound: "User not found",
+        commentNotFound:"Comment not found"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -24,7 +26,9 @@ module.exports = {
         authTokenMissing: "Authorization token missing",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         typeError: "Type must be either 'video' or 'image'",
-        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD."
+        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
+        invalidId:"invalidId",
+          typeUserStatsError: "Type not defeined properly",
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
@@ -40,4 +44,15 @@ module.exports = {
         calledFunctionError: "Getting error from called Function",
         uploading:"Error uploading file"
     },
+    customError:{
+         commentError:"commentId required for comment actions",
+         parentCommentIdInvalid:"parentComment is invalid",
+         commentIdNotMatch:"commentId not match .",
+         NotAuthorized:"user not have authorized to delete or update",
+         commentNotDeleted:"comment not deleted because of not found record of the id's",
+         noUserStatsFound:"No user-stats found",
+         notFound:"no  comments found"
+    }
+
 };
+

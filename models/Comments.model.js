@@ -25,16 +25,14 @@ const commentSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-    likes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
-      }
-    ],
     isEdited: {
       type: Boolean,
       default: false
-    }
+    },
+    replyCount: {
+    type: Number,
+    default: 0
+}
   },
   {
     timestamps: true 

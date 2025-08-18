@@ -4,6 +4,7 @@ const postService = require("../../../service/user/post.service.js")
 exports.createPost = async (req, res) => {
   try {
     req.body.userId = req.user.id;
+    console.log("req----------------",req.body)
     const post = await postService.createPost(req.body);
     res.status(201).json({ success: true, data: post });
   } catch (error) {
