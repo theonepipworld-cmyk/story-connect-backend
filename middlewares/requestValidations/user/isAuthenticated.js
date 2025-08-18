@@ -5,6 +5,7 @@ const { errorResponse } = require('../../../utils/responseHandler.util');
 const resMessages = require("../../../constants/resMessages.constants");
 
 exports.isAuthenticated = (req, res, next) => {
+  console.log("user-",req.user)
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json(errorResponse(resMessages.auth.unauthorizedAccess));
