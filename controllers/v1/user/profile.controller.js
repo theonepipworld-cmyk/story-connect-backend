@@ -13,7 +13,6 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    console.log("req---------",req.body)
     const result = await profileService.updateProfile(req.user.id, req.body, req.files);
     return res.status(200).json(successResponse(resMessages.success.updateSuccessful, result));
   } catch (err) {

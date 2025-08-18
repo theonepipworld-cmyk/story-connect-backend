@@ -2,16 +2,18 @@
 const mongoose = require('mongoose');
 
 const professionSymbolSchema = new mongoose.Schema({
-  professionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'ProfessionList',
-    required: true,
-  },
-  iconUrl: {
+  name: {
     type: String,
     required: true,
   },
-  fileKey: String,
+  iconUrl: {
+    type: String, 
+    default: null,
+  },
+  fileKey: {
+    type: String,
+    default: null,
+  },
 });
 
 module.exports = mongoose.model('ProfessionSymbol', professionSymbolSchema);

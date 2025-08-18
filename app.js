@@ -7,6 +7,7 @@ const postRoutes = require('./routes/v1/user/post.routes.js');
 const commentRoutes = require("./routes/v1/user/comments.routes.js")
 const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
 const countryListRoutes = require("./routes/v1/user/countryList.routes.js")
+const professionalSymbolRoutes = require("./routes/v1/user/professionalSymbol.routes.js")
 require('./config/db');
  
 var app = express();
@@ -30,6 +31,7 @@ app.use('/api/v1/user/post', postRoutes);
 app.use('/api/v1/user/comment', commentRoutes);
 app.use('/api/v1/user/stats', userStatsRoutes);
 app.use('/api/v1/user/countryList', countryListRoutes);
+app.use('/api/v1/user/professionalSymbol', professionalSymbolRoutes);
  
  
  
