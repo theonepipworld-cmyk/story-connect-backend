@@ -9,12 +9,12 @@ async function seedCountries() {
   try {
     await Country.deleteMany();
     await Country.insertMany(countries);
-    console.log('✅ Countries seeded successfully!');
+    console.log(' Countries seeded successfully!');
   } catch (err) {
-    console.error('❌ Seeding failed:', err);
+    console.error(' Seeding failed:', err);
   } finally {
     mongoose.disconnect();
   }
 }
 
-seedCountries();
+module.exports = seedCountries;

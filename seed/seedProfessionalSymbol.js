@@ -48,11 +48,9 @@ async function seedProfessionSymbols() {
         }
 
         console.log(" Profession Symbols seeding completed!");
-        process.exit(0);
     } catch (error) {
         console.error(" Error seeding symbols:", error);
         process.exit(1);
     }
 }
-
-seedProfessionSymbols();
+module.exports = seedProfessionSymbols;
