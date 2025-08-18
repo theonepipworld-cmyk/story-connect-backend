@@ -10,13 +10,12 @@ const UserStats = require("../models/userActivityStats.model.js")
 //check email exist for user
 exports.checkEmailExist = async (email, forUpdate = false) => {
   try {
-    let query = User.findOne({ email });
+    let query = User.findOne({ [fieldName]: value });
     if (!forUpdate) query = query.lean();
     const user = await query.exec();
     return user;
   } catch (error) {
-    console.error('Error in checkEmailExist:', error.message);
-    throw new Error(error.message || 'Failed to check existing email.');
+    throw error; 
   }
 };
 

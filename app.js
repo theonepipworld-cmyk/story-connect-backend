@@ -18,21 +18,10 @@ app.get('/api/v1/test', (req, res) => {
   console.log("Server is running successfully")
   res.status(200).json({
     success: true,
-    message: 'Server is running successfully 🚀',
+    message: 'Server is running successfully backend api is working',
     timestamp: new Date().toISOString(),
   });
 });
-
-
-app.get('/api/v1/test', (req, res) => {
-  console.log("Server is running successfully")
-  res.status(200).json({
-    success: true,
-    message: 'Server is running successfully 🚀',
-    timestamp: new Date().toISOString(),
-  });
-});
-
 
 // user section routes
 app.use('/api/v1/user/auth', authRoutes);
@@ -40,6 +29,7 @@ app.use('/api/v1/user/profile', profileRoutes);
 app.use('/api/v1/user/post', postRoutes);
 app.use('/api/v1/user/comment', commentRoutes);
 app.use('/api/v1/user/stats', userStatsRoutes);
+app.use('/api/v1/user/countryList', countryListRoutes);
 
 
 
@@ -58,6 +48,6 @@ app.use((err, req, res, next) => {
 
 const PORT = secretVariables.port;
 app.listen(PORT, () => {
-console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 module.exports = app;

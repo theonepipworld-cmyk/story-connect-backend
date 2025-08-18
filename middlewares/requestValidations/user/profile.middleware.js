@@ -1,37 +1,102 @@
-const { body, validationResult } = require('express-validator');
-const { jwt_secret } = require('../../../config/secretVariables.js');
-const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const resMessages = require("../../../constants/resMessages.constants.js")
-const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const { check } = require('express-validator');
+const { validate } = require("../../../middlewares/requestValidations/user/validate")
 
 const storage = multer.memoryStorage();
-
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const phoneRegex = /^\+?[0-9]{4,15}$/;
 const avatarUpload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error('Only JPEG, PNG, and WEBP images are allowed'), false);
+      return cb(new Error('Only JPEG, PNG, JPG and WEBP images are allowed'), false);
     }
     cb(null, true);
   }
 });
 
-exports.avatarUpload = avatarUpload.fields([{ name: 'avatar', maxCount: 1 }]);
+exports.avatarUpload = avatarUpload.fields([{ name: 'avatar', maxCount: 1 }, { name: 'profileCoverImage', maxCount: 1 }]);
 
-exports.authenticate = (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json(errorResponse(resMessages.validation.authTokenMissing));
-    }
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, jwt_secret);
-    req.user = { userId: decoded.id, email: decoded.email };
-    next();
-  } catch (err) {
-    return res.status(401).json(errorResponse('Invalid or expired token'));
-  }
-};
+
+exports.updateProfileValidator = [
+  check("relationship")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .custom(value => {
+      const allowedValues = ['single', 'married', 'divorced', 'widowed', 'separated', 'other'];
+      return allowedValues.includes(value.toLowerCase());
+    })
+    .withMessage(`${resMessages.validation.invalidEnum} : In relationship`),
+
+  check("status")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .custom(value => {
+      const allowedValues = ['active', 'inactive', 'banned', 'deleted'];
+      return allowedValues.includes(value.toLowerCase());
+    })
+    .withMessage(`${resMessages.validation.invalidEnum} : In status`),
+
+  check("profession")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .custom(value => {
+      const allowedValues = ['nurse', 'doctor', 'scientist', 'professor', 'artist', 'chef', 'manager', 'pilot', 'firefighter', 'developer', 'other'];
+      return allowedValues.includes(value.toLowerCase());
+    })
+    .withMessage(`${resMessages.validation.invalidEnum} : In profession`),
+
+
+  check("entryYear")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .custom(value => {
+      if (!/^\d{4}$/.test(value)) {
+        throw new Error(resMessages.validation.invalidYearFormat);
+      }
+      const year = parseInt(value);
+      const currentYear = new Date().getFullYear();
+      if (year > currentYear) {
+        throw new Error(resMessages.validation.invalidYearFormat);
+      }
+      return true;
+    }),
+
+  check("dateOfBirth")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .custom(value => {
+      // 1. Check format first
+      if (!dateRegex.test(value)) {
+        throw new Error(resMessages.validation.invalidDateOfBirthFormat);
+      }
+
+      // 2. Parse and validate the date
+      const dob = new Date(value);
+      if (isNaN(dob.getTime())) {
+        throw new Error(resMessages.validation.invalidDateOfBirth);
+      }
+
+      // 3. Ensure date is not in the future
+      const today = new Date();
+      if (dob >= today) {
+        throw new Error(resMessages.validation.invalidDateOfBirth);
+      }
+
+      return true;
+    }),
+
+
+  check("phone")
+    .optional()
+    .if((value) => value !== undefined && value !== null && value !== '')
+    .matches(phoneRegex)
+    .withMessage(resMessages.validation.invalidPhoneNumber),
+
+
+
+  validate
+];

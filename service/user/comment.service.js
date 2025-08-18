@@ -74,7 +74,6 @@ exports.updateCommentService = async (postId, commentId, parentCommentId, conten
             }
             filter.parentCommentId = { $in: [null] };
         }
-
         const updatedComment = await Comment.findOneAndUpdate(
             filter,
             { content, isEdited: true },

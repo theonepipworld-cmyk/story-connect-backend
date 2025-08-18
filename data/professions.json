@@ -1,0 +1,13 @@
+[
+  { "code": "NUR", "name": "nurse" },
+  { "code": "DOC", "name": "doctor" },
+  { "code": "SCI", "name": "scientist" },
+  { "code": "PRO", "name": "professor" },
+  { "code": "ART", "name": "artist" },
+  { "code": "CHF", "name": "chef" },
+  { "code": "MGR", "name": "manager" },
+  { "code": "PLT", "name": "pilot" },
+  { "code": "FFT", "name": "firefighter" },
+  { "code": "DEV", "name": "developer" },
+  { "code": "OTH", "name": "other" }
+]

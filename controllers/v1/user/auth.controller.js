@@ -3,7 +3,7 @@ const fs = require('fs');
 const handlebars = require('handlebars');
 const { errorResponse, successResponse } = require('../../../utils/responseHandler.util.js')
 const resMessages = require("../../../constants/resMessages.constants.js")
-const {getJWT } = require("../../../utils/commonFunctions.util.js")
+const { getJWT } = require("../../../utils/commonFunctions.util.js")
 const User = require('../../../models/user.model.js');
 const { google_client_id } = require("../../../config/secretVariables.js");
 const authService = require("../../../service/user/auth.service.js")
@@ -65,7 +65,6 @@ exports.renderPasswordSubmitPage = (req, res) => {
     const html = compiledTemplate({ token });
     res.send(html);
   } catch (error) {
-    console.error('Error rendering password page:', error.message);
     res.status(500).send('Something went wrong loading the reset page.');
   }
 };
@@ -98,7 +97,7 @@ exports.googleAuth = async (req, res) => {
       await user.save();
     }
 
-    const jwtToken = await getJWT(email, user._id,user.role);
+    const jwtToken = await getJWT(email, user._id, user.role);
 
     return res.status(200).json(successResponse(resMessages.success.loginSuccessful, {
       token: jwtToken,

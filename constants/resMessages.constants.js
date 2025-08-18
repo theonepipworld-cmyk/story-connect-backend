@@ -10,7 +10,7 @@ module.exports = {
     },
     notFound: {
         emailNotFound: "Email not found",
-        postNotFound:"post not found",
+        postNotFound: "post not found",
         userNotFound: "User not found",
         commentNotFound:"Comment not found"
     },
@@ -37,12 +37,14 @@ module.exports = {
     serverError: {
         internalError: "Internal server error",
         processingError: "Error while processing request",
+        limitExccessedError: "You can upload up to 5 media files only."
     },
     generalError: {
         somethingWentWrong: "Something went wrong. Please try again later.",
         idMissMatch: "Id miss-matched.",
         calledFunctionError: "Getting error from called Function",
-        uploading:"Error uploading file"
+        uploading: "Error uploading file"
+
     },
     customError:{
          commentError:"commentId required for comment actions",
