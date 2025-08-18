@@ -57,7 +57,7 @@ exports.updateProfile = async (userId, payload, files) => {
        const professionalSymbols = await professionalSymbol.findById(payload.professionSymbol)
        if(professionalSymbols){
         patch.professionSymbol = {
-            _id:professionSymbol._id,
+            _id:professionalSymbols._id,
             name:professionalSymbols.name,
             iconUrl:professionalSymbols.iconUrl
         }
