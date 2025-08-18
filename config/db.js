@@ -3,8 +3,7 @@ require('dotenv').config();
 
 const mongoURI = process.env.MONGO_URI;
 
-async function connectDB() {
-  if (!mongoose.connection.readyState) { 
+async function connectDB() {  
     try {
       await mongoose.connect(mongoURI, {
         useNewUrlParser: true,
@@ -15,8 +14,7 @@ async function connectDB() {
       console.error('MongoDB connection failed:', err.message);
       process.exit(1);
     }
-  }
-  return mongoose;
+
 }
 
 module.exports = connectDB;
