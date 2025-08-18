@@ -55,7 +55,8 @@ const userSchema = new Schema({
     type: String,
   },
   professionSymbol: {
-     iconUrl: { type: String, default: '' },
+     _id: {type: mongoose.Schema.Types.ObjectId},
+    iconUrl: { type: String, default: '' },
     name: { type: String, default: '' }
   },
   education: {
@@ -90,10 +91,12 @@ const userSchema = new Schema({
     type: String,
   },
   countryOfOrigin: {
+     _id: {type: mongoose.Schema.Types.ObjectId},
     code: { type: String, default: '' },
     name: { type: String, default: '' }
   },
   currentCountry: {
+     _id: {type: mongoose.Schema.Types.ObjectId},
     code: { type: String, default: '' },
     name: { type: String, default: '' }
   },

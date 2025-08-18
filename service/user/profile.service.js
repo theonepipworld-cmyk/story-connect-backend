@@ -31,6 +31,7 @@ exports.updateProfile = async (userId, payload, files) => {
         console.log("origin-",countryOrigin);
         if (countryOrigin) {
             patch.countryOfOrigin = {
+                _id:countryOrigin._id,
                 code: countryOrigin.code,
                 name: countryOrigin.name
             };
@@ -40,6 +41,7 @@ exports.updateProfile = async (userId, payload, files) => {
          const currentCounrty = await CountryList.findById(payload.currentCountry).lean();
         if (currentCounrty) {
             patch.currentCountry = {
+                _id:currentCounrty._id,
                 code: currentCounrty.code,
                 name: currentCounrty.name
             };
@@ -55,6 +57,7 @@ exports.updateProfile = async (userId, payload, files) => {
        const professionalSymbols = await professionalSymbol.findById(payload.professionSymbol)
        if(professionalSymbols){
         patch.professionSymbol = {
+            _id:professionSymbol._id,
             name:professionalSymbols.name,
             iconUrl:professionalSymbols.iconUrl
         }
