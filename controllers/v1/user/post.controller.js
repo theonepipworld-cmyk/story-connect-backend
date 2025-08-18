@@ -39,6 +39,7 @@ exports.getPosts = async (req, res) => {
 // Get Single Post
 exports.getPostById = async (req, res) => {
   try {
+    
     const post = await postService.getPostById(req.params.id);
     if (!post)
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
@@ -51,14 +52,16 @@ exports.getPostById = async (req, res) => {
 // Update Post
 exports.updatePost = async (req, res) => {
   try {
+    console.log(req.body)
     const post = await postService.updatePost(req.params.id, req.body);
-    if (!post)
-      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
-  } catch (error) {
+    if (!post){
+      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound))
+  } 
+  return res.status(200).json(successResponse(resMessages.success.updateSuccessful, post))
+} catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
-};
+  }
 
 // Delete Post
 exports.deletePost = async (req, res) => {

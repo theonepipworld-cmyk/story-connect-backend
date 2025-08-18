@@ -24,6 +24,7 @@ exports.getPostById = async (id) => {
 
 // Update Post
 exports.updatePost = async (id, updateData) => {
+  console.log("update----------",updateData)
   return await Post.findByIdAndUpdate(id, updateData, {
     new: true,
     runValidators: true,

@@ -3,7 +3,8 @@ const { uploadFileToS3 } = require('../../utils/s3.util');
 const { DEFAULT_AVATAR_URL } = require('../../constants/variables.constants');
 const resMessages = require('../../constants/resMessages.constants');
 const { checkFieldExists } = require("../../helpers/dbHelpers.js")
-
+const CountryList = require("../../models/countryList.model.js")
+const professionalSymbol = require("../../models/professionalSymbolModel.js")
 
 exports.getProfile = async (userId) => {
     const user = await User.findById(userId)
@@ -18,23 +19,47 @@ exports.getProfile = async (userId) => {
 
 exports.updateProfile = async (userId, payload, files) => {
     const patch = {};
-
+       console.log(payload)
     if (payload.username) patch.username = payload.username;
     if (payload.bio) patch.bio = payload.bio;
-    if (payload.profession) patch.profession = payload.profession;
+    if (payload.profession) patch.profession = payload.profession;    
     if (payload.education) patch.education = payload.education;
     if (payload.relationship) patch.relationship = payload.relationship;
-    if (payload.countryOfOrigin) patch.countryOfOrigin = payload.countryOfOrigin;
-    if (payload.currentCountry) patch.currentCountry = payload.currentCountry;
+           
+      if (payload.countryOfOrigin) {
+        const countryOrigin = await CountryList.findById(payload.countryOfOrigin).lean();
+        console.log("origin-",countryOrigin);
+        if (countryOrigin) {
+            patch.countryOfOrigin = {
+                code: countryOrigin.code,
+                name: countryOrigin.name
+            };
+        }
+    }
+    if (payload.currentCountry) {
+         const currentCounrty = await CountryList.findById(payload.currentCountry).lean();
+        if (currentCounrty) {
+            patch.currentCountry = {
+                code: currentCounrty.code,
+                name: currentCounrty.name
+            };
+        }
+    }
     if (payload.entryYear) patch.entryYear = payload.entryYear;
     if (payload.phone) patch.phone = payload.phone;
     if (payload.dateOfBirth) patch.dateOfBirth = payload.dateOfBirth;
     if (payload.status) patch.status = payload.status;
     if (payload.relationshipDescription) patch.relationshipDescription = payload.relationshipDescription;
     if (payload.email) patch.email = payload.email;
-    if (payload.professionSymbol) patch.professionSymbol = payload.professionSymbol;
-
-
+    if (payload.professionSymbol){
+       const professionalSymbols = await professionalSymbol.findById(payload.professionSymbol)
+       if(professionalSymbols){
+        patch.professionSymbol = {
+            name:professionalSymbols.name,
+            iconUrl:professionalSymbols.iconUrl
+        }
+       }
+    } 
     const [emailExist, usernameExist] = await Promise.all([
         checkFieldExists('email', payload.email),
         checkFieldExists('username', payload.username),
@@ -79,6 +104,7 @@ exports.updateProfile = async (userId, payload, files) => {
             patch.profileCoverImage = DEFAULT_AVATAR_URL;
         }
     }
+    console.log("pathc-------",patch)
     const updated = await User.findByIdAndUpdate(
         userId,
         { $set: patch },
