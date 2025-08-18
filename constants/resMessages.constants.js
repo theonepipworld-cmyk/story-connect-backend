@@ -6,7 +6,8 @@ module.exports = {
         getSuccessful:"get Sucessfully",
         deleteSuccessful:"delete Sucessfully",
         addSuccessful:"added Sucessfully",
-        deleteSuccessful:"deleted Sucessfully"
+        deleteSuccessful:"deleted Sucessfully",
+        fetchProfessionalSymbol:"fetch successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
