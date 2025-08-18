@@ -11,4 +11,4 @@ const professionSchema = new mongoose.Schema({
     code: String,
 });
 
-module.exports = mongoose.model('Profession', professionSchema);
+module.exports = mongoose.model('ProfessionList', professionSchema);
