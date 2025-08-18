@@ -8,10 +8,12 @@ const commentRoutes = require("./routes/v1/user/comments.routes.js")
 const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
 const countryListRoutes = require("./routes/v1/user/countryList.routes.js")
 const professionalSymbolRoutes = require("./routes/v1/user/professionalSymbol.routes.js")
+const connectDB = require("./config/db.js")
 require('./config/db');
  
 var app = express();
  
+  connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
  
