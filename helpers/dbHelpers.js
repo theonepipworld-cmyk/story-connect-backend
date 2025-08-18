@@ -6,7 +6,17 @@ const Comment =require("../models/Comments.model.js")
 const UserStats = require("../models/userActivityStats.model.js")
 
 
-
+exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
+  try {
+    let query = User.findOne({ [fieldName]: value });
+    if (!forUpdate) query = query.lean();
+    const user = await query.exec();
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};
+ 
 //check email exist for user
 exports.checkEmailExist = async (email, forUpdate = false) => {
   try {
