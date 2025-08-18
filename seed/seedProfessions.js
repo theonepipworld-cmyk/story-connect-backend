@@ -9,12 +9,11 @@ async function seedProfessions() {
     try {
         await Profession.deleteMany();
         await Profession.insertMany(professions);
-        console.log('✅ Professtions seeded successfully!');
+        console.log(' Professtions seeded successfully!');
     } catch (err) {
-        console.error('❌ Seeding failed:', err);
+        console.error('Seeding failed:', err);
     } finally {
         mongoose.disconnect();
     }
 }
-
-seedProfessions();
+module.exports = seedProfessions;
