@@ -57,3 +57,27 @@ exports.createPostValidator = [
 
   validate
 ];
+
+exports.updatePostValidator = [
+  check("postHeading")
+    .optional({ checkFalsy: true })
+    .notEmpty()
+    .withMessage(`${resMessages.validation.missingFields}: postHeading`),
+
+  check("postDescription")
+    .optional({ checkFalsy: true })
+    .notEmpty()
+    .withMessage(`${resMessages.validation.missingFields}: postDescription`),
+
+  check().custom((value, { req }) => {
+    const allowedFields = ["postHeading", "postDescription"];
+    const keys = Object.keys(req.body);
+    const invalidFields = keys.filter(k => !allowedFields.includes(k));
+    if (invalidFields.length > 0) {
+      throw new Error(`Invalid fields in request: ${invalidFields.join(", ")}`);
+    }
+    return true;
+  }),
+
+  validate
+];

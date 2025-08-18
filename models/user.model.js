@@ -55,8 +55,8 @@ const userSchema = new Schema({
     type: String,
   },
   professionSymbol: {
-    type: String,  // Will store S3 URL or path to the symbol image
-    default: ''
+     iconUrl: { type: String, default: '' },
+    name: { type: String, default: '' }
   },
   education: {
     type: [String],
@@ -90,10 +90,12 @@ const userSchema = new Schema({
     type: String,
   },
   countryOfOrigin: {
-    type: String,
+    code: { type: String, default: '' },
+    name: { type: String, default: '' }
   },
   currentCountry: {
-    type: String,
+    code: { type: String, default: '' },
+    name: { type: String, default: '' }
   },
   entryYear: {
     type: String,
