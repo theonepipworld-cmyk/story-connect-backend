@@ -9,6 +9,7 @@ const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
 const countryListRoutes = require("./routes/v1/user/countryList.routes.js")
 const professionalSymbolRoutes = require("./routes/v1/user/professionalSymbol.routes.js")
 const connectDB = require("./config/db.js")
+const cors = require("cors")
 require('./config/db');
  
 var app = express();
@@ -16,7 +17,7 @@ var app = express();
   connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
- 
+ app.use(cors());
 app.get('/api/v1/test', (req, res) => {
   console.log("Server is running successfully")
   res.status(200).json({
