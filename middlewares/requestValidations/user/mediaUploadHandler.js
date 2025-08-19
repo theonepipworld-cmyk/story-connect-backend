@@ -7,7 +7,7 @@ const resMessages = require("../../../constants/resMessages.constants");
 const upload = multer({
   storage,
   limits: { files: 5 }, 
-}).array("media", 5);
+}).array("mediaUrls", 5);
 
 function mediaUploadHandler(req, res, next) {
   upload(req, res, function (err) {
