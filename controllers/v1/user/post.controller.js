@@ -20,7 +20,7 @@ exports.createPost = async (req, res) => {
     if (req.body.hashTags && Array.isArray(req.body.hashTags)) {
       cleanHashtags = req.body.hashTags
         .map(tag => tag.trim().toLowerCase().replace(/^#/, "")) 
-        .filter((tag, index, self) => tag && self.indexOf(tag) === index); // remove empty & duplicates..here self is an array
+        .filter((tag, index, self) => tag && self.indexOf(tag) === index);
     }
 
     const postData = {
