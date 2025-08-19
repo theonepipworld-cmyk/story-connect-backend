@@ -10,6 +10,7 @@ exports.getProfile = async (userId) => {
     const user = await User.findById(userId)
         .select('-passwordHash -resetPasswordExpires -resetPasswordToken')
         .lean();
+        console.log(user);
     if (!user) {
         throw new Error(resMessages.notFound.userNotFound);
     }
