@@ -2,24 +2,43 @@ const Post = require("../../models/post.model")
 const UserStats = require("../../models/userActivityStats.model")
 const mongoose = require("mongoose");
 const Comment = require("../../models/Comments.model")
-const { isPostExist, createError, postAggregationPipeline } = require("../../helpers/dbHelpers.js")
+const { isPostExist, createError, postAggregationPipeline ,isUserExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
+const Hashtag = require("../../models/hashTag.models.js")
+
+
 // Create Post
-exports.createPost = async (data) => {
-  console.log(data)
+exports.createPost = async (data,cleanHashTags) => {
   const post = new Post(data);
+  //update hashTagColection
+  console.log(cleanHashTags)
+    if (cleanHashTags?.length > 0) {
+      await Promise.all(
+        cleanHashTags.map(async (tag) => {
+          await Hashtag.findOneAndUpdate(
+            { tag: tag },
+            {
+              $inc: { usageCount: 1 },
+              $addToSet: { posts: post._id } 
+            },
+            { upsert: true, new: true }
+          );
+        })
+      );
+    }
+  
   return await post.save();
 };
 
 // Get All Posts
-exports.getAllPosts = async (page, limit) => {
-  return await Post.aggregate(postAggregationPipeline({}, page, limit));
+exports.getAllPosts = async (page, limit,search) => {
+  return await Post.aggregate(postAggregationPipeline({}, page, limit,search));
 };
 
 //get Single Post
 exports.getPostById = async (id) => {
   return await Post.aggregate(
-    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1)
+    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1 ,"")
   );
 };
 
@@ -30,7 +49,7 @@ exports.updatePost = async (id, updateData, userId) => {
   }
   console.log(userId)
   const isPostIdExist = await isPostExist(id);
-  console.log("post--------",isPostIdExist)
+  console.log("post--------", isPostIdExist)
   if (!isPostIdExist) {
     throw createError(400, resMessages.notFound.postNotFound);
   }
@@ -44,8 +63,8 @@ exports.updatePost = async (id, updateData, userId) => {
 };
 
 // Delete Post
-exports.deletePost = async (id,userId) => {
-    if (!userId) {
+exports.deletePost = async (id, userId) => {
+  if (!userId) {
     throw createError(400, resMessages.notFound.userNotFound);
   }
   const isPostIdExist = await isPostExist(id);
@@ -65,5 +84,25 @@ exports.deletePost = async (id,userId) => {
 
   // Delete post from DB
   await Post.findByIdAndDelete(id);
+  // Delete post ref from hashtags
+  await Hashtag.updateMany(
+    { posts: id },
+    { $pull: { posts: id } }
+  );
+
   return isPostIdExist;
+};
+
+exports.getProfilePost = async (id) => {
+  try {
+    const user = await isUserExist(id);
+
+    if (!user) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    const posts = await Post.find({ userId: id });
+    return posts; 
+  } catch (error) {
+    throw new Error(error.message);
+  }
 };
