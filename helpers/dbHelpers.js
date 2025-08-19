@@ -41,6 +41,16 @@ exports.isPostExist = async(id) =>{
   }
 };
 
+exports.isUserExist = async(id)=>{
+   try{
+  const result= await User.findById(id);
+  return result;
+  }
+  catch(error){
+    throw error;
+  }
+}
+
 //handle like and dislike comments section
 exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) => {
     let commentEntry = stats.commentLikes.find(
@@ -105,10 +115,21 @@ exports.createError = (status, message) => {
 }
 
 
-exports.postAggregationPipeline = (match = {},page = 1,limit = 10) => {
-    const skip = (page - 1) * limit;
+exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = "") => {
+  const skip = (page - 1) * limit;
+  const searchMatch = search
+    ? {
+        $or: [
+          { hashtags: { $in: [search.toLowerCase()] } }, 
+          { postHeading: { $regex: search, $options: "i" } },
+          { postDescription: { $regex: search, $options: "i" } },
+        ],
+      }
+    : {};
+
   return [
-    { $match: match },
+    { $match: { ...match, ...searchMatch } },
+
     {
       $lookup: {
         from: "users",
@@ -118,6 +139,7 @@ exports.postAggregationPipeline = (match = {},page = 1,limit = 10) => {
       },
     },
     { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
     {
       $lookup: {
         from: "userstats",
@@ -132,6 +154,7 @@ exports.postAggregationPipeline = (match = {},page = 1,limit = 10) => {
         totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
       },
     },
+
     {
       $lookup: {
         from: "comments",
@@ -167,7 +190,8 @@ exports.postAggregationPipeline = (match = {},page = 1,limit = 10) => {
         totalComments: 1,
       },
     },
-     { $sort: { createdAt: -1 } },
+
+    { $sort: { createdAt: -1 } },
     { $skip: skip },
     { $limit: limit },
   ];

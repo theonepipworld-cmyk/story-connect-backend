@@ -5,27 +5,34 @@ const { uploadFileToS3 } = require('../../../utils/s3.util.js');
 
 // Create Post
 exports.createPost = async (req, res) => {
-  try {    
+  try {
     req.body.userId = req.user.id;
     let mediaUrls = [];
     if (req.files && req.files.length > 0) {
+      console.log(req.files)
       const uploadPromises = req.files.map(file => uploadFileToS3(file, "posts"));
       const uploadResults = await Promise.all(uploadPromises);
       mediaUrls = uploadResults.map(result => result.Location);
     }
 
-  // if( req.body.hashTags){
-  //    const cleanHashtags = req.body.hashTags?.map(tag => tag.trim().toLowerCase()) || [];
-  // }
-     const postData = {
-       ...req.body,
-       mediaUrls,
+    let cleanHashtags = [];
+    console.log(req.body)
+    if (req.body.hashTags && Array.isArray(req.body.hashTags)) {
+      cleanHashtags = req.body.hashTags
+        .map(tag => tag.trim().toLowerCase().replace(/^#/, "")) 
+        .filter((tag, index, self) => tag && self.indexOf(tag) === index); // remove empty & duplicates..here self is an array
+    }
+
+    const postData = {
+      ...req.body,
+      mediaUrls,
+       hashtags: cleanHashtags,
     };
- 
-    const post = await postService.createPost(postData);
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
+
+    const post = await postService.createPost(postData,cleanHashtags);
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
   } catch (error) {
-    console.log(error,"error")
+    console.log(error, "error")
     return res.status(500).json(errorResponse(resMessages.serverError.processingError));
   }
 };
@@ -33,10 +40,11 @@ exports.createPost = async (req, res) => {
 // Get All Posts
 exports.getPosts = async (req, res) => {
   try {
-       const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-    const posts = await postService.getAllPosts(page,limit);
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, posts));
+    const {search} = req.query || ""
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const posts = await postService.getAllPosts(page, limit,search);
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -45,11 +53,10 @@ exports.getPosts = async (req, res) => {
 // Get Single Post
 exports.getPostById = async (req, res) => {
   try {
-    
     const post = await postService.getPostById(req.params.id);
     if (!post)
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -59,22 +66,22 @@ exports.getPostById = async (req, res) => {
 exports.updatePost = async (req, res) => {
   try {
     const userId = req.user.id;
-    const post = await postService.updatePost(req.params.id, req.body,userId);
-    if (!post){
+    const post = await postService.updatePost(req.params.id, req.body, userId);
+    if (!post) {
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound))
-  } 
-  return res.status(200).json(successResponse(resMessages.success.updateSuccessful, post))
-} catch (error) {
+    }
+    return res.status(200).json(successResponse(resMessages.success.updateSuccessful, post))
+  } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
-  }
+}
 
 // Delete Post
 exports.deletePost = async (req, res) => {
   try {
-     const userId = req.user.id;
-    const post = await postService.deletePost(req.params.id,userId);
-    if (!post){
+    const userId = req.user.id;
+    const post = await postService.deletePost(req.params.id, userId);
+    if (!post) {
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     }
     return res.status(200).json(successResponse(resMessages.success.deleteSuccessful, post));
@@ -82,3 +89,16 @@ exports.deletePost = async (req, res) => {
     res.status(400).json({ success: false, message: error.message })
   }
 };
+
+exports.getPostsOfProfile = async (req, res) => {
+  try {
+    const post = await postService.getProfilePost(req.params.id)
+    if (!post) {
+      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
+    }
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
+  }
+  catch (error) {
+    res.status(400).json({ success: false, message: error.message })
+  }
+}
