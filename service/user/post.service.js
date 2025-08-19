@@ -109,16 +109,42 @@ exports.deletePost = async (id, userId) => {
   return isPostIdExist;
 };
 
-exports.getProfilePost = async (id) => {
+exports.getProfilePost = async (id, page = 1, limit = 10) => {
   try {
     const user = await isUserExist(id);
-    console.log(user);
     if (!user) {
-      throw createError(400, resMessages.notFound.userNotFound);
+      throw new Error('User not found');
     }
-    const posts = await Post.find({ userId: id });
-    return posts; 
+
+    const skip = (page - 1) * limit;
+
+    const result = await Post.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(id) } },
+      {
+        $facet: {
+          paginatedPosts: [
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $count: "count" }
+          ]
+        }
+      }
+    ]);
+
+    const posts = result[0].paginatedPosts;
+    const totalPosts = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
+
+    return { posts, pagination: {
+      totalPosts,
+      totalPages: Math.ceil(totalPosts / limit),
+      currentPage: parseInt(page),
+      limit: parseInt(limit),
+    }, };
   } catch (error) {
     throw new Error(error.message);
   }
 };
+
