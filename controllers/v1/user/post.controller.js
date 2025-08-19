@@ -13,9 +13,13 @@ exports.createPost = async (req, res) => {
       const uploadResults = await Promise.all(uploadPromises);
       mediaUrls = uploadResults.map(result => result.Location);
     }
-    const postData = {
-      ...req.body,
-      mediaUrls
+
+  // if( req.body.hashTags){
+  //    const cleanHashtags = req.body.hashTags?.map(tag => tag.trim().toLowerCase()) || [];
+  // }
+     const postData = {
+       ...req.body,
+       mediaUrls,
     };
  
     const post = await postService.createPost(postData);
@@ -29,7 +33,9 @@ exports.createPost = async (req, res) => {
 // Get All Posts
 exports.getPosts = async (req, res) => {
   try {
-    const posts = await postService.getAllPosts();
+       const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+    const posts = await postService.getAllPosts(page,limit);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, posts));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
