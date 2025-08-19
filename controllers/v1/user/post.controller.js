@@ -58,8 +58,8 @@ exports.getPostById = async (req, res) => {
 // Update Post
 exports.updatePost = async (req, res) => {
   try {
-    console.log(req.body)
-    const post = await postService.updatePost(req.params.id, req.body);
+    const userId = req.user.id;
+    const post = await postService.updatePost(req.params.id, req.body,userId);
     if (!post){
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound))
   } 
@@ -72,12 +72,13 @@ exports.updatePost = async (req, res) => {
 // Delete Post
 exports.deletePost = async (req, res) => {
   try {
-    const post = await postService.deletePost(req.params.id);
-    if (!post)
+     const userId = req.user.id;
+    const post = await postService.deletePost(req.params.id,userId);
+    if (!post){
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
+    }
     return res.status(200).json(successResponse(resMessages.success.deleteSuccessful, post));
   } catch (error) {
-    console.log(error,"error")
-    return res.status(400).json(errorResponse(resMessages.serverError.processingError));
+    res.status(400).json({ success: false, message: error.message })
   }
 };
