@@ -1,4 +1,4 @@
-const User = require('../models/user.model.js');
+const User = require("../models/user.model.js")
 const Post = require('../models/post.model.js')
 const { validationResult } = require('express-validator');
 const resMessages = require("../constants/resMessages.constants.js")
@@ -40,16 +40,14 @@ exports.isPostExist = async(id) =>{
     throw error;
   }
 };
-
-exports.isUserExist = async(id)=>{
-   try{
-  const result= await User.findById(id);
-  return result;
-  }
-  catch(error){
+exports.isUserExist = async (id) => {
+  try {
+    const result = await User.findById(id);
+    return result; 
+  } catch (error) {
     throw error;
   }
-}
+};
 
 //handle like and dislike comments section
 exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) => {
@@ -120,7 +118,7 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
   const searchMatch = search
     ? {
         $or: [
-          { hashtags: { $in: [search.toLowerCase()] } }, 
+          { hashtags: { $in: [search.toLowerCase()] } },
           { postHeading: { $regex: search, $options: "i" } },
           { postDescription: { $regex: search, $options: "i" } },
         ],
@@ -131,70 +129,82 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
     { $match: { ...match, ...searchMatch } },
 
     {
-      $lookup: {
-        from: "users",
-        localField: "userId",
-        foreignField: "_id",
-        as: "user",
-      },
-    },
-    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      $facet: {
+        data: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "userId",
+              foreignField: "_id",
+              as: "user",
+            },
+          },
+          { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
 
-    {
-      $lookup: {
-        from: "userstats",
-        localField: "_id",
-        foreignField: "postId",
-        as: "stats",
-      },
-    },
-    {
-      $addFields: {
-        totalLikes: { $ifNull: [{ $sum: "$stats.totalLikes" }, 0] },
-        totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
-      },
-    },
+          {
+            $lookup: {
+              from: "userstats",
+              localField: "_id",
+              foreignField: "postId",
+              as: "stats",
+            },
+          },
+          {
+            $addFields: {
+              totalLikes: { $ifNull: [{ $sum: "$stats.totalLikes" }, 0] },
+              totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
+            },
+          },
 
-    {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "postId",
-        as: "comments",
-      },
-    },
-    {
-      $addFields: {
-        totalComments: { $size: "$comments" },
-      },
-    },
+          {
+            $lookup: {
+              from: "comments",
+              localField: "_id",
+              foreignField: "postId",
+              as: "comments",
+            },
+          },
+          {
+            $addFields: {
+              totalComments: { $size: "$comments" },
+            },
+          },
 
-    {
-      $project: {
-        _id: 1,
-        postHeading: 1,
-        postDescription: 1,
-        mediaUrls: 1,
-        hashtags: 1,
-        communityId: 1,
-        type: 1,
-        storyOfTheMonth: 1,
-        videoOfTheMonth: 1,
-        createdAt: 1,
-        updatedAt: 1,
-        "user._id": 1,
-        "user.username": 1,
-        "user.email": 1,
-        totalLikes: 1,
-        totalViews: 1,
-        totalComments: 1,
-      },
-    },
+          {
+            $project: {
+              _id: 1,
+              postHeading: 1,
+              postDescription: 1,
+              mediaUrls: 1,
+              hashtags: 1,
+              communityId: 1,
+              type: 1,
+              storyOfTheMonth: 1,
+              videoOfTheMonth: 1,
+              createdAt: 1,
+              updatedAt: 1,
+              "user._id": 1,
+              "user.username": 1,
+              "user.email": 1,
+              "user.avatarUrl": 1,
+              "user.currentCountry": 1,
+              totalLikes: 1,
+              totalViews: 1,
+              totalComments: 1,
+            },
+          },
 
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+        totalCount: [
+          { $count: "count" }
+        ]
+      }
+    }
   ];
 };
+
 
 

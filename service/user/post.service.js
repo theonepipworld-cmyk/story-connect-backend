@@ -31,8 +31,20 @@ exports.createPost = async (data,cleanHashTags) => {
 };
 
 // Get All Posts
-exports.getAllPosts = async (page, limit,search) => {
-  return await Post.aggregate(postAggregationPipeline({}, page, limit,search));
+exports.getAllPosts = async (page, limit, search) => {
+  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search));
+
+  const data = result[0].data;
+  const total = result[0].totalCount[0]?.count || 0;
+  return {
+    data,
+    pagination: {
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      limit: parseInt(limit)
+    }
+  };
 };
 
 //get Single Post
@@ -96,7 +108,7 @@ exports.deletePost = async (id, userId) => {
 exports.getProfilePost = async (id) => {
   try {
     const user = await isUserExist(id);
-
+    console.log(user);
     if (!user) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
