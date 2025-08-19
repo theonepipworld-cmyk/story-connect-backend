@@ -1,7 +1,8 @@
-exports.successResponse = (message = 'success', data = null) => ({
+exports.successResponse = (message = 'success', data = null, pagination = null) => ({
   type: "success",
   message,
   data,
+    ...(pagination && { pagination }) 
 });
 
 exports.errorResponse = (message, loggedError = null) => ({

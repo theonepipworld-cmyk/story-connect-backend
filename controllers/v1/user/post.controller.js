@@ -43,8 +43,9 @@ exports.getPosts = async (req, res) => {
     const {search} = req.query || ""
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const posts = await postService.getAllPosts(page, limit,search);
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts));
+      const { posts, pagination } = await postService.getAllPosts(page, limit, search);
+      console.log(pagination)
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully,posts,pagination));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -53,7 +54,7 @@ exports.getPosts = async (req, res) => {
 // Get Single Post
 exports.getPostById = async (req, res) => {
   try {
-    const post = await postService.getPostById(req.params.id);
+    const {post} = await postService.getPostById(req.params.id);
     if (!post)
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));

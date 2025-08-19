@@ -33,25 +33,29 @@ exports.createPost = async (data,cleanHashTags) => {
 // Get All Posts
 exports.getAllPosts = async (page, limit, search) => {
   const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search));
-
   const data = result[0].data;
   const total = result[0].totalCount[0]?.count || 0;
-  return {
-    data,
+ return {
+    posts: data,  
     pagination: {
       total,
       totalPages: Math.ceil(total / limit),
       currentPage: parseInt(page),
-      limit: parseInt(limit)
-    }
+      limit: parseInt(limit),
+    },
   };
 };
 
+
 //get Single Post
 exports.getPostById = async (id) => {
-  return await Post.aggregate(
+  const result =  await Post.aggregate(
     postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1 ,"")
   );
+  const data =result[0].data;
+  return {
+    post :data
+  }
 };
 
 // Update Post
