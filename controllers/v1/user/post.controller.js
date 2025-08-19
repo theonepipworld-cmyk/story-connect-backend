@@ -93,11 +93,13 @@ exports.deletePost = async (req, res) => {
 
 exports.getPostsOfProfile = async (req, res) => {
   try {
-    const post = await postService.getProfilePost(req.params.id)
-    if (!post) {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const { posts, pagination }  = await postService.getProfilePost(req.params.id)
+    if (!posts) {
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     }
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts,pagination));
   }
   catch (error) {
     res.status(400).json({ success: false, message: error.message })

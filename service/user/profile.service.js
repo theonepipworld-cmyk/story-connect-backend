@@ -6,8 +6,10 @@ const { checkFieldExists } = require("../../helpers/dbHelpers.js")
 const CountryList = require("../../models/countryList.model.js")
 const professionalSymbol = require("../../models/professionalSymbolModel.js")
 
-exports.getProfile = async (userId) => {
-    const user = await User.findById(userId)
+exports.getProfile = async (userId,otheruserId) => {
+     const id = otheruserId || userId; 
+     console.log(id)
+    const user = await User.findById(id)
         .select('-passwordHash -resetPasswordExpires -resetPasswordToken')
         .lean();
         console.log(user);
