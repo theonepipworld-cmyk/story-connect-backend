@@ -105,7 +105,8 @@ exports.createError = (status, message) => {
 }
 
 
-exports.postAggregationPipeline = (match = {}) => {
+exports.postAggregationPipeline = (match = {},page = 1,limit = 10) => {
+    const skip = (page - 1) * limit;
   return [
     { $match: match },
     {
@@ -166,6 +167,9 @@ exports.postAggregationPipeline = (match = {}) => {
         totalComments: 1,
       },
     },
+     { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
   ];
 };
 

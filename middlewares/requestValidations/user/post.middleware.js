@@ -4,7 +4,7 @@ const resMessages = require("../../../constants/resMessages.constants.js");
 const { errorResponse } = require('../../../utils/responseHandler.util.js');
 
 exports.createPostValidator = [
-  check("postFor")
+  check("postType")
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: postFor`)
     .isIn(["profile", "community"])
     .withMessage(`${resMessages.validation.postForError}`),

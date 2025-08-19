@@ -11,14 +11,14 @@ exports.createPost = async (data) => {
 };
 
 // Get All Posts
-exports.getAllPosts = async () => {
-  return await Post.aggregate(postAggregationPipeline());
+exports.getAllPosts = async (page,limit) => {
+  return await Post.aggregate(postAggregationPipeline({},page,limit));
 };
 
 //get Single Post
 exports.getPostById = async (id) => {
   return await Post.aggregate(
-    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) })
+    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) } ,1,1)
   );
 };
 
