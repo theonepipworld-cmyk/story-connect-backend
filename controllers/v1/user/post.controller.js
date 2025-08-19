@@ -33,7 +33,7 @@ exports.createPost = async (req, res) => {
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
   } catch (error) {
     console.log(error, "error")
-    return res.status(500).json(errorResponse(resMessages.serverError.processingError));
+      res.status(500).json({ success: false, message: error.message });
   }
 };
 
