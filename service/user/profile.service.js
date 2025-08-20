@@ -22,7 +22,6 @@ exports.getProfile = async (userId,otheruserId) => {
 
 exports.updateProfile = async (userId, payload, files) => {
     const patch = {};
-       console.log(payload)
     if (payload.username) patch.username = payload.username;
     if (payload.bio) patch.bio = payload.bio;
     if (payload.profession) patch.profession = payload.profession;    
