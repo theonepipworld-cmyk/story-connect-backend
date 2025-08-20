@@ -138,7 +138,7 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
         if (!isPostIdExist) {
             throw createError(400, resMessages.notFound.postNotFound);
         }
-//aggregtion to get likes ,profilepicture,username from diffeent collection
+
         const topLevelComments = await Comment.aggregate([
             {
                 $match: {
@@ -152,19 +152,22 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
             {
                 $lookup: {
                     from: "users",
-                    localField: "userId",  //Comment.userId,
+                    localField: "userId",
                     foreignField: "_id",
                     as: "userInfo"
                 }
             },
-            { $unwind: "$userInfo" },
-             {
+            { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+            {
                 $project: {
                     _id: 1,
                     content: 1,
                     createdAt: 1,
                     username: "$userInfo.username",
-                    profilePicture: "$userInfo.avatarUrl"
+                    profilePicture: "$userInfo.avatarUrl",
+                    currentCountry: {
+                        $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }]
+                    }
                 }
             },
             {
@@ -175,25 +178,23 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
                         { $match: { postId: new mongoose.Types.ObjectId(postId) } },
                         { $unwind: "$commentLikes" },
                         { $match: { $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] } } },
-                        {
-                            $project: {
-                                _id: 0,
-                                totalLikes: "$commentLikes.totalLikes",
-                            }
-                        }
+                        { $project: { _id: 0, totalLikes: "$commentLikes.totalLikes" } }
                     ],
                     as: "likesInfo"
                 }
-            },
+            }
         ]);
+
         if (!topLevelComments) {
-            throw new Error(resMessages.customError.notFound)
+            throw new Error(resMessages.customError.notFound);
         }
+
         return topLevelComments;
     } catch (error) {
         throw new Error(error.message);
     }
 };
+
 
 //load the reply comments
 exports.getReplyCommentService = async (postId, page, limit, parentCommentId) => {
@@ -235,7 +236,8 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId) =>
                     content: 1,
                     createdAt: 1,
                     username: "$userInfo.username",
-                    profilePicture: "$userInfo.avatarUrl"
+                    profilePicture: "$userInfo.avatarUrl",
+                    currentCountryCode: "$userInfo.currentCountry"
                 }
             },
 

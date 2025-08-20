@@ -10,7 +10,6 @@ exports.addUserStats = async (req, res) => {
     try {
         const { postId, type, commentId , parentCommentId } = req.body;
         const { id, username } = req.user
-        console.log("poststats-",req.body)
         const addStats = await addStatsService(postId, type, commentId, id, username,parentCommentId);
         return res.status(200).json(
             successResponse(resMessages.success.likeOrviewSuccessful,addStats)
@@ -23,7 +22,7 @@ exports.addUserStats = async (req, res) => {
 //handle get all like or views
 exports.getAllLikeOrViewUser = async (req, res) => {
     try {
-        const { postId ,type } = req.body
+        const { postId ,type } = req.query
         const getAllLikedUser = await getAllLikedUserService(postId,type)
          return res.status(200).json(
             successResponse(resMessages.success.getSuccessful, getAllLikedUser)

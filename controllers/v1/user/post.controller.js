@@ -29,7 +29,7 @@ exports.createPost = async (req, res) => {
     };
 
     const post = await postService.createPost(postData,cleanHashtags);
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
+    return res.status(200).json(successResponse(resMessages.success.createSuccessful, post));
   } catch (error) {
     console.log(error, "error")
       res.status(500).json({ success: false, message: error.message });
@@ -40,13 +40,11 @@ exports.createPost = async (req, res) => {
 exports.getPosts = async (req, res) => {
   try {
     const {search} = req.query || ""
-    console.log(search)
     const userId = req.user.id
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
       const { posts, pagination } = await postService.getAllPosts(page, limit, search ,userId);
-      console.log(pagination)
-    return res.status(200).json(successResponse(resMessages.success.createSuccessful,posts,pagination));
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully,posts,pagination));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -2,7 +2,7 @@ const userStats = require("../../models/userActivityStats.model.js");
 const Comment = require('../../models/Comments.model')
 const { toggleCommentStats, togglePostLike } = require("../../helpers/dbHelpers.js")
 const userActivityStats = require("../../constants/variables.constants.js")
-const { isPostExist, validateComment, createError } = require("../../helpers/dbHelpers.js")
+const { isPostExist, validateComment, createError ,isUserExist} = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js");
 
 //add likes ,views ,commentlikes of users on post
@@ -10,7 +10,12 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
     try {
         if (!userId || !username) {
             throw createError(400, resMessages.notFound.userNotFound);
-        }
+        }   
+          const user = await isUserExist(userId)
+          if(!user){
+            throw createError(400, resMessages.notFound.userNotFound);
+          }
+           console.log("usrr-------",user)
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) {
             throw createError(400, resMessages.notFound.postNotFound);
@@ -36,7 +41,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             });
         };
         if (type === userActivityStats.userStats.Likes) {
-            togglePostLike(stats, userId, username);
+            togglePostLike(stats,user);
         } else if (type === userActivityStats.userStats.Views) {
             const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
             if (!alreadyView) stats.views.push({ userId, userName:username });

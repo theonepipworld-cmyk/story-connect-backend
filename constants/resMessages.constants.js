@@ -5,7 +5,7 @@ module.exports = {
         createSuccessful:"create Sucessfully",
         getSuccessful:"get Sucessfully",
         deleteSuccessful:"delete Sucessfully",
-        addSuccessful:"added Sucessfully",
+        likeOrviewSuccessful:"like or View Sucessfully",
         fetchSuccessfully:"fetch successfully"
     },
     notFound: {

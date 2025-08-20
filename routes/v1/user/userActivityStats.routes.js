@@ -7,7 +7,7 @@ const userStatsMiddleware = require("../../../middlewares/requestValidations/use
 
 
 router.post("/user-stats",isAuthenticated, authorizeRoles('user'),userStatsMiddleware.userStatsValidator,userStatsController.addUserStats)
-router.get("/users-like-views-stats",isAuthenticated, authorizeRoles('user'),userStatsMiddleware.userStatsValidator,userStatsController.getAllLikeOrViewUser);
+router.get("/users-like-views-stats",isAuthenticated, authorizeRoles('user'),userStatsController.getAllLikeOrViewUser);
 
 
 
