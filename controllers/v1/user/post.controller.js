@@ -40,6 +40,7 @@ exports.createPost = async (req, res) => {
 exports.getPosts = async (req, res) => {
   try {
     const {search} = req.query || ""
+    console.log(search)
     const userId = req.user.id
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;

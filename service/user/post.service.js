@@ -40,7 +40,7 @@ exports.getAllPosts = async (page, limit, search ,userId) => {
   if(!user){
     throw createError(400, resMessages.notFound.userNotFound);
   }
-  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search,user));
+  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search ,user));
   const data = result[0].data;
   const total = result[0].totalCount[0]?.count || 0;
   return {

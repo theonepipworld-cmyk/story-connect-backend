@@ -116,7 +116,7 @@ exports.createError = (status, message) => {
 exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = "", user) => {
   const skip = (page - 1) * limit;
   const searchMatch = search
-  console.log(user)
+
     ? {
       $or: [
         { hashtags: { $in: [search.toLowerCase()] } },
@@ -125,7 +125,6 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
       ],
     }
     : {};
-
   return [
     { $match: { ...match, ...searchMatch } },
     {
