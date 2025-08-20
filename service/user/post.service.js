@@ -32,8 +32,15 @@ exports.createPost = async (data, cleanHashTags) => {
 };
 
 // Get All Posts
-exports.getAllPosts = async (page, limit, search) => {
-  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search));
+exports.getAllPosts = async (page, limit, search ,userId) => {
+  if (!userId) {
+    throw createError(400, resMessages.notFound.userNotFound);
+  }
+  const user = await isUserExist(userId)
+  if(!user){
+    throw createError(400, resMessages.notFound.userNotFound);
+  }
+  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search,user));
   const data = result[0].data;
   const total = result[0].totalCount[0]?.count || 0;
   return {
@@ -49,9 +56,16 @@ exports.getAllPosts = async (page, limit, search) => {
 
 
 //get Single Post
-exports.getPostById = async (id) => {
+exports.getPostById = async (id,userId) => {
+   if (!userId) {
+    throw createError(400, resMessages.notFound.userNotFound);
+  }
+  const user = await isUserExist(userId)
+  if(!user){
+    throw createError(400, resMessages.notFound.userNotFound);
+  }
   const result = await Post.aggregate(
-    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "")
+    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "",user)
   );
   const data = result[0].data;
   return {
@@ -137,12 +151,15 @@ exports.deletePost = async (id, userId) => {
   return isPostIdExist;
 };
 
-exports.getProfilePost = async (id, page = 1, limit = 10) => {
+exports.getProfilePost = async (id, page = 1, limit = 10,userId) => {
   try {
-    const user = await isUserExist(id);
-    if (!user) {
-      throw new Error('User not found');
-    }
+     if (!userId) {
+    throw createError(400, resMessages.notFound.userNotFound);
+  }
+  const user = await isUserExist(userId)
+  if(!user){
+    throw createError(400, resMessages.notFound.userNotFound);
+  }
     const skip = (page - 1) * limit;
     const result = await Post.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(id) } },
@@ -157,12 +174,33 @@ exports.getProfilePost = async (id, page = 1, limit = 10) => {
                 as: "stats",
               },
             },
-            {
-              $addFields: {
-                totalLikes: { $ifNull: [{ $sum: "$stats.totalLikes" }, 0] },
-                totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
+           {
+            $addFields: {
+              isPostLikedByMe: {
+                $gt: [
+                  {
+                    $size: {
+                      $filter: {
+                        input: {
+                          $reduce: {
+                            input: "$stats.likes",
+                            initialValue: [],
+                            in: { $concatArrays: ["$$value", "$$this"] }
+                          }
+                          
+                        },
+                        as: "like",
+                        cond: { $eq: ["$$like.userId", user?._id.toString()] }
+                      }
+                    }
+                  },
+                  0
+                ]
               },
+              totalLikes: { $ifNull: [{ $sum: "$stats.totalLikes" }, 0] },
+              totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
             },
+          },
             {
               $lookup: {
                 from: "comments",
@@ -192,6 +230,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10) => {
                 totalLikes: 1,
                 totalViews: 1,
                 totalComments: 1,
+                 isPostLikedByMe: 1,
               },
             },
             { $sort: { createdAt: -1 } },

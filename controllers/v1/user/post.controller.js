@@ -40,9 +40,10 @@ exports.createPost = async (req, res) => {
 exports.getPosts = async (req, res) => {
   try {
     const {search} = req.query || ""
+    const userId = req.user.id
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-      const { posts, pagination } = await postService.getAllPosts(page, limit, search);
+      const { posts, pagination } = await postService.getAllPosts(page, limit, search ,userId);
       console.log(pagination)
     return res.status(200).json(successResponse(resMessages.success.createSuccessful,posts,pagination));
   } catch (error) {
@@ -53,7 +54,8 @@ exports.getPosts = async (req, res) => {
 // Get Single Post
 exports.getPostById = async (req, res) => {
   try {
-    const {post} = await postService.getPostById(req.params.id);
+     const userId = req.user.id
+    const {post} = await postService.getPostById(req.params.id,userId);
     if (!post)
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
@@ -94,7 +96,8 @@ exports.getPostsOfProfile = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { posts, pagination }  = await postService.getProfilePost(req.params.id,page,limit)
+      const userId = req.user.id
+    const { posts, pagination }  = await postService.getProfilePost(req.params.id,page,limit,userId)
     if (!posts) {
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     }
