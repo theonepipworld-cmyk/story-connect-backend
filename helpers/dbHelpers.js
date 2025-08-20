@@ -127,7 +127,6 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
 
   return [
     { $match: { ...match, ...searchMatch } },
-
     {
       $facet: {
         data: [
