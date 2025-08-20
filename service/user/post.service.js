@@ -5,6 +5,7 @@ const Comment = require("../../models/Comments.model")
 const { isPostExist, createError, postAggregationPipeline, isUserExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
+const deleteFileFromS3 = require("../../utils/s3.util.js")
 
 
 // Create Post
@@ -63,19 +64,46 @@ exports.updatePost = async (id, updateData, userId) => {
   if (!userId) {
     throw createError(400, resMessages.notFound.userNotFound);
   }
-  console.log(userId)
   const isPostIdExist = await isPostExist(id);
-  console.log("post--------", isPostIdExist)
   if (!isPostIdExist) {
     throw createError(400, resMessages.notFound.postNotFound);
   }
   if (isPostIdExist.userId.toString() != userId.toString()) {
     throw new Error(resMessages.customError.NotAuthorized);
   }
-  return await Post.findByIdAndUpdate(id, updateData, {
+
+  let cleanHashtags = []
+  cleanHashtags = updateData.hashtags
+    .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
+    .filter((tag, index, self) => tag && self.indexOf(tag) === index);
+  updateData.hashtags = cleanHashtags;
+  const oldTags = isPostIdExist.hashtags
+  const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag))
+  const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag))
+  const post = await Post.findByIdAndUpdate(id, updateData, {
     new: true,
     runValidators: true,
-  });
+  }); 
+  
+  await Promise.all([
+    ...addTags.map(tag =>
+      Hashtag.findOneAndUpdate(
+        { tag },
+        { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
+        { upsert: true }
+      )
+    ),
+    ...removeTags.map(async tag => {
+      const updated = await Hashtag.findOneAndUpdate(
+        { tag },
+        { $inc: { usageCount: -1 }, $pull: { posts: post._id } },
+        { new: true }
+      );
+      if (updated?.usageCount <= 0) await Hashtag.deleteOne({ tag });
+    })
+  ]);
+
+  return post;
 };
 
 // Delete Post
@@ -148,24 +176,24 @@ exports.getProfilePost = async (id, page = 1, limit = 10) => {
                 totalComments: { $size: "$comments" },
               },
             },
-                 {
-            $project: {
-              _id: 1,
-              postHeading: 1,
-              postDescription: 1,
-              mediaUrls: 1,
-              hashtags: 1,
-              communityId: 1,
-              type: 1,
-              storyOfTheMonth: 1,
-              videoOfTheMonth: 1,
-              createdAt: 1,
-              updatedAt: 1,
-              totalLikes: 1,
-              totalViews: 1,
-              totalComments: 1,
+            {
+              $project: {
+                _id: 1,
+                postHeading: 1,
+                postDescription: 1,
+                mediaUrls: 1,
+                hashtags: 1,
+                communityId: 1,
+                type: 1,
+                storyOfTheMonth: 1,
+                videoOfTheMonth: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                totalLikes: 1,
+                totalViews: 1,
+                totalComments: 1,
+              },
             },
-          },
             { $sort: { createdAt: -1 } },
             { $skip: skip },
             { $limit: limit },

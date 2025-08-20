@@ -69,8 +69,23 @@ exports.updatePostValidator = [
     .notEmpty()
     .withMessage(`${resMessages.validation.missingFields}: postDescription`),
 
+   check("hashtags")
+    .optional({ checkFalsy: true })
+    .isArray()
+    .withMessage("hashtags must be an array")
+    .custom((tags) => {
+      if (!Array.isArray(tags)) {
+        throw new Error("hashtags must be an array");
+      }
+      tags.forEach((tag) => {
+        if (typeof tag !== "string") {
+          throw new Error("each hashtag must be a string");
+        }
+      });
+      return true;
+    }),
   check().custom((value, { req }) => {
-    const allowedFields = ["postHeading", "postDescription"];
+    const allowedFields = ["postHeading", "postDescription", "hashtags"];
     const keys = Object.keys(req.body);
     const invalidFields = keys.filter(k => !allowedFields.includes(k));
     if (invalidFields.length > 0) {
@@ -78,6 +93,5 @@ exports.updatePostValidator = [
     }
     return true;
   }),
-
   validate
 ];

@@ -16,7 +16,6 @@ exports.createPost = async (req, res) => {
     }
 
     let cleanHashtags = [];
-    console.log(req.body)
     if (req.body.hashTags && Array.isArray(req.body.hashTags)) {
       cleanHashtags = req.body.hashTags
         .map(tag => tag.trim().toLowerCase().replace(/^#/, "")) 

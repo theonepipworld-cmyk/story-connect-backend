@@ -13,7 +13,7 @@ exports.addUserStats = async (req, res) => {
         console.log("poststats-",req.body)
         const addStats = await addStatsService(postId, type, commentId, id, username,parentCommentId);
         return res.status(200).json(
-            successResponse(resMessages.success.addSuccessful, addStats)
+            successResponse(resMessages.success.likeOrviewSuccessful)
         );
     }
     catch (err) {
