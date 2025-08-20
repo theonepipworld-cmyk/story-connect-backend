@@ -5,7 +5,7 @@ const Comment = require("../../models/Comments.model")
 const { isPostExist, createError, postAggregationPipeline, isUserExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
-const deleteFileFromS3 = require("../../utils/s3.util.js")
+const {deleteFileFromS3} = require("../../utils/s3.util.js")
 
 
 // Create Post
