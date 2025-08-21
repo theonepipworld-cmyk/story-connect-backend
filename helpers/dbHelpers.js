@@ -4,6 +4,8 @@ const { validationResult } = require('express-validator');
 const resMessages = require("../constants/resMessages.constants.js")
 const Comment = require("../models/Comments.model.js")
 const UserStats = require("../models/userActivityStats.model.js")
+const Community = require("../models/community.model.js")
+const mongoose = require("mongoose")
 
 
 exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
@@ -49,6 +51,16 @@ exports.isUserExist = async (id) => {
   }
 };
 
+exports.isCommunityExist = async (id) => {
+  try {
+    const result = await Community.findById(id)
+    return result;
+  }
+  catch (error) {
+    throw error;
+  }
+}
+
 //handle like and dislike comments section
 exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) => {
   let commentEntry = stats.commentLikes.find(
@@ -81,11 +93,11 @@ exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) 
 
 
 //handle like and dislike of post
-exports.togglePostLike = (stats,user) => {
+exports.togglePostLike = (stats, user) => {
   const existingIndex = stats.likes.findIndex(l => l.userId.toString() === user._id.toString());
   console.log(existingIndex);
   if (existingIndex === -1) {
-    stats.likes.push({ userId:user._id, userName: user.username , avatarUrl:user.avatarUrl,currentCountryCode:user.currentCountry.code });
+    stats.likes.push({ userId: user._id, userName: user.username, avatarUrl: user.avatarUrl, currentCountryCode: user.currentCountry.code });
     stats.totalLikes = stats.likes.length;
   } else {
     stats.likes.splice(existingIndex, 1);
@@ -101,7 +113,11 @@ exports.validateComment = async (postId, commentId, parentCommentId, isReply = f
     const childComment = await Comment.findOne({ _id: commentId, parentCommentId, postId });
     if (!childComment) throw new Error(resMessages.customError.commentIdNotMatch);
   } else {
-    const comment = await Comment.findOne({ _id: commentId, postId });
+    console.log("commeemem---", commentId)
+    const comment = await Comment.findOne({
+      _id: new mongoose.Types.ObjectId(commentId),
+      postId: new mongoose.Types.ObjectId(postId)
+    });
     if (!comment) throw new Error(resMessages.notFound.commentNotFound);
   }
 }
@@ -162,7 +178,7 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
                             initialValue: [],
                             in: { $concatArrays: ["$$value", "$$this"] }
                           }
-                          
+
                         },
                         as: "like",
                         cond: { $eq: ["$$like.userId", user?._id.toString()] }

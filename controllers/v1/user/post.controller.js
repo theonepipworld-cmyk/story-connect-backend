@@ -9,11 +9,15 @@ exports.createPost = async (req, res) => {
     req.body.userId = req.user.id;
     let mediaUrls = [];
     if (req.files && req.files.length > 0) {
-      console.log(req.files)
       const uploadPromises = req.files.map(file => uploadFileToS3(file, "posts"));
       const uploadResults = await Promise.all(uploadPromises);
       mediaUrls = uploadResults.map(result => result.Location);
-    }
+    };
+
+    
+
+
+
 
     let cleanHashtags = [];
     if (req.body.hashTags && Array.isArray(req.body.hashTags)) {

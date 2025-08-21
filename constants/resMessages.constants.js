@@ -6,13 +6,16 @@ module.exports = {
         getSuccessful:"get Sucessfully",
         deleteSuccessful:"delete Sucessfully",
         likeOrviewSuccessful:"like or View Sucessfully",
-        fetchSuccessfully:"fetch successfully"
+        fetchSuccessfully:"fetch successfully",
+        joinSuccessfully:"User join community successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
         postNotFound: "post not found",
         userNotFound: "User not found",
-        commentNotFound:"Comment not found"
+        commentNotFound:"Comment not found",
+        communityNotFound:"community not found",
+        communityCategoryNotFound:"community category not foundssssssssssss"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -31,6 +34,7 @@ module.exports = {
         invalidFileType:"invalid file Type",
         invalidId:"invalidId",
           typeUserStatsError: "Type not defeined properly",
+          inValidRole:"role shuld be admin or user"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

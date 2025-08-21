@@ -17,12 +17,22 @@ exports.createPostValidator = [
     .notEmpty()
     .withMessage(`${resMessages.validation.missingFields}: postDescription`),
 
-  // Detect type based on media files
+  check("communityId")
+    .custom((value, { req }) => {
+      if (req.body.postType === "community") {
+        if (!value) {
+          throw new Error(`${resMessages.validation.missingFields}: communityId`);
+        }
+      } else if (req.body.postType === "profile" && value) {
+        throw new Error(`communityId is not allowed when postType is profile`);
+      }
+      return true;
+    }),
   (req, res, next) => {
     const files = req.files || [];
 
     if (!files.length) {
-      req.body.type = null; // no media
+      req.body.type = null;
       return next();
     }
 
@@ -69,7 +79,46 @@ exports.updatePostValidator = [
     .notEmpty()
     .withMessage(`${resMessages.validation.missingFields}: postDescription`),
 
-   check("hashtags")
+  check("hashtags")
+    .optional({ checkFalsy: true })
+    .isArray()
+    .withMessage("hashtags must be an array")
+    .custom((tags) => {
+      if (!Array.isArray(tags)) {
+        throw new Error("hashtags must be an array");
+      }
+      tags.forEach((tag) => {
+        if (typeof tag !== "string") {
+          throw new Error("each hashtag must be a string");
+        }
+      });
+      return true;
+    }),
+  check().custom((value, { req }) => {
+    const allowedFields = ["postHeading", "postDescription", "hashtags"];
+    const keys = Object.keys(req.body);
+    const invalidFields = keys.filter(k => !allowedFields.includes(k));
+    if (invalidFields.length > 0) {
+      throw new Error(`Invalid fields in request: ${invalidFields.join(", ")}`);
+    }
+    return true;
+  }),
+  validate
+];
+
+
+exports.updatePostValidator = [
+  check("postHeading")
+    .optional({ checkFalsy: true })
+    .notEmpty()
+    .withMessage(`${resMessages.validation.missingFields}: postHeading`),
+
+  check("postDescription")
+    .optional({ checkFalsy: true })
+    .notEmpty()
+    .withMessage(`${resMessages.validation.missingFields}: postDescription`),
+
+  check("hashtags")
     .optional({ checkFalsy: true })
     .isArray()
     .withMessage("hashtags must be an array")

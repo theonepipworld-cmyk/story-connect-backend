@@ -20,6 +20,8 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             throw createError(400, resMessages.notFound.postNotFound);
         }
         if (type === userActivityStats.userStats.CommentLikes) {
+            console.log(type)
+            console.log(commentId)
             if (!commentId) throw createError(400, resMessages.notFound.commentNotFound);
             await validateComment(postId, commentId, parentCommentId);
         }

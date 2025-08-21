@@ -2,7 +2,7 @@ const Post = require("../../models/post.model")
 const UserStats = require("../../models/userActivityStats.model")
 const mongoose = require("mongoose");
 const Comment = require("../../models/Comments.model")
-const { isPostExist, createError, postAggregationPipeline, isUserExist } = require("../../helpers/dbHelpers.js")
+const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
@@ -10,9 +10,15 @@ const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 
 // Create Post
 exports.createPost = async (data, cleanHashTags) => {
+  let Community = ""
+  if (data.communityId) {
+    Community = await isCommunityExist(data.communityId)
+  }
+  if (!Community) {
+    throw createError(400, resMessages.notFound.communityNotFound);
+  }
   const post = new Post(data);
   //update hashTagColection
-  console.log(cleanHashTags)
   if (cleanHashTags?.length > 0) {
     await Promise.all(
       cleanHashTags.map(async (tag) => {

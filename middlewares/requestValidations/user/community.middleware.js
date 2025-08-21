@@ -2,6 +2,7 @@ const { check } = require('express-validator');
 const { validate } = require("./validate.js");
 const resMessages = require("../../../constants/resMessages.constants.js");
 const { errorResponse } = require('../../../utils/responseHandler.util.js');
+const {isCommunityExist } =require("../../../helpers/dbHelpers.js")
 
 
 exports.createCommunityValidator = [
@@ -41,4 +42,21 @@ exports.createCommunityValidator = [
   },
 
   validate
+];
+
+exports.joinedCommunity = [
+ check("communityId")
+    .notEmpty().withMessage(`${resMessages.validation.missingFields}: communityId`)
+    .isMongoId().withMessage(`${resMessages.validation.invalidId}: communityId`)
+    .custom(async (value) => {
+      const community = await isCommunityExist(value)
+      if (!community) {
+        throw new Error(`${resMessages.validation.notFound}: communityId`);
+      }
+      return true;
+    }),
+  check("role")
+    .notEmpty().withMessage(`${resMessages.validation.missingFields}: role`)
+    .isIn(["admin", "user"])
+    .withMessage(`${resMessages.validation.inValidRole}`),
 ];
