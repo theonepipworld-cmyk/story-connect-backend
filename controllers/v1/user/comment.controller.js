@@ -3,10 +3,10 @@ const { successResponse, errorResponse } = require('../../../utils/responseHandl
 const resMessages = require("../../../constants/resMessages.constants.js");
 const { DEFAULT_AVATAR_URL } = require("../../../constants/variables.constants.js");
 const User = require('../../../models/user.model.js');
-const { addCommentService, updateCommentService, deleteCommentService ,getTopLevelCommentService,getReplyCommentService} = require("../../../service/user/comment.service.js");
+const { addCommentService, updateCommentService, deleteCommentService, getTopLevelCommentService, getReplyCommentService } = require("../../../service/user/comment.service.js");
 
 //add Comment by users
-exports.addComment = async(req, res) => {
+exports.addComment = async (req, res) => {
     try {
         const { postId, comment, parentCommentId } = req.body;
         const newComment = await addCommentService(
@@ -25,7 +25,7 @@ exports.addComment = async(req, res) => {
 
 
 //update comments
-exports.updateComment = async(req, res) => {
+exports.updateComment = async (req, res) => {
     try {
         const { postId, commentId, parentCommentId, content } = req.body;
         const userId = req.user.id;
@@ -39,12 +39,12 @@ exports.updateComment = async(req, res) => {
     }
 };
 //delete comments
-exports.deleteComment = async(req, res) => {
+exports.deleteComment = async (req, res) => {
     try {
         const { postId, commentId, parentCommentId } = req.body;
-          const userId = req.user.id;
-          console.log(postId,commentId);
-        const result = await deleteCommentService(postId, commentId, parentCommentId,userId)
+        const userId = req.user.id;
+        console.log(postId, commentId);
+        const result = await deleteCommentService(postId, commentId, parentCommentId, userId)
         return res.status(200).json(
             successResponse(resMessages.success.deleteSuccessful, result)
         );
@@ -56,15 +56,15 @@ exports.deleteComment = async(req, res) => {
 
 
 //get toplevel comments
-exports.getTopLevelComment =async(req,res)=>{
-    try{
+exports.getTopLevelComment = async (req, res) => {
+    try {
         const postId = req.query.id
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const result= await getTopLevelCommentService(postId,page,limit);
+        const { data, pagination } = await getTopLevelCommentService(postId, page, limit);
 
-       return res.status(200).json(
-            successResponse(resMessages.success.getSuccessful, result)
+        return res.status(200).json(
+            successResponse(resMessages.success.getSuccessful, data, pagination)
         );
     }
     catch (err) {
@@ -72,15 +72,15 @@ exports.getTopLevelComment =async(req,res)=>{
     }
 }
 //get reply level comments
-exports.getReplyComments =async(req,res)=>{
-    try{
+exports.getReplyComments = async (req, res) => {
+    try {
         const postId = req.query.id
         const parentCommentId = req.query.parent_id
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
-        const result= await getReplyCommentService(postId,page,limit,parentCommentId);
-   return res.status(200).json(
-            successResponse(resMessages.success.getSuccessful, result)
+        const { data, pagination } = await getReplyCommentService(postId, page, limit, parentCommentId);
+        return res.status(200).json(
+            successResponse(resMessages.success.getSuccessful, data, pagination)
         );
     }
     catch (err) {

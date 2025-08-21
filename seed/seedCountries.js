@@ -6,7 +6,6 @@ const connectDB = require("../config/db.js")
 async function seedCountries() {
   try {
     await connectDB();
-
     await Country.deleteMany();
     await Country.insertMany(countries);
     console.log('Countries seeded successfully!');

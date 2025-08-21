@@ -27,6 +27,8 @@ module.exports = {
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         typeError: "Type must be either 'video' or 'image'",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
+        categoryName:"category name is required for others",
+        invalidFileType:"invalid file Type",
         invalidId:"invalidId",
           typeUserStatsError: "Type not defeined properly",
     },

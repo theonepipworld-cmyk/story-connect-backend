@@ -138,7 +138,6 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
         if (!isPostIdExist) {
             throw createError(400, resMessages.notFound.postNotFound);
         }
-
         const topLevelComments = await Comment.aggregate([
             {
                 $match: {
@@ -146,41 +145,57 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
                     parentCommentId: null
                 }
             },
-            { $sort: { createdAt: -1 } },
-            { $skip: offset },
-            { $limit: limit },
             {
-                $lookup: {
-                    from: "users",
-                    localField: "userId",
-                    foreignField: "_id",
-                    as: "userInfo"
-                }
-            },
-            { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-            {
-                $project: {
-                    _id: 1,
-                    content: 1,
-                    createdAt: 1,
-                    username: "$userInfo.username",
-                    profilePicture: "$userInfo.avatarUrl",
-                    currentCountry: {
-                        $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }]
-                    }
-                }
-            },
-            {
-                $lookup: {
-                    from: "userstats",
-                    let: { commentIdStr: { $toString: "$_id" } },
-                    pipeline: [
-                        { $match: { postId: new mongoose.Types.ObjectId(postId) } },
-                        { $unwind: "$commentLikes" },
-                        { $match: { $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] } } },
-                        { $project: { _id: 0, totalLikes: "$commentLikes.totalLikes" } }
+                $facet: {
+                    data: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: offset },
+                        { $limit: limit },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+                        {
+                            $lookup: {
+                                from: "userstats",
+                                let: { commentIdStr: { $toString: "$_id" } },
+                                pipeline: [
+                                    { $match: { postId: new mongoose.Types.ObjectId(postId) } },
+                                    { $unwind: "$commentLikes" },
+                                    {
+                                        $match: {
+                                            $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] }
+                                        }
+                                    },
+                                    { $project: { _id: 0, totalLikes: "$commentLikes.totalLikes" } }
+                                ],
+                                as: "likesInfo"
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                content: 1,
+                                createdAt: 1,
+                                username: "$userInfo.username",
+                                profilePicture: "$userInfo.avatarUrl",
+                                currentCountry: {
+                                    $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }]
+                                },
+                                totalLikes: {
+                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
+                                }
+                            }
+                        }
                     ],
-                    as: "likesInfo"
+                    totalCount: [
+                        { $count: "count" }
+                    ]
                 }
             }
         ]);
@@ -188,8 +203,17 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
         if (!topLevelComments) {
             throw new Error(resMessages.customError.notFound);
         }
-
-        return topLevelComments;
+        const data = topLevelComments[0].data;
+        const total = topLevelComments[0].totalCount[0]?.count || 0;
+        return {
+            data,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: parseInt(page),
+                limit: parseInt(limit),
+            },
+        }
     } catch (error) {
         throw new Error(error.message);
     }
@@ -213,57 +237,80 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId) =>
                 }
             },
             {
-                $skip: offset
-            },
-            {
-                $sort: { createdAt: -1 },
-            },
-            {
-                $limit: limit
-            },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "userId",  //Comment.userId,
-                    foreignField: "_id",
-                    as: "userInfo"
-                }
-            },
-            { $unwind: "$userInfo" },
-            {
-                $project: {
-                    _id: 1,
-                    content: 1,
-                    createdAt: 1,
-                    username: "$userInfo.username",
-                    profilePicture: "$userInfo.avatarUrl",
-                    currentCountryCode: "$userInfo.currentCountry"
-                }
-            },
+                $facet: {
+                    data: [
 
-            {
-                $lookup: {
-                    from: "userstats",
-                    let: { commentIdStr: { $toString: "$_id" } },
-                    pipeline: [
-                        { $match: { postId: new mongoose.Types.ObjectId(postId) } },
-                        { $unwind: "$commentLikes" },
-                        { $match: { $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] } } },
+                        {
+                            $skip: offset
+                        },
+                        {
+                            $sort: { createdAt: -1 },
+                        },
+                        {
+                            $limit: limit
+                        },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",  //Comment.userId,
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: "$userInfo" },
+                        {
+                            $lookup: {
+                                from: "userstats",
+                                let: { commentIdStr: { $toString: "$_id" } },
+                                pipeline: [
+                                    { $match: { postId: new mongoose.Types.ObjectId(postId) } },
+                                    { $unwind: "$commentLikes" },
+                                    { $match: { $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] } } },
+                                    {
+                                        $project: {
+                                            _id: 0,
+                                            totalLikes: "$commentLikes.totalLikes",
+                                        }
+                                    }
+                                ],
+                                as: "likesInfo"
+                            }
+                        },
                         {
                             $project: {
-                                _id: 0,
-                                totalLikes: "$commentLikes.totalLikes",
+                                _id: 1,
+                                content: 1,
+                                createdAt: 1,
+                                username: "$userInfo.username",
+                                profilePicture: "$userInfo.avatarUrl",
+                                currentCountryCode: "$userInfo.currentCountry",
+                                totalLikes: {
+                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
+                                }
                             }
-                        }
+                        },
                     ],
-                    as: "likesInfo"
+                    totalCount: [
+                        { $count: "count" }
+                    ]
                 }
-            },
+            }
+
         ]);
         if (!replyComments) {
             throw new Error(resMessages.customError.notFound)
         }
-        return replyComments;
+        const data = replyComments[0].data;
+        const total = replyComments[0].totalCount[0]?.count || 0;
+        return {
+            data,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: parseInt(page),
+                limit: parseInt(limit),
+            },
+        }
     } catch (error) {
         throw new Error(error.message);
     }
