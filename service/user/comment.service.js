@@ -177,10 +177,13 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                         {
                             $lookup: {
                                 from: "userstats",
-                                let: { commentIdStr: { $toString: "$_id" } },
+                                let: {
+                                    commentIdStr: { $toString: "$_id" },
+                                    userIdStr: user?._id?.toString() || ""
+                                },
                                 pipeline: [
                                     { $match: { postId: new mongoose.Types.ObjectId(postId) } },
-                                    { $unwind: "$commentLikes" },
+                                    { $unwind: { path: "$commentLikes", preserveNullAndEmptyArrays: true } },
                                     {
                                         $match: {
                                             $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] }
@@ -188,14 +191,39 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                                     },
                                     {
                                         $project: {
-                                            _id: 0, totalLikes: "$commentLikes.totalLikes",
-                                            isCommentLikedByMe: {
-                                                $in: [user._id.toString(), "$commentLikes.userIds"]
-                                            }
+                                            _id: 0,
+                                            totalLikes: { $ifNull: ["$commentLikes.totalLikes", 0] },
+                                            userIds: { $ifNull: ["$commentLikes.userIds", []] }
                                         }
                                     }
                                 ],
                                 as: "likesInfo"
+                            }
+                        },
+                        // Add safe fields
+                        {
+                            $addFields: {
+                                totalLikes: { $ifNull: [{ $sum: "$likesInfo.totalLikes" }, 0] },
+                                isCommentLikedByMe: {
+                                    $gt: [
+                                        {
+                                            $size: {
+                                                $filter: {
+                                                    input: {
+                                                        $reduce: {
+                                                            input: "$likesInfo", // iterate over all commentLikes objects
+                                                            initialValue: [],
+                                                            in: { $concatArrays: ["$$value", "$$this.userIds"] } // concat userIds arrays
+                                                        }
+                                                    },
+                                                    as: "uid",
+                                                    cond: { $eq: ["$$uid", user?._id?.toString() || ""] }
+                                                }
+                                            }
+                                        },
+                                        0
+                                    ]
+                                }
                             }
                         },
                         {
@@ -208,22 +236,17 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                                 currentCountry: {
                                     $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }]
                                 },
-                                totalLikes: {
-                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
-                                },
+                                totalLikes: 1,
                                 replyCount: 1,
-                                isCommentLikedByMe: {
-                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.isCommentLikedByMe", 0] }, false]
-                                }
+                                isCommentLikedByMe: 1
                             }
                         }
                     ],
-                    totalCount: [
-                        { $count: "count" }
-                    ]
+                    totalCount: [{ $count: "count" }]
                 }
             }
         ]);
+
 
         if (!topLevelComments) {
             throw new Error(resMessages.customError.notFound);
@@ -310,6 +333,32 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                                     }
                                 ],
                                 as: "likesInfo"
+                            }
+                        },
+                         // Add safe fields
+                        {
+                            $addFields: {
+                                totalLikes: { $ifNull: [{ $sum: "$likesInfo.totalLikes" }, 0] },
+                                isCommentLikedByMe: {
+                                    $gt: [
+                                        {
+                                            $size: {
+                                                $filter: {
+                                                    input: {
+                                                        $reduce: {
+                                                            input: "$likesInfo",
+                                                            initialValue: [],
+                                                            in: { $concatArrays: ["$$value", "$$this.userIds"] } 
+                                                        }
+                                                    },
+                                                    as: "uid",
+                                                    cond: { $eq: ["$$uid", user?._id?.toString() || ""] }
+                                                }
+                                            }
+                                        },
+                                        0
+                                    ]
+                                }
                             }
                         },
                         {
