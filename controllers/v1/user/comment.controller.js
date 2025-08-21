@@ -59,9 +59,10 @@ exports.deleteComment = async (req, res) => {
 exports.getTopLevelComment = async (req, res) => {
     try {
         const postId = req.query.id
+        const userId = req.user.id
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const { data, pagination } = await getTopLevelCommentService(postId, page, limit);
+        const { data, pagination } = await getTopLevelCommentService(postId, page, limit,userId);
 
         return res.status(200).json(
             successResponse(resMessages.success.getSuccessful, data, pagination)
@@ -75,10 +76,11 @@ exports.getTopLevelComment = async (req, res) => {
 exports.getReplyComments = async (req, res) => {
     try {
         const postId = req.query.id
+        const userId = req.user.id
         const parentCommentId = req.query.parent_id
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
-        const { data, pagination } = await getReplyCommentService(postId, page, limit, parentCommentId);
+        const { data, pagination } = await getReplyCommentService(postId, page, limit, parentCommentId,userId);
         return res.status(200).json(
             successResponse(resMessages.success.getSuccessful, data, pagination)
         );

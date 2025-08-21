@@ -15,7 +15,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
           if(!user){
             throw createError(400, resMessages.notFound.userNotFound);
           }
-           console.log("usrr-------",user)
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) {
             throw createError(400, resMessages.notFound.postNotFound);

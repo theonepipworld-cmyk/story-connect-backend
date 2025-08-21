@@ -5,8 +5,8 @@ const { DEFAULT_AVATAR_URL } = require('../../constants/variables.constants');
 const { errorResponse, successResponse } = require('../../utils/responseHandler.util');
 const resMessages = require("../../constants/resMessages.constants.js")
 const Comment = require('../../models/Comments.model');
-const { isPostExist, createError } = require("../../helpers/dbHelpers.js")
-const userStats = require("../../models/userActivityStats.model.js");
+const { isPostExist, createError, isUserExist } = require("../../helpers/dbHelpers.js")
+const UserStats = require("../../models/userActivityStats.model")
 
 //add comments
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
@@ -118,6 +118,13 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
         if (deleteResult.deletedCount === 0) {
             throw new Error(resMessages.customError.commentNotDeleted);
         }
+
+        //delete that comment from userstats
+        
+        await UserStats.updateOne(
+            { "commentLikes.commentId": commentId },
+            { $pull: { commentLikes: { commentId: commentId } } }
+        );
         if (parentCommentId) {
             await Comment.findByIdAndUpdate(
                 parentCommentId,
@@ -131,8 +138,17 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
     }
 };
 //load top level comments
-exports.getTopLevelCommentService = async (postId, page, limit) => {
+exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
     try {
+        console.log(postId)
+        if (!userId) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+        const user = await isUserExist(userId);
+        if (!user) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+
         const offset = (page - 1) * limit;
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) {
@@ -172,7 +188,14 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
                                             $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] }
                                         }
                                     },
-                                    { $project: { _id: 0, totalLikes: "$commentLikes.totalLikes" } }
+                                    {
+                                        $project: {
+                                            _id: 0, totalLikes: "$commentLikes.totalLikes",
+                                            isCommentLikedByMe: {
+                                                $in: [user._id, "$commentLikes.userIds"]
+                                            }
+                                        }
+                                    }
                                 ],
                                 as: "likesInfo"
                             }
@@ -189,6 +212,10 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
                                 },
                                 totalLikes: {
                                     $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
+                                },
+                                replyCount: 1,
+                                isCommentLikedByMe: {
+                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.isCommentLikedByMe", 0] }, false]
                                 }
                             }
                         }
@@ -221,8 +248,18 @@ exports.getTopLevelCommentService = async (postId, page, limit) => {
 
 
 //load the reply comments
-exports.getReplyCommentService = async (postId, page, limit, parentCommentId) => {
+exports.getReplyCommentService = async (postId, page, limit, parentCommentId, userId) => {
+
     try {
+        if (!userId) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+
+        const user = await isUserExist(userId);
+        if (!user) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+
         const offset = (page - 1) * limit;
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) {
@@ -270,6 +307,9 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId) =>
                                         $project: {
                                             _id: 0,
                                             totalLikes: "$commentLikes.totalLikes",
+                                            isCommentLikedByMe: {
+                                                $in: [user._id, "$commentLikes.userIds"]
+                                            }
                                         }
                                     }
                                 ],
@@ -286,6 +326,10 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId) =>
                                 currentCountryCode: "$userInfo.currentCountry",
                                 totalLikes: {
                                     $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
+                                },
+                                replyCount: 1,
+                                isCommentLikedByMe: {
+                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.isCommentLikedByMe", 0] }, false]
                                 }
                             }
                         },
