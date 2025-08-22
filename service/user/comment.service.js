@@ -211,13 +211,18 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                                                 $filter: {
                                                     input: {
                                                         $reduce: {
-                                                            input: "$likesInfo", // iterate over all commentLikes objects
+                                                            input: { $ifNull: ["$likesInfo", []] },
                                                             initialValue: [],
-                                                            in: { $concatArrays: ["$$value", "$$this.userIds"] } // concat userIds arrays
+                                                            in: {
+                                                                $concatArrays: [
+                                                                    "$$value",
+                                                                    { $ifNull: ["$$this.userIds", []] }
+                                                                ]
+                                                            }
                                                         }
                                                     },
                                                     as: "uid",
-                                                    cond: { $eq: ["$$uid", user?._id?.toString() || ""] }
+                                                    cond: { $eq: ["$$uid", user._id.toString()] }
                                                 }
                                             }
                                         },
@@ -335,7 +340,7 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                                 as: "likesInfo"
                             }
                         },
-                         // Add safe fields
+                        // Add safe fields
                         {
                             $addFields: {
                                 totalLikes: { $ifNull: [{ $sum: "$likesInfo.totalLikes" }, 0] },
@@ -346,13 +351,18 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                                                 $filter: {
                                                     input: {
                                                         $reduce: {
-                                                            input: "$likesInfo",
+                                                            input: { $ifNull: ["$likesInfo", []] },
                                                             initialValue: [],
-                                                            in: { $concatArrays: ["$$value", "$$this.userIds"] } 
+                                                            in: {
+                                                                $concatArrays: [
+                                                                    "$$value",
+                                                                    { $ifNull: ["$$this.userIds", []] }
+                                                                ]
+                                                            }
                                                         }
                                                     },
                                                     as: "uid",
-                                                    cond: { $eq: ["$$uid", user?._id?.toString() || ""] }
+                                                    cond: { $eq: ["$$uid", user._id.toString()] }
                                                 }
                                             }
                                         },

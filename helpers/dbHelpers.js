@@ -113,7 +113,6 @@ exports.validateComment = async (postId, commentId, parentCommentId, isReply = f
     const childComment = await Comment.findOne({ _id: commentId, parentCommentId, postId });
     if (!childComment) throw new Error(resMessages.customError.commentIdNotMatch);
   } else {
-    console.log("commeemem---", commentId)
     const comment = await Comment.findOne({
       _id: new mongoose.Types.ObjectId(commentId),
       postId: new mongoose.Types.ObjectId(postId)

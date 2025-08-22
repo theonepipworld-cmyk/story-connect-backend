@@ -14,10 +14,6 @@ exports.createPost = async (req, res) => {
       mediaUrls = uploadResults.map(result => result.Location);
     };
 
-    
-
-
-
 
     let cleanHashtags = [];
     if (req.body.hashTags && Array.isArray(req.body.hashTags)) {
