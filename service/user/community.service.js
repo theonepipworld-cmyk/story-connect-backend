@@ -578,8 +578,6 @@ exports.removeCommunityMemberService = async (data, userId) => {
             communityId: community._id,
             userId: data.userId
         })
-
-        console.log("community---------", community)
         if (community.memberCount > 0) {
             await Community.findByIdAndUpdate(
                 community._id,

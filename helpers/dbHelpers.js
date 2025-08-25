@@ -6,6 +6,7 @@ const Comment = require("../models/Comments.model.js")
 const UserStats = require("../models/userActivityStats.model.js")
 const Community = require("../models/community.model.js")
 const mongoose = require("mongoose")
+const Friend = require("../models/friends.model.js")
 
 
 exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
@@ -42,6 +43,7 @@ exports.isPostExist = async (id) => {
     throw error;
   }
 };
+
 exports.isUserExist = async (id) => {
   try {
     const result = await User.findById(id);
@@ -164,10 +166,14 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
             },
           },
           {
-           
+
             $addFields: {
-              totalLikes: { $ifNull: ["$stats.totalLikes", 0] },
-              totalViews: { $ifNull: ["$stats.totalViews", 0] },
+              totalLikes: {
+                $size: { $ifNull: ["$stats.likes", []] }
+              },
+              totalViews: {
+                $size: { $ifNull: ["$stats.views", []] }
+              },
               isPostLikedByMe: {
                 $anyElementTrue: {
                   $map: {
@@ -178,56 +184,77 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
                 }
               }
             }
-          
+
           },
           {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "postId",
-        as: "comments",
-      },
-    },
-    {
-      $addFields: {
-        totalComments: { $size: "$comments" },
-      },
-    },
+            $lookup: {
+              from: "comments",
+              localField: "_id",
+              foreignField: "postId",
+              as: "comments",
+            },
+          },
+          {
+            $addFields: {
+              totalComments: { $size: "$comments" },
+            },
+          },
 
-    {
-      $project: {
-        _id: 1,
-        postHeading: 1,
-        postDescription: 1,
-        mediaUrls: 1,
-        hashtags: 1,
-        communityId: 1,
-        type: 1,
-        storyOfTheMonth: 1,
-        videoOfTheMonth: 1,
-        createdAt: 1,
-        updatedAt: 1,
-        "user._id": 1,
-        "user.username": 1,
-        "user.email": 1,
-        "user.avatarUrl": 1,
-        "user.currentCountry": 1,
-        totalLikes: 1,
-        totalViews: 1,
-        totalComments: 1,
-        isPostLikedByMe: 1,
-      },
-    },
+          {
+            $project: {
+              _id: 1,
+              postHeading: 1,
+              postDescription: 1,
+              mediaUrls: 1,
+              hashtags: 1,
+              communityId: 1,
+              type: 1,
+              storyOfTheMonth: 1,
+              videoOfTheMonth: 1,
+              createdAt: 1,
+              updatedAt: 1,
+              "user._id": 1,
+              "user.username": 1,
+              "user.email": 1,
+              "user.avatarUrl": 1,
+              "user.currentCountry": 1,
+              totalLikes: 1,
+              totalViews: 1,
+              totalComments: 1,
+              isPostLikedByMe: 1,
+            },
+          },
 
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
-  ],
-    totalCount: [{ $count: "count" }],
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+        totalCount: [{ $count: "count" }],
       },
     },
   ];
 };
+
+exports.getAllFriends = async (id) => {
+  try {
+    const result = await Friend.find({
+      status: "accepted",
+      $or: [
+        { requester: id },
+        { recipient: id }
+      ]
+    }).populate("requester", "username avatarUrl currentCountry")
+      .populate("recipient", "username avatarUrl currentCountry");
+   console.log(result)
+    const friendsList = result.map(f =>
+      f.requester._id.toString() === id.toString() ? f.recipient : f.requester
+    );
+    return friendsList;
+  }
+  catch (error) {
+    throw error;
+  }
+}
 
 
 

@@ -7,16 +7,21 @@ module.exports = {
         deleteSuccessful:"delete Sucessfully",
         likeOrviewSuccessful:"like or View Sucessfully",
         fetchSuccessfully:"fetch successfully",
-        joinSuccessfully:"User joined successfully"
+        joinSuccessfully:"User joined successfully",
+        sendReqSuccessfully:"friend Request Send Successfully",
+        acceptReqSuccessfully:"friend Request Accept Successfully",
+        rejectReqSuccessfully:"friend request rejected Successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
         postNotFound: "post not found",
         userNotFound: "User not found",
+        ReqUser:"user which we requesting frined not found",
         commentNotFound:"Comment not found",
         communityNotFound:"community not found",
         communityCategoryNotFound:"community category not found",
-        memberNotFound:"member not found"
+        memberNotFound:"member not found",
+        userOrFriendIdNotFound:"either friend or user id is missing"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -37,7 +42,8 @@ module.exports = {
         alreadyCommunityMember:"user is already a community member",
         invalidId:"invalidId",
           typeUserStatsError: "Type not defeined properly",
-          inValidRole:"role shuld be admin or user"
+          inValidRole:"role shuld be admin or user",
+          invalidFriendAction:"action must be accept or reject"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
@@ -64,7 +70,13 @@ module.exports = {
          ownerNotRemove:"owner cant remove from Community",
          commentNotDeleted:"comment not deleted because of not found record of the id's",
          noUserStatsFound:"No user-stats found",
-         notFound:"no  comments found"
+         notFound:"no  comments found",
+         friendReqSent:"friend Request already Sent",
+         alreadyFriend:"you are already a friend",
+         alreadyRejected:"friendReq already rejected",
+         notSendReqYourself:"you cant send a request to yourself",
+         noPendingReq:"No pending Request",
+         noFriends:"No friends"
     }
 
 };

@@ -4,9 +4,14 @@ const profileService = require("../../../service/user/profile.service.js")
 
 exports.getProfile = async (req, res) => {
   try {
-    const {otheruserId} = req.body
-    const user = await profileService.getProfile(req.user.id,otheruserId);
-    return res.status(200).json(successResponse(resMessages.success.getSuccessful, user));
+    const { otheruserId } = req.body
+    const {user,totalFriends,mutualFriendsCount} = await profileService.getProfile(req.user.id, otheruserId);
+    const responseData = {
+      ...user,
+      totalFriends,
+      mutualFriendsCount
+    };
+    return res.status(200).json(successResponse(resMessages.success.getSuccessful,responseData));
   } catch (err) {
     return res.status(400).json(errorResponse(err.message));
   }

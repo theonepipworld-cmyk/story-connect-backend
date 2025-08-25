@@ -9,6 +9,7 @@ const userStatsRoutes = require("./routes/v1/user/userActivityStats.routes.js")
 const countryListRoutes = require("./routes/v1/user/countryList.routes.js")
 const professionalSymbolRoutes = require("./routes/v1/user/professionalSymbol.routes.js")
 const communityRoutes = require("./routes/v1/user/community.routes.js")
+const friendRoutes = require("./routes/v1/user/friend.routes.js")
 const connectDB = require("./config/db.js")
 const fileUpload = require("express-fileupload")
 const cors = require("cors")
@@ -39,6 +40,7 @@ app.use('/api/v1/user/stats', userStatsRoutes);
 app.use('/api/v1/user/countryList', countryListRoutes);
 app.use('/api/v1/user/professionalSymbol', professionalSymbolRoutes);
 app.use('/api/v1/user/community', communityRoutes);
+app.use('/api/v1/user/friend', friendRoutes);
  
  
  

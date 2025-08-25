@@ -63,16 +63,6 @@ const userSchema = new Schema({
     type: [String],
     default: []
   },
-  followers: {
-    type: [Types.ObjectId],
-    ref: 'User',
-    default: []
-  },
-  following: {
-    type: [Types.ObjectId],
-    ref: 'User',
-    default: []
-  },
   settings: {
     type: Types.ObjectId,
     ref: 'UserSettings'
