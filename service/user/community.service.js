@@ -65,7 +65,7 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
 
 exports.joinCommunityService = async (userId, data) => {
     try {
-        const { communityId, role } = data
+        const { communityId} = data
         if (!userId) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
@@ -83,7 +83,7 @@ exports.joinCommunityService = async (userId, data) => {
         const joined = await CommunityMember.create({
             userId: user._id,
             communityId: communityId,
-            role: role
+            role: "member"
         });
 
         await Community.findByIdAndUpdate(

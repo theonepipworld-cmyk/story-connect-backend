@@ -27,7 +27,6 @@ exports.createCommunity = async (req, res) => {
 
 exports.joinCommunity = async (req, res) => {
   try {
-    console.log(req.body)
     const joinComunity = await joinCommunityService(req.user.id, req.body)
     return res.status(200).json(successResponse(resMessages.success.joinSuccessfully));
   }

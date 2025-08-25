@@ -25,8 +25,6 @@ const coverImage = multer({
 });
 
 
-
-
 exports.createCommunityValidator = [
    coverImage.single("coverImage"),
   check("name")
@@ -42,6 +40,7 @@ exports.createCommunityValidator = [
     .withMessage(`${resMessages.validation.missingFields}: category`),
   (async (req, res, next) => {
     try {
+      console.log(req.body.category)
       const category = await communityCategory.findById(req.body.category);
       if (!category) {
         return res
@@ -89,10 +88,6 @@ exports.joinedCommunity = [
       }
       return true;
     }),
-  check("role")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: role`)
-    .isIn(["admin", "member"])
-    .withMessage(`${resMessages.validation.inValidRole}`),
   validate
 ];
 
