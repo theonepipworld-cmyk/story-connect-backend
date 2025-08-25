@@ -65,7 +65,7 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
 
 exports.joinCommunityService = async (userId, data) => {
     try {
-        const { communityId} = data
+        const { communityId } = data
         if (!userId) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
@@ -107,7 +107,6 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
-
         const offset = (page - 1) * limit;
 
         const result = await Community.aggregate([
@@ -193,7 +192,6 @@ exports.categoryService = async () => {
 exports.allCommunitiesService = async (search, page = 1, limit = 10) => {
     try {
         const offset = (page - 1) * limit;
-
         const result = await Community.aggregate([
             {
                 $lookup: {
@@ -397,6 +395,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
         throw createError(400, resMessages.notFound.userNotFound);
     }
     try {
+
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
