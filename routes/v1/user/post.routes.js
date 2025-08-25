@@ -21,4 +21,5 @@ router.delete("/:id", isAuthenticated, authorizeRoles('user'), postController.de
 router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
 router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
 
+
 module.exports = router;

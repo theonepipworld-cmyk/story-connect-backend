@@ -95,8 +95,9 @@ exports.getPostsOfProfile = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const type = req.query.type
       const userId = req.user.id
-    const { posts, pagination }  = await postService.getProfilePost(req.params.id,page,limit,userId)
+    const { posts, pagination }  = await postService.getProfilePost(req.params.id,page,limit,userId,type)
     if (!posts) {
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     }

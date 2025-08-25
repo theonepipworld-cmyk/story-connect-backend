@@ -203,31 +203,22 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                         // Add safe fields
                         {
                             $addFields: {
-                                totalLikes: { $ifNull: [{ $sum: "$likesInfo.totalLikes" }, 0] },
                                 isCommentLikedByMe: {
-                                    $gt: [
-                                        {
-                                            $size: {
-                                                $filter: {
-                                                    input: {
-                                                        $reduce: {
-                                                            input: { $ifNull: ["$likesInfo", []] },
-                                                            initialValue: [],
-                                                            in: {
-                                                                $concatArrays: [
-                                                                    "$$value",
-                                                                    { $ifNull: ["$$this.userIds", []] }
-                                                                ]
-                                                            }
-                                                        }
-                                                    },
-                                                    as: "uid",
-                                                    cond: { $eq: ["$$uid", user._id.toString()] }
+                                    $anyElementTrue: {
+                                        $map: {
+                                            input: { $ifNull: ["$likesInfo", []] },
+                                            as: "like",
+                                            in: {
+                                                $anyElementTrue: {
+                                                    $map: {
+                                                        input: { $ifNull: ["$$like.userIds", []] },
+                                                        as: "uid",
+                                                        in: { $eq: ["$$uid", user._id.toString()] }
+                                                    }
                                                 }
                                             }
-                                        },
-                                        0
-                                    ]
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -343,31 +334,22 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                         // Add safe fields
                         {
                             $addFields: {
-                                totalLikes: { $ifNull: [{ $sum: "$likesInfo.totalLikes" }, 0] },
                                 isCommentLikedByMe: {
-                                    $gt: [
-                                        {
-                                            $size: {
-                                                $filter: {
-                                                    input: {
-                                                        $reduce: {
-                                                            input: { $ifNull: ["$likesInfo", []] },
-                                                            initialValue: [],
-                                                            in: {
-                                                                $concatArrays: [
-                                                                    "$$value",
-                                                                    { $ifNull: ["$$this.userIds", []] }
-                                                                ]
-                                                            }
-                                                        }
-                                                    },
-                                                    as: "uid",
-                                                    cond: { $eq: ["$$uid", user._id.toString()] }
+                                    $anyElementTrue: {
+                                        $map: {
+                                            input: { $ifNull: ["$likesInfo", []] },
+                                            as: "like",
+                                            in: {
+                                                $anyElementTrue: {
+                                                    $map: {
+                                                        input: { $ifNull: ["$$like.userIds", []] },
+                                                        as: "uid",
+                                                        in: { $eq: ["$$uid", user._id.toString()] }
+                                                    }
                                                 }
                                             }
-                                        },
-                                        0
-                                    ]
+                                        }
+                                    }
                                 }
                             }
                         },

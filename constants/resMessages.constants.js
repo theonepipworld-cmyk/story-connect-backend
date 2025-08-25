@@ -7,7 +7,7 @@ module.exports = {
         deleteSuccessful:"delete Sucessfully",
         likeOrviewSuccessful:"like or View Sucessfully",
         fetchSuccessfully:"fetch successfully",
-        joinSuccessfully:"User join community successfully"
+        joinSuccessfully:"User joined successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
@@ -15,7 +15,8 @@ module.exports = {
         userNotFound: "User not found",
         commentNotFound:"Comment not found",
         communityNotFound:"community not found",
-        communityCategoryNotFound:"community category not foundssssssssssss"
+        communityCategoryNotFound:"community category not found",
+        memberNotFound:"member not found"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -31,7 +32,9 @@ module.exports = {
         typeError: "Type must be either 'video' or 'image'",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         categoryName:"category name is required for others",
+        invalidCategory:"category name is invalid",
         invalidFileType:"invalid file Type",
+        alreadyCommunityMember:"user is already a community member",
         invalidId:"invalidId",
           typeUserStatsError: "Type not defeined properly",
           inValidRole:"role shuld be admin or user"
@@ -57,6 +60,8 @@ module.exports = {
          parentCommentIdInvalid:"parentComment is invalid",
          commentIdNotMatch:"commentId not match .",
          NotAuthorized:"user not have authorized to delete or update",
+         NotAuthorizedRemove:"user dont have authorization to remove the member",
+         ownerNotRemove:"owner cant remove from Community",
          commentNotDeleted:"comment not deleted because of not found record of the id's",
          noUserStatsFound:"No user-stats found",
          notFound:"no  comments found"

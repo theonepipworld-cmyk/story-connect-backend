@@ -163,79 +163,67 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
               as: "stats",
             },
           },
-
           {
+           
             $addFields: {
+              totalLikes: { $ifNull: ["$stats.totalLikes", 0] },
+              totalViews: { $ifNull: ["$stats.totalViews", 0] },
               isPostLikedByMe: {
-                $gt: [
-                  {
-                    $size: {
-                      $filter: {
-                        input: {
-                          $reduce: {
-                            input: "$stats.likes",
-                            initialValue: [],
-                            in: { $concatArrays: ["$$value", "$$this"] }
-                          }
-
-                        },
-                        as: "like",
-                        cond: { $eq: ["$$like.userId", user?._id.toString()] }
-                      }
-                    }
-                  },
-                  0
-                ]
-              },
-              totalLikes: { $ifNull: [{ $sum: "$stats.totalLikes" }, 0] },
-              totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
-            },
-          },
-
-          {
-            $lookup: {
-              from: "comments",
-              localField: "_id",
-              foreignField: "postId",
-              as: "comments",
-            },
+                $anyElementTrue: {
+                  $map: {
+                    input: { $ifNull: ["$stats.likes", []] },
+                    as: "like",
+                    in: { $eq: ["$$like.userId", user._id.toString()] }
+                  }
+                }
+              }
+            }
+          
           },
           {
-            $addFields: {
-              totalComments: { $size: "$comments" },
-            },
-          },
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "postId",
+        as: "comments",
+      },
+    },
+    {
+      $addFields: {
+        totalComments: { $size: "$comments" },
+      },
+    },
 
-          {
-            $project: {
-              _id: 1,
-              postHeading: 1,
-              postDescription: 1,
-              mediaUrls: 1,
-              hashtags: 1,
-              communityId: 1,
-              type: 1,
-              storyOfTheMonth: 1,
-              videoOfTheMonth: 1,
-              createdAt: 1,
-              updatedAt: 1,
-              "user._id": 1,
-              "user.username": 1,
-              "user.email": 1,
-              "user.avatarUrl": 1,
-              "user.currentCountry": 1,
-              totalLikes: 1,
-              totalViews: 1,
-              totalComments: 1,
-              isPostLikedByMe: 1,
-            },
-          },
+    {
+      $project: {
+        _id: 1,
+        postHeading: 1,
+        postDescription: 1,
+        mediaUrls: 1,
+        hashtags: 1,
+        communityId: 1,
+        type: 1,
+        storyOfTheMonth: 1,
+        videoOfTheMonth: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        "user._id": 1,
+        "user.username": 1,
+        "user.email": 1,
+        "user.avatarUrl": 1,
+        "user.currentCountry": 1,
+        totalLikes: 1,
+        totalViews: 1,
+        totalComments: 1,
+        isPostLikedByMe: 1,
+      },
+    },
 
-          { $sort: { createdAt: -1 } },
-          { $skip: skip },
-          { $limit: limit },
-        ],
-        totalCount: [{ $count: "count" }],
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+  ],
+    totalCount: [{ $count: "count" }],
       },
     },
   ];

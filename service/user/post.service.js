@@ -159,21 +159,31 @@ exports.deletePost = async (id, userId) => {
   return isPostIdExist;
 };
 
-exports.getProfilePost = async (id, page = 1, limit = 10, userId) => {
+exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profile") => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
-    const user = await isUserExist(userId)
+    const user = await isUserExist(userId);
     if (!user) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
+
     const skip = (page - 1) * limit;
-    const result = await Post.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(id) } },
+
+    let matchStage = {};
+    if (type === "profile") {
+      matchStage = { userId: new mongoose.Types.ObjectId(id) };
+    } else if (type === "community") {
+      matchStage = { communityId: new mongoose.Types.ObjectId(id) };
+    }
+
+    const pipeline = [
+      { $match: matchStage },
       {
         $facet: {
           paginatedPosts: [
+            // Join stats
             {
               $lookup: {
                 from: "userstats",
@@ -184,31 +194,28 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId) => {
             },
             {
               $addFields: {
+                totalLikes: { $ifNull: [{ $sum: { $ifNull: ["$stats.totalLikes", []] } }, 0] },
+                totalViews: { $ifNull: [{ $sum: { $ifNull: ["$stats.totalViews", []] } }, 0] },
                 isPostLikedByMe: {
-                  $gt: [
-                    {
-                      $size: {
-                        $filter: {
-                          input: {
-                            $reduce: {
-                              input: "$stats.likes",
-                              initialValue: [],
-                              in: { $concatArrays: ["$$value", "$$this"] }
-                            }
-
-                          },
-                          as: "like",
-                          cond: { $eq: ["$$like.userId", user?._id.toString()] }
+                  $anyElementTrue: {
+                    $map: {
+                      input: { $ifNull: ["$stats.likes", []] },
+                      as: "likeArr",
+                      in: {
+                        $anyElementTrue: {
+                          $map: {
+                            input: { $ifNull: ["$$likeArr", []] },
+                            as: "like",
+                            in: { $eq: ["$$like.userId", user._id.toString()] }
+                          }
                         }
                       }
-                    },
-                    0
-                  ]
-                },
-                totalLikes: { $ifNull: [{ $sum: "$stats.totalLikes" }, 0] },
-                totalViews: { $ifNull: [{ $sum: "$stats.totalViews" }, 0] },
-              },
+                    }
+                  }
+                }
+              }
             },
+            // Join comments
             {
               $lookup: {
                 from: "comments",
@@ -219,9 +226,32 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId) => {
             },
             {
               $addFields: {
-                totalComments: { $size: "$comments" },
+                totalComments: { $size: { $ifNull: ["$comments", []] } }
               },
             },
+            ...(type === "community"
+              ? [
+                {
+                  $lookup: {
+                    from: "communities",
+                    localField: "communityId",
+                    foreignField: "_id",
+                    as: "communityInfo",
+                  },
+                },
+                { $unwind: { path: "$communityInfo", preserveNullAndEmptyArrays: true } },
+                {
+                  $lookup: {
+                    from: "communitycategories",
+                    localField: "communityInfo.category",
+                    foreignField: "_id",
+                    as: "categoryInfo"
+                  }
+                },
+                { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+              ]
+              : []
+            ),
             {
               $project: {
                 _id: 1,
@@ -239,31 +269,45 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId) => {
                 totalViews: 1,
                 totalComments: 1,
                 isPostLikedByMe: 1,
+                ...(type === "community"
+                  ? {
+                    "categoryInfo._id": 1,
+                    "categoryInfo.name": 1,
+                     "communityInfo.manualName":1
+                  }
+                  : {})
               },
             },
             { $sort: { createdAt: -1 } },
             { $skip: skip },
-            { $limit: limit },
+            { $limit: limit }
           ],
           totalCount: [
             { $count: "count" }
-          ],
-        },
-      },
-    ]);
+          ]
+        }
+      }
+    ];
+
+    const result = await Post.aggregate(pipeline);
+
     const posts = result[0].paginatedPosts;
-    const totalPosts = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
+    const totalPosts = result[0].totalCount[0]?.count || 0;
 
     return {
-      posts, pagination: {
+      posts,
+      pagination: {
         totalPosts,
         totalPages: Math.ceil(totalPosts / limit),
         currentPage: parseInt(page),
         limit: parseInt(limit),
-      },
+      }
     };
+
   } catch (error) {
     throw new Error(error.message);
   }
 };
+
+
 

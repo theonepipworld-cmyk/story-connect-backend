@@ -29,6 +29,9 @@ const communitySchema = new mongoose.Schema({
     manualCategoryName: {
         type: String
     },
+    memberCount:{
+        type:Number
+    }
 }, { timestamps: true })
 
 communitySchema.index({ userId: -1 });
