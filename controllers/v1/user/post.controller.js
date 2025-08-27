@@ -106,4 +106,15 @@ exports.getPostsOfProfile = async (req, res) => {
   catch (error) {
     res.status(400).json({ success: false, message: error.message })
   }
+};
+
+
+exports.getTrendingTags = async(req,res)=>{
+  try{
+      const trendingTags = await postService.getTrendingTagsService()
+       return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, trendingTags));
+  }
+  catch (error) {
+    res.status(400).json({ success: false, message: error.message })
+  }
 }

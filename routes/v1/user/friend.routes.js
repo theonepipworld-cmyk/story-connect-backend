@@ -13,4 +13,5 @@ router.get("/pending", isAuthenticated, authorizeRoles('user'),friendsController
 router.get("/:id/total-friends", isAuthenticated, authorizeRoles('user'),friendMiddleware.sendFriendReq,friendsController.getAllUserFriends)
 router.get("/:id/Mutual-friends", isAuthenticated, authorizeRoles('user'),friendMiddleware.sendFriendReq,friendsController.getAllMutualFriends)
 router.get("/suggestion-friends", isAuthenticated, authorizeRoles('user'),friendsController.getSuggestionFriends)
+router.get("/un-friend/:id", isAuthenticated, authorizeRoles('user'),friendMiddleware.sendFriendReq,friendsController.unfriendReq)
 module.exports = router;

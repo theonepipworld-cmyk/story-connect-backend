@@ -6,6 +6,7 @@ const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommun
 const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
+const HashTag = require("../../models/hashTag.models.js")
 
 
 // Create Post
@@ -170,12 +171,12 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
     }
 
     const skip = (page - 1) * limit;
-
+    console.log(id,type)
     let matchStage = {};
     if (type === "profile") {
-      matchStage = { userId: new mongoose.Types.ObjectId(id) };
+      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:"profile" };
     } else if (type === "community") {
-      matchStage = { communityId: new mongoose.Types.ObjectId(id) };
+      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:"community"};
     }
 
     const pipeline = [
@@ -273,7 +274,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
                   ? {
                     "categoryInfo._id": 1,
                     "categoryInfo.name": 1,
-                     "communityInfo.manualName":1
+                    "communityInfo.manualName": 1
                   }
                   : {})
               },
@@ -304,6 +305,24 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
       }
     };
 
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+exports.getTrendingTagsService = async () => {
+  try {
+    const result = await HashTag.find({
+      usageCount: { $gt: 100 }
+    })
+      .sort({ usageCount: -1 })
+      .limit(4);
+
+    if (!result || result.length === 0) {
+      throw createError(400, resMessages.notFound.noTrendingTags);
+    }
+
+    return result;
   } catch (error) {
     throw new Error(error.message);
   }

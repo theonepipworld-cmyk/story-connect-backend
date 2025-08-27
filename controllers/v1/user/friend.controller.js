@@ -1,7 +1,13 @@
 const mongoose = require('mongoose');
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const resMessages = require("../../../constants/resMessages.constants.js");
-const { sendFriendReqService, respondFriendReqService, getAllpendingReqService ,getAllFriendService ,getAllMutualservice ,getSuggestionFriendsService} = require("../../../service/user/friend.service.js")
+const { sendFriendReqService,
+    respondFriendReqService,
+    getAllpendingReqService,
+    getAllFriendService,
+    getAllMutualservice,
+    getSuggestionFriendsService ,
+    unfriendReqService } = require("../../../service/user/friend.service.js")
 
 
 exports.sendFriendReq = async (req, res) => {
@@ -18,7 +24,7 @@ exports.sendFriendReq = async (req, res) => {
 exports.respondFriendReq = async (req, res) => {
     try {
         const { action } = req.body;
-        console.log(req.user.id , req.params.id)
+        console.log(req.user.id, req.params.id)
         await respondFriendReqService(req.user.id, req.params.id, action);
         return res.status(200).json(
             successResponse(
@@ -47,31 +53,41 @@ exports.getAllUserFriends = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const {allFriends,pagination} = await getAllFriendService(req.params.id,page,limit)
-        return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, allFriends ,pagination));
+        const { allFriends, pagination } = await getAllFriendService(req.params.id, page, limit)
+        return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, allFriends, pagination));
     }
     catch (err) {
         return res.status(400).json(errorResponse(err.message));
     }
 }
 
-exports.getAllMutualFriends = async(req,res)=>{
-    try{
-         const {mutualFriends,pagination} = await getAllMutualservice(req.user.id,req.params.id)
-           return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, mutualFriends,pagination));
+exports.getAllMutualFriends = async (req, res) => {
+    try {
+        const { mutualFriends, pagination } = await getAllMutualservice(req.user.id, req.params.id)
+        return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, mutualFriends, pagination));
     }
-     catch (err) {
+    catch (err) {
         return res.status(400).json(errorResponse(err.message));
     }
 }
 
 
-exports.getSuggestionFriends  = async(req,res)=>{
-    try{
-       const {suggestions,pagination}  = await getSuggestionFriendsService(req.user.id)
-         return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, suggestions,pagination));
+exports.getSuggestionFriends = async (req, res) => {
+    try {
+        const { suggestions, pagination } = await getSuggestionFriendsService(req.user.id)
+        return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, suggestions, pagination));
     }
-      catch (error) {
-        throw createError(500, error.message);
+    catch (err) {
+        return res.status(400).json(errorResponse(err.message));
+    }
+}
+
+exports.unfriendReq = async (req, res) => {
+    try {
+        const unfriend = await unfriendReqService(req.user.id,req.params.id)
+        return res.status(200).json(successResponse(resMessages.success.unFriendSuccessfully));
+    }
+    catch (err) {
+        return res.status(400).json(errorResponse(err.message));
     }
 }

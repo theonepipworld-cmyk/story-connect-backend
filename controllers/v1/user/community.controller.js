@@ -65,7 +65,7 @@ exports.allCommunitiesList = async (req, res) => {
     const search = req.query.search || ""
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { communities, pagination } = await allCommunitiesService(search, page, limit)
+    const { communities, pagination } = await allCommunitiesService(req.user.id,search, page, limit)
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, communities, pagination));
   }
   catch (err) {

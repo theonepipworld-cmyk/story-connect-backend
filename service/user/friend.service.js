@@ -9,7 +9,7 @@ const CommunityMember = require("../../models/communityMember.model.js")
 
 exports.sendFriendReqService = async (userId, friendReqId) => {
     try {
-        console.log(userId ,friendReqId)
+        console.log(userId, friendReqId)
         if (!userId || !friendReqId) {
             throw createError(400, resMessages.notFound.userOrFriendIdNotFound);
         }
@@ -36,6 +36,11 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             if (existing.status === "accepted") {
                 throw createError(400, resMessages.customError.alreadyFriend);
             }
+            if (existing.status === "rejected") {
+                existing.status = "pending"
+                await existing.save();
+                return existing;
+            }
         }
 
         const result = await Friend.create({
@@ -56,17 +61,20 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         if (!userId || !friendReqId) {
             throw createError(400, resMessages.notFound.userOrFriendIdNotFound);
         }
-  console.log(userId ,friendReqId)
+        console.log(userId, friendReqId)
         const user = await isUserExist(userId);
         const requester = await isUserExist(friendReqId);
+        console.log("requester------", requester)
 
         if (!requester) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
         const existing = await Friend.findOne({
-            requester: friendReqId, 
-            recipient: userId  
+            requester: friendReqId,
+            recipient: user._id
         });
+
+        console.log("existing--------------", existing)
 
         if (!existing) {
             throw createError(404, resMessages.notFound.userOrFriendIdNotFound);
@@ -80,7 +88,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             throw createError(400, resMessages.customError.alreadyRejected);
         }
 
-        // Only the recipient can accept/reject
         if (action === "accept") {
             existing.status = "accepted";
         } else if (action === "reject") {
@@ -162,6 +169,10 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
             throw createError(400, resMessages.notFound.userOrFriendIdNotFound);
         }
 
+        if (loginUserId.toString() === otherUserId.toString()) {
+            throw createError(400, resMessages.notFound.noMutualFriend);
+        }
+
         const user = await isUserExist(loginUserId);
         const recipient = await isUserExist(otherUserId);
         if (!user || !recipient) {
@@ -172,7 +183,6 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
         if (user._id != recipient._id) {
             const loginUserFriend = await getAllFriends(user._id);
             const profileUserFriend = await getAllFriends(recipient._id);
-
             const loginFriendIds = loginUserFriend.map(f => f._id.toString());
             const profileFriendIds = profileUserFriend.map(f => f._id.toString());
 
@@ -181,9 +191,8 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
             );
 
             total = mutualFriendIds.length;
-
             mutualFriends = await User.find({ _id: { $in: mutualFriendIds } })
-                .select("name email avatarUrl currentCountry")
+                .select("name email avatarUrl currentCountry bio")
                 .skip(skip)
                 .limit(limit);
         }
@@ -205,32 +214,26 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
 
 exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
     try {
+
         if (!userId) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
-
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
 
         const allFriends = await getAllFriends(user._id);
-        const allFriendIds = allFriends.map(f =>
-            f.requester.toString() === user._id.toString()
-                ? f.recipient.toString()
-                : f.requester.toString()
-        );
-
+        const allFriendIds = allFriends.map(f => f._id.toString());
+        console.log("allFriendIds", allFriendIds)
         let allFriendsOfFriends = [];
         await Promise.all(
             allFriendIds.map(async (fid) => {
                 const fof = await getAllFriends(fid);
-                const fofIds = fof.map(f =>
-                    f.requester.toString() === fid.toString()
-                        ? f.recipient.toString()
-                        : f.requester.toString()
-                );
+                console.log(fid, fof)
+                const fofIds = fof.map(f => f._id.toString())
                 allFriendsOfFriends.push(...fofIds);
+                console.log("allFriendsOfFriends", allFriendsOfFriends)
             })
         );
 
@@ -238,6 +241,7 @@ exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
             acc[id] = (acc[id] || 0) + 1;
             return acc;
         }, {});
+        console.log("fofCountMap", fofCountMap)
 
         const sameLocationUsers = await User.find({
             "currentCountry.code": user.currentCountry?.code,
@@ -267,7 +271,7 @@ exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
         const skip = (page - 1) * limit;
         const paginatedSuggestions = suggestionIds.slice(skip, skip + limit);
 
-        const suggestions = await User.find({ _id: { $in: paginatedSuggestions } });
+        const suggestions = await User.find({ _id: { $in: paginatedSuggestions } }).select("name email avatarUrl currentCountry bio");
 
         // attach mutual friends count if needed
         const finalSuggestions = suggestions.map(u => ({
@@ -290,6 +294,32 @@ exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
         throw createError(500, error.message);
     }
 };
+
+exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
+    try {
+        if (!loginUserId) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+        const user = await isUserExist(loginUserId);
+        if (!user) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+        const result = await Friend.deleteOne({
+            status: "accepted",
+            $or: [
+                { requester: loginUserId, recipient: unfriendUserId },
+                { requester: unfriendUserId, recipient: loginUserId }
+            ]
+        })
+        if (result.deletedCount === 0) {
+            throw createError(404, resMessages.customError.noFriends);
+        }
+        return result;
+    }
+    catch (error) {
+        throw createError(500, error.message);
+    }
+}
 
 
 

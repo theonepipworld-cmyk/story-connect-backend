@@ -126,3 +126,4 @@ exports.resetPassword = async ({ token, newPassword }) => {
 
   return { message: 'Password reset successful.' };
 };
+

@@ -243,9 +243,10 @@ exports.getAllFriends = async (id) => {
         { requester: id },
         { recipient: id }
       ]
-    }).populate("requester", "username avatarUrl currentCountry")
-      .populate("recipient", "username avatarUrl currentCountry");
-   console.log(result)
+    }).populate("requester", "username avatarUrl currentCountry bio")
+      .populate("recipient", "username avatarUrl currentCountry bio");
+
+      console.log(id,result)
     const friendsList = result.map(f =>
       f.requester._id.toString() === id.toString() ? f.recipient : f.requester
     );

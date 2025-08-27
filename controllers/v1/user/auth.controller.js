@@ -105,7 +105,6 @@ exports.googleAuth = async (req, res) => {
     }));
 
   } catch (error) {
-    console.error('Google Auth Error:', error);
     return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
   }
 };

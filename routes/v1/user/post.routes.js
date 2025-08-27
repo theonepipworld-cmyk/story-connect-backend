@@ -20,6 +20,7 @@ router.put("/:id", isAuthenticated, authorizeRoles('user'),updatePostValidator, 
 router.delete("/:id", isAuthenticated, authorizeRoles('user'), postController.deletePost);
 router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
 router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
+router.get("/trending-hashtags/", isAuthenticated, authorizeRoles('user', 'admin'), postController.getTrendingTags);
 
 
 module.exports = router;

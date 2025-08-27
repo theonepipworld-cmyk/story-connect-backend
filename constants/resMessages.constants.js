@@ -10,7 +10,8 @@ module.exports = {
         joinSuccessfully:"User joined successfully",
         sendReqSuccessfully:"friend Request Send Successfully",
         acceptReqSuccessfully:"friend Request Accept Successfully",
-        rejectReqSuccessfully:"friend request rejected Successfully"
+        rejectReqSuccessfully:"friend request rejected Successfully",
+        unFriendSuccessfully:"Unfriend user Successfully "
     },
     notFound: {
         emailNotFound: "Email not found",
@@ -21,7 +22,9 @@ module.exports = {
         communityNotFound:"community not found",
         communityCategoryNotFound:"community category not found",
         memberNotFound:"member not found",
-        userOrFriendIdNotFound:"either friend or user id is missing"
+        userOrFriendIdNotFound:"either friend or user id is missing",
+        noMutualFriend:"No mutual friend",
+        noTrendingTags:"No trending Tags found"
     },
     validation: {
         missingFields: "Missing required fields",

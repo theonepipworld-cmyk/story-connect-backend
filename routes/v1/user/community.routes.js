@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router();
 const communityController = require("../../../controllers/v1/user/community.controller");
-const coummnityMiddleware = require("../../../middlewares/requestValidations/user/community.middleware")
+const coummnityMiddleware = require("../../../middlewares/requestValidations/user/community.middleware");
 const { isAuthenticated } = require('../../../middlewares/requestValidations/user/isAuthenticated.js');
 const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
 
@@ -16,9 +16,5 @@ router.get("/",isAuthenticated, authorizeRoles('user','admin'),communityControll
 router.put("/remove-member",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.commmunityMemberRemove,communityController.removeCommunityMember);
 router.delete("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.communityDetails,communityController.removeCommunity);
 router.put("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.updateCommunityValidator,communityController.updateCommunityDetails);
-
-
-
-
 
 module.exports = router;

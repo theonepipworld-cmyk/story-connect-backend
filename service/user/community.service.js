@@ -189,8 +189,15 @@ exports.categoryService = async () => {
     }
 };
 
-exports.allCommunitiesService = async (search, page = 1, limit = 10) => {
+exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => {
+    if (!userId) {
+        throw createError(400, resMessages.notFound.userNotFound);
+    }
     try {
+        const user = await isUserExist(userId);
+        if (!user) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
         const offset = (page - 1) * limit;
         const result = await Community.aggregate([
             {
@@ -202,6 +209,8 @@ exports.allCommunitiesService = async (search, page = 1, limit = 10) => {
                 }
             },
             { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+
+            // Search filter
             ...(search
                 ? [
                     {
@@ -216,19 +225,58 @@ exports.allCommunitiesService = async (search, page = 1, limit = 10) => {
                 : []),
 
             {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$communityId", "$$communityIdObj"] },
+                                        { $eq: ["$userId", new mongoose.Types.ObjectId(userId)] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "joinedInfo"
+                }
+            },
+            {
+                $addFields: {
+                    isJoinedByMe: {
+                        $gt: [
+                            { $size: { $ifNull: ["$joinedInfo", []] } },
+                            0
+                        ]
+                    }
+                }
+            },
+
+            {
                 $facet: {
                     paginatedResults: [
                         { $sort: { createdAt: -1 } },
                         { $skip: offset },
                         { $limit: limit },
+                        {
+                            $project: {
+                                name: 1,
+                                description: 1,
+                                coverImage: 1,
+                                isActive: 1,
+                                manualCategoryName: 1,
+                                memberCount: 1,
+                                "categoryInfo.name": 1,
+                                isJoinedByMe: 1
+                            }
+                        }
                     ],
-                    totalCount: [
-                        { $count: "count" }
-                    ]
+                    totalCount: [{ $count: "count" }]
                 }
             }
         ]);
-
         const communities = result[0].paginatedResults;
         const total = result[0].totalCount[0]?.count || 0;
 
@@ -245,6 +293,7 @@ exports.allCommunitiesService = async (search, page = 1, limit = 10) => {
         throw new Error(error.message);
     }
 };
+
 
 exports.getCommunityDetailService = async (communityId, userId) => {
     if (!userId) {
@@ -614,6 +663,14 @@ exports.removeCommunityService = async (communityId, userId) => {
 
         if (result) {
             await CommunityMember.deleteMany({ communityId: community._id })
+            const posts = Post.find({ communityId: community._id });
+            const postIds = posts.map((p) => p._id.toString());
+            if (postIds.length > 0) {
+                await UserStats.deleteMany({
+                    postId: { $in: postIds }
+                });
+            }
+            await Post.deleteMany({ communityId: community._id });
         }
 
         return result;
