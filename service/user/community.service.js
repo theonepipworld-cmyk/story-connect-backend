@@ -269,7 +269,8 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                                 manualCategoryName: 1,
                                 memberCount: 1,
                                 "categoryInfo.name": 1,
-                                isJoinedByMe: 1
+                                isJoinedByMe: 1,
+                                 createdAt:1
                             }
                         }
                     ],
