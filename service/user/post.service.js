@@ -11,12 +11,14 @@ const HashTag = require("../../models/hashTag.models.js")
 
 // Create Post
 exports.createPost = async (data, cleanHashTags) => {
-  let Community = ""
-  if (data.communityId) {
-    Community = await isCommunityExist(data.communityId)
-  }
-  if (!Community) {
-    throw createError(400, resMessages.notFound.communityNotFound);
+  if (data.postType === "community") {
+    if (!data.communityId) {
+      throw createError(400, resMessages.notFound.communityNotFound);
+    }
+    const communityExists = await isCommunityExist(data.communityId);
+    if (!communityExists) {
+      throw createError(400, resMessages.notFound.communityNotFound);
+    }
   }
   const post = new Post(data);
   //update hashTagColection
