@@ -368,7 +368,8 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                     "userInfo.avatarUrl": 1,
                     "categoryInfo.name": 1,
                     "userInfo.currentCountry": 1,
-                    isJoinedByMe: 1
+                     isJoinedByMe: 1,
+                     createdAt:1
                 }
             }
         ]);
