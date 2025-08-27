@@ -22,7 +22,6 @@ const postSchema = new mongoose.Schema(
     },
     postType: {
       type: String,
-      trim: true,
     },
     mediaUrls: [
       {

@@ -171,12 +171,11 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
     }
 
     const skip = (page - 1) * limit;
-    console.log(id,type)
     let matchStage = {};
     if (type == "profile") {
-      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:type };
+      matchStage = { userId: new mongoose.Types.ObjectId(id), postType: type };
     } else if (type == "community") {
-      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:type};
+      matchStage = { userId: new mongoose.Types.ObjectId(id), postType: type };
     }
 
     const pipeline = [
@@ -195,26 +194,23 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
             },
             {
               $addFields: {
-                totalLikes: { $ifNull: [{ $sum: { $ifNull: ["$stats.totalLikes", []] } }, 0] },
-                totalViews: { $ifNull: [{ $sum: { $ifNull: ["$stats.totalViews", []] } }, 0] },
+                totalLikes: {
+                  $size: { $ifNull: ["$stats.likes", []] }
+                },
+                totalViews: {
+                  $size: { $ifNull: ["$stats.views", []] }
+                },
                 isPostLikedByMe: {
                   $anyElementTrue: {
                     $map: {
                       input: { $ifNull: ["$stats.likes", []] },
-                      as: "likeArr",
-                      in: {
-                        $anyElementTrue: {
-                          $map: {
-                            input: { $ifNull: ["$$likeArr", []] },
-                            as: "like",
-                            in: { $eq: ["$$like.userId", user._id.toString()] }
-                          }
-                        }
-                      }
+                      as: "like",
+                      in: { $eq: ["$$like.userId", user._id.toString()] }
                     }
                   }
                 }
               }
+
             },
             // Join comments
             {
@@ -230,7 +226,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
                 totalComments: { $size: { $ifNull: ["$comments", []] } }
               },
             },
-            ...(type === "community"
+            ...(type == "community"
               ? [
                 {
                   $lookup: {
