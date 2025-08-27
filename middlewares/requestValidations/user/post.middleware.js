@@ -36,7 +36,7 @@ exports.createPostValidator = [
       return next();
     }
 
-    const imageMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const imageMimes = ["image/jpeg", "image/png", "image/webp", "image/gif","image/jpg"];
     const videoMimes = ["video/mp4", "video/mpeg", "video/webm", "video/quicktime"];
 
     let hasImage = false;
