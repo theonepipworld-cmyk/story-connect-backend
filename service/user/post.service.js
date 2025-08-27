@@ -173,10 +173,10 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
     const skip = (page - 1) * limit;
     console.log(id,type)
     let matchStage = {};
-    if (type === "profile") {
-      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:"profile" };
-    } else if (type === "community") {
-      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:"community"};
+    if (type == "profile") {
+      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:type };
+    } else if (type == "community") {
+      matchStage = { userId: new mongoose.Types.ObjectId(id) ,postType:type};
     }
 
     const pipeline = [
