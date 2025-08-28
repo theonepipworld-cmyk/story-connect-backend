@@ -49,6 +49,7 @@ exports.getAllPosts = async (page, limit, search, userId) => {
   if (!user) {
     throw createError(400, resMessages.notFound.userNotFound);
   }
+  console.log(userId,user)
   const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user));
   const data = result[0].data;
   const total = result[0].totalCount[0]?.count || 0;
@@ -196,23 +197,23 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
             },
             {
               $addFields: {
-                totalLikes: {
-                  $size: { $ifNull: ["$stats.likes", []] }
-                },
-                totalViews: {
-                  $size: { $ifNull: ["$stats.views", []] }
-                },
+                totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
+                totalViews: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] } },
                 isPostLikedByMe: {
-                  $anyElementTrue: {
-                    $map: {
-                      input: { $ifNull: ["$stats.likes", []] },
-                      as: "like",
-                      in: { $eq: ["$$like.userId", user._id.toString()] }
+                  $let: {
+                    vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
+                    in: {
+                      $anyElementTrue: {
+                        $map: {
+                          input: { $ifNull: ["$$statsDoc.likes", []] },
+                          as: "like",
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] }
+                        }
+                      }
                     }
                   }
                 }
               }
-
             },
             // Join comments
             {

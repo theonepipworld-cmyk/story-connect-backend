@@ -166,25 +166,24 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
             },
           },
           {
-
             $addFields: {
-              totalLikes: {
-                $size: { $ifNull: ["$stats.likes", []] }
-              },
-              totalViews: {
-                $size: { $ifNull: ["$stats.views", []] }
-              },
+              totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
+              totalViews: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] } },
               isPostLikedByMe: {
-                $anyElementTrue: {
-                  $map: {
-                    input: { $ifNull: ["$stats.likes", []] },
-                    as: "like",
-                    in: { $eq: ["$$like.userId", user._id.toString()] }
+                $let: {
+                  vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
+                  in: {
+                    $anyElementTrue: {
+                      $map: {
+                        input: { $ifNull: ["$$statsDoc.likes", []] },
+                        as: "like",
+                        in: { $eq: ["$$like.userId", { $toString: user._id }] }
+                      }
+                    }
                   }
                 }
               }
             }
-
           },
           {
             $lookup: {
@@ -246,7 +245,7 @@ exports.getAllFriends = async (id) => {
     }).populate("requester", "username avatarUrl currentCountry bio")
       .populate("recipient", "username avatarUrl currentCountry bio");
 
-      console.log(id,result)
+    console.log(id, result)
     const friendsList = result.map(f =>
       f.requester._id.toString() === id.toString() ? f.recipient : f.requester
     );
