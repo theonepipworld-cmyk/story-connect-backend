@@ -270,7 +270,7 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                                 memberCount: 1,
                                 "categoryInfo.name": 1,
                                 isJoinedByMe: 1,
-                                 createdAt:1
+                                createdAt: 1
                             }
                         }
                     ],
@@ -369,8 +369,8 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                     "userInfo.avatarUrl": 1,
                     "categoryInfo.name": 1,
                     "userInfo.currentCountry": 1,
-                     isJoinedByMe: 1,
-                     createdAt:1
+                    isJoinedByMe: 1,
+                    createdAt: 1
                 }
             }
         ]);
@@ -490,10 +490,11 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                         $map: {
                                             input: { $ifNull: ["$stats.likes", []] },
                                             as: "like",
-                                            in: { $eq: ["$$like.userId", user._id.toString()] }
+                                            in: { $eq: ["$$like.userId", { $toString: user._id }] }
                                         }
                                     }
                                 }
+
                             }
                         },
                         {

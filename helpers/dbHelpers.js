@@ -156,7 +156,6 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
             },
           },
           { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-
           {
             $lookup: {
               from: "userstats",

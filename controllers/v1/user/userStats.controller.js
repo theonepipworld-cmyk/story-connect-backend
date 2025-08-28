@@ -9,6 +9,7 @@ const { addStatsService ,getAllLikedUserService} = require("../../../service/use
 exports.addUserStats = async (req, res) => {
     try {
         const { postId, type, commentId , parentCommentId } = req.body;
+        console.log("user-sttas",req.body)
         const { id, username } = req.user
         const addStats = await addStatsService(postId, type, commentId, id, username,parentCommentId);
         return res.status(200).json(
