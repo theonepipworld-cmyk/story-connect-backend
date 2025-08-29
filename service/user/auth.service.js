@@ -20,12 +20,6 @@ exports.signup = async (data) => {
     throw err;
   }
 
-  if (usernameExist) {
-    const err = new Error(resMessages.validation.usernameAlreadyExist);
-    err.statusCode = 400;
-    throw err;
-  }
-
   const hashedPassword = await hashPassword(password);
   const newUser = new User({
     email,
