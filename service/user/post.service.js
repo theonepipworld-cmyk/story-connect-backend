@@ -7,6 +7,7 @@ const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const HashTag = require("../../models/hashTag.models.js")
+const Block = require("../../models/block.model.js")
 
 
 // Create Post
@@ -49,8 +50,18 @@ exports.getAllPosts = async (page, limit, search, userId) => {
   if (!user) {
     throw createError(400, resMessages.notFound.userNotFound);
   }
-  console.log(userId,user)
-  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user));
+
+  const Blocked = await Block.find({
+    $or: [
+      { blocked: userId },
+      { blocker: userId }
+    ]
+  });
+
+  const blockedUserIds = Blocked.map(b =>
+    b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+  );
+  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds));
   const data = result[0].data;
   const total = result[0].totalCount[0]?.count || 0;
   return {
@@ -74,8 +85,17 @@ exports.getPostById = async (id, userId) => {
   if (!user) {
     throw createError(400, resMessages.notFound.userNotFound);
   }
+  const post = await isPostExist(id);
+  const isBlocked = await Block.findOne({
+    $or: [
+      { blocker: post.userId, blocked: userId },
+      { blocker: userId, blocked: post.userId }
+    ]
+  });
+  if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
+
   const result = await Post.aggregate(
-    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "", user)
+    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "", user, [])
   );
   const data = result[0].data;
   return {
@@ -172,7 +192,13 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
     if (!user) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
-
+    const isBlocked = await Block.findOne({
+      $or: [
+        { blocker: id, blocked: userId },
+        { blocker: userId, blocked: id }
+      ]
+    });
+    if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
     const skip = (page - 1) * limit;
     let matchStage = {};
     if (type == "profile") {

@@ -11,7 +11,9 @@ module.exports = {
         sendReqSuccessfully:"friend Request Send Successfully",
         acceptReqSuccessfully:"friend Request Accept Successfully",
         rejectReqSuccessfully:"friend request rejected Successfully",
-        unFriendSuccessfully:"Unfriend user Successfully "
+        unFriendSuccessfully:"Unfriend user Successfully ",
+        blockedSuccessfully:"user block Successfully",
+        unBlockSuccessfully:"user unblock Successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
@@ -24,7 +26,9 @@ module.exports = {
         memberNotFound:"member not found",
         userOrFriendIdNotFound:"either friend or user id is missing",
         noMutualFriend:"No mutual friend",
-        noTrendingTags:"No trending Tags found"
+        noTrendingTags:"No trending Tags found",
+        noBlockUser:"no Block profiles found",
+        userNotBlocked:"user is not blocked "
     },
     validation: {
         missingFields: "Missing required fields",
@@ -46,7 +50,9 @@ module.exports = {
         invalidId:"invalidId",
           typeUserStatsError: "Type not defeined properly",
           inValidRole:"role shuld be admin or user",
-          invalidFriendAction:"action must be accept or reject"
+          invalidFriendAction:"action must be accept or reject",
+          userBlocked:"user can view the profile as user is blocked by this user",
+          usernameAlreadyExist:"username is already exist"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

@@ -7,6 +7,7 @@ const UserStats = require("../models/userActivityStats.model.js")
 const Community = require("../models/community.model.js")
 const mongoose = require("mongoose")
 const Friend = require("../models/friends.model.js")
+const enums = require("../constants/enum.constants.js")
 
 
 exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
@@ -124,13 +125,12 @@ exports.validateComment = async (postId, commentId, parentCommentId, isReply = f
 }
 
 exports.createError = (status, message) => {
-  const err = new Error(resMessages.generalError.somethingWentWrong + " - " + message);
+  const err = new Error(message); 
   err.statusCode = status;
   return err;
-}
+};
 
-
-exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = "", user) => {
+exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = "", user, blockedUserIds = []) => {
   const skip = (page - 1) * limit;
   const searchMatch = search
 
@@ -143,7 +143,7 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
     }
     : {};
   return [
-    { $match: { ...match, ...searchMatch } },
+    { $match: { ...match, ...searchMatch, userId: { $nin: blockedUserIds }, } },
     {
       $facet: {
         data: [
@@ -236,7 +236,7 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
 exports.getAllFriends = async (id) => {
   try {
     const result = await Friend.find({
-      status: "accepted",
+      status: enums.friend_Request_status.ACCEPTED,
       $or: [
         { requester: id },
         { recipient: id }
@@ -244,7 +244,6 @@ exports.getAllFriends = async (id) => {
     }).populate("requester", "username avatarUrl currentCountry bio")
       .populate("recipient", "username avatarUrl currentCountry bio");
 
-    console.log(id, result)
     const friendsList = result.map(f =>
       f.requester._id.toString() === id.toString() ? f.recipient : f.requester
     );

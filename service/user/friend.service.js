@@ -5,11 +5,12 @@ const resMessages = require("../../constants/resMessages.constants.js");
 const Friend = require("../../models/friends.model.js");
 const User = require("../../models/user.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
+const enums = require("../../constants/enum.constants.js")
+const Block = require("../../models/block.model");
 
 
 exports.sendFriendReqService = async (userId, friendReqId) => {
     try {
-        console.log(userId, friendReqId)
         if (!userId || !friendReqId) {
             throw createError(400, resMessages.notFound.userOrFriendIdNotFound);
         }
@@ -21,7 +22,15 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         if (!recipient) {
             throw createError(400, resMessages.notFound.ReqUser);
         }
-
+        const isBlocked = await Block.findOne({
+            $or: [
+                { blocker: userId, blocked: friendReqId },
+                { blocker: friendReqId, blocked: userId }
+            ]
+        });
+        if (isBlocked) {
+            throw createError(403, resMessages.validation.userBlocked);
+        }
         const existing = await Friend.findOne({
             $or: [
                 { requester: userId, recipient: friendReqId },
@@ -30,14 +39,14 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         });
 
         if (existing) {
-            if (existing.status === "pending") {
+            if (existing.status === enums.friend_Request_status.PENDING) {
                 throw createError(400, resMessages.customError.friendReqSent);
             }
-            if (existing.status === "accepted") {
+            if (existing.status === enums.friend_Request_status.ACCEPTED) {
                 throw createError(400, resMessages.customError.alreadyFriend);
             }
-            if (existing.status === "rejected") {
-                existing.status = "pending"
+            if (existing.status === enums.friend_Request_status.REJECTED) {
+                existing.status = enums.friend_Request_status.PENDING
                 await existing.save();
                 return existing;
             }
@@ -46,7 +55,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         const result = await Friend.create({
             requester: userId,
             recipient: friendReqId,
-            status: "pending"
+            status: enums.friend_Request_status.PENDING
         });
 
         return result;
@@ -79,19 +88,28 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         if (!existing) {
             throw createError(404, resMessages.notFound.userOrFriendIdNotFound);
         }
+        const isBlocked = await Block.findOne({
+            $or: [
+                { blocker: userId, blocked: friendReqId },
+                { blocker: friendReqId, blocked: userId }
+            ]
+        });
+        if (isBlocked) {
+            throw createError(403, resMessages.validation.userBlocked);
+        }
 
-        if (existing.status === "accepted") {
+        if (existing.status === enums.friend_Request_status.ACCEPTED) {
             throw createError(400, resMessages.customError.alreadyFriend);
         }
 
-        if (existing.status === "rejected") {
+        if (existing.status === enums.friend_Request_status.REJECTED) {
             throw createError(400, resMessages.customError.alreadyRejected);
         }
 
-        if (action === "accept") {
-            existing.status = "accepted";
-        } else if (action === "reject") {
-            existing.status = "rejected";
+        if (action === enums.friend_Request_status.ACCEPTED) {
+            existing.status = enums.friend_Request_status.ACCEPTED;
+        } else if (action === enums.friend_Request_status.REJECTED) {
+            existing.status = enums.friend_Request_status.REJECTED;
         } else {
             throw createError(400, resMessages.validation.invalidFriendAction);
         }
@@ -117,9 +135,14 @@ exports.getAllpendingReqService = async (userId) => {
 
         const pendingReq = await Friend.find({
             recipient: userId,
-            status: "pending"
-        }).populate("requester", "name email avatarUrl currentCountry")
-
+            status: enums.friend_Request_status.PENDING
+        }).populate({
+            path: "requester",
+            select: "name email avatarUrl currentCountry",
+            match: {
+                _id: { $nin: await Block.distinct("blocked", { blocker: userId }) }
+            }
+        });
         if (!pendingReq || pendingReq.length === 0) {
             throw createError(404, resMessages.customError.noPendingReq);
         }
@@ -139,13 +162,21 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10) => {
 
         const skip = (page - 1) * limit;
         const total = await Friend.countDocuments({
-            status: "accepted",
+            status: enums.friend_Request_status.ACCEPTED,
             $or: [{ requester: userId }, { recipient: userId }]
         });
         const allFriends = await getAllFriends(userId)
         if (!allFriends || allFriends.length === 0) {
             throw createError(404, resMessages.customError.noFriends);
         }
+        const blockedUsers = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        });
+        const blockedIds = blockedUsers.map(b =>
+            b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
+        );
+
+        allFriends = allFriends.filter(f => !blockedIds.includes(f._id.toString()));
 
         return {
             allFriends,
@@ -214,10 +245,10 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
 
 exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
     try {
-
         if (!userId) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
+
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
@@ -225,34 +256,40 @@ exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
 
         const allFriends = await getAllFriends(user._id);
         const allFriendIds = allFriends.map(f => f._id.toString());
-        console.log("allFriendIds", allFriendIds)
+
+        const blockedUsers = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        });
+        const blockedIds = blockedUsers.map(b =>
+            b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
+        );
+
         let allFriendsOfFriends = [];
         await Promise.all(
             allFriendIds.map(async (fid) => {
                 const fof = await getAllFriends(fid);
-                console.log(fid, fof)
-                const fofIds = fof.map(f => f._id.toString())
+                const fofIds = fof.map(f => f._id.toString());
                 allFriendsOfFriends.push(...fofIds);
-                console.log("allFriendsOfFriends", allFriendsOfFriends)
             })
         );
 
         const fofCountMap = allFriendsOfFriends.reduce((acc, id) => {
-            acc[id] = (acc[id] || 0) + 1;
+            if (!blockedIds.includes(id)) {
+                acc[id] = (acc[id] || 0) + 1;
+            }
             return acc;
         }, {});
-        console.log("fofCountMap", fofCountMap)
 
         const sameLocationUsers = await User.find({
             "currentCountry.code": user.currentCountry?.code,
-            _id: { $ne: user._id }
+            _id: { $ne: user._id, $nin: blockedIds }
         });
 
         const communityMemberships = await CommunityMember.find({ userId: user._id });
         const communityIds = communityMemberships.map(c => c.communityId);
         const matchedCommunityUsers = await CommunityMember.find({
             communityId: { $in: communityIds },
-            userId: { $ne: user._id }
+            userId: { $ne: user._id, $nin: blockedIds }
         }).populate("userId");
 
         const communityUserIds = matchedCommunityUsers.map(c => c.userId._id.toString());
@@ -262,8 +299,13 @@ exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
             ...sameLocationUsers.map(u => u._id.toString()),
             ...communityUserIds
         ]);
+
         allFriendIds.push(user._id.toString());
-        suggestionIds = [...suggestionIds].filter(id => !allFriendIds.includes(id));
+        suggestionIds = [...suggestionIds].filter(
+            id => !allFriendIds.includes(id) && !blockedIds.includes(id)
+        );
+
+    
         suggestionIds = suggestionIds.sort(() => 0.5 - Math.random()).slice(0, 100);
 
         const total = suggestionIds.length;
@@ -271,14 +313,16 @@ exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
         const skip = (page - 1) * limit;
         const paginatedSuggestions = suggestionIds.slice(skip, skip + limit);
 
-        const suggestions = await User.find({ _id: { $in: paginatedSuggestions } }).select("name email avatarUrl currentCountry bio");
+        // final user fetch
+        const suggestions = await User.find({
+            _id: { $in: paginatedSuggestions }
+        }).select("name email avatarUrl currentCountry bio");
 
-        // attach mutual friends count if needed
+        // attach mutual friend count
         const finalSuggestions = suggestions.map(u => ({
             ...u.toObject(),
             mutualFriendsCount: fofCountMap[u._id.toString()] || 0
         }));
-
 
         return {
             suggestions: finalSuggestions,
@@ -305,7 +349,7 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
             throw createError(400, resMessages.notFound.userNotFound);
         }
         const result = await Friend.deleteOne({
-            status: "accepted",
+            status: enums.friend_Request_status.ACCEPTED,
             $or: [
                 { requester: loginUserId, recipient: unfriendUserId },
                 { requester: unfriendUserId, recipient: loginUserId }

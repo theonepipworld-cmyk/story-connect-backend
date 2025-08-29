@@ -9,6 +9,7 @@ const Hashtag = require("../../models/hashTag.models.js")
 const Community = require("../../models/community.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const CommunityCategory = require("../../models/communityCategoryModel.js")
+const Block = require("../../models/block.model.js")
 
 
 
@@ -80,6 +81,15 @@ exports.joinCommunityService = async (userId, data) => {
         if (isAlreadyMember) {
             throw createError(400, resMessages.validation.alreadyCommunityMember);
         }
+
+        const community = await isCommunityExist(communityId);
+        const blocked = await Block.findOne({
+            $or: [
+                { blocker: community.userId, blocked: userId },
+                { blocker: userId, blocked: community.userId }
+            ]
+        });
+        if (blocked) throw createError(403, resMessages.validation.userBlocked);
         const joined = await CommunityMember.create({
             userId: user._id,
             communityId: communityId,
@@ -199,7 +209,21 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
             throw createError(400, resMessages.notFound.userNotFound);
         }
         const offset = (page - 1) * limit;
+        const Blocked = Block.find({
+            $or: [
+                { blocker: userId },
+                { blocked: userId }
+            ]
+        })
+        const blockedUserIds = await Blocked.map(b =>
+            b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+        );
         const result = await Community.aggregate([
+            {
+                $match: {
+                    userId: { $nin: blockedUserIds }
+                }
+            },
             {
                 $lookup: {
                     from: "communitycategories",
@@ -300,11 +324,21 @@ exports.getCommunityDetailService = async (communityId, userId) => {
     if (!userId) {
         throw createError(400, resMessages.notFound.userNotFound);
     }
-
     try {
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
+        }
+        const community = await isCommunityExist(communityId)
+        const communityUserId = community.userId
+        const blocked = await Block.findOne({
+            $or: [
+                { blocker: communityUserId, blocked: userId },
+                { blocker: userId, blocked: communityUserId }
+            ]
+        })
+        if (blocked) {
+            throw new Error(resMessages.validation.userBlocked);
         }
         const result = await Community.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(communityId) } },
@@ -317,7 +351,6 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 }
             },
             { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-
             {
                 $lookup: {
                     from: "communitycategories",
@@ -451,6 +484,14 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
+        const community = await isCommunityExist(communityId);
+        const blocked = await Block.findOne({
+            $or: [
+                { blocker: community.userId, blocked: userId },
+                { blocker: userId, blocked: community.userId }
+            ]
+        });
+        if (blocked) throw createError(403, resMessages.validation.userBlocked);
         const offSet = (page - 1) * limit
         const result = await Post.aggregate([
             {

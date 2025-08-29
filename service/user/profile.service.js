@@ -6,10 +6,22 @@ const { checkFieldExists, getAllFriends } = require("../../helpers/dbHelpers.js"
 const CountryList = require("../../models/countryList.model.js")
 const professionalSymbol = require("../../models/professionalSymbolModel.js")
 const Friend = require("../../models/friends.model.js")
+const Block = require("../../models/block.model.js")
 
 exports.getProfile = async (userId, otheruserId) => {
     const id = otheruserId || userId;
+    if (otheruserId) {
+        const isBlocked = await Block.findOne({
+            $or: [
+                { blocker: otheruserId, blocked: userId },
+                { blocker: userId, blocked: otheruserId }
+            ]
+        });
 
+        if (isBlocked) {
+            throw new Error(resMessages.validation.userBlocked);
+        }
+    }
     const user = await User.findById(id)
         .select('-passwordHash -resetPasswordExpires -resetPasswordToken')
         .lean();
@@ -34,7 +46,7 @@ exports.getProfile = async (userId, otheruserId) => {
         // mutualFriends = await User.find({ _id: { $in: mutualFriendIds } })
         //     .select("name email profilePicture");
 
-        mutualFriendsCount = mutualFriendIds.length; 
+        mutualFriendsCount = mutualFriendIds.length;
     }
 
     const totalFriends = await Friend.countDocuments({

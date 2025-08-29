@@ -37,7 +37,7 @@ exports.acceptRejectReq = [
 
     check("action")
         .notEmpty().withMessage(`${resMessages.validation.missingFields}: action`)
-        .isIn(["accept", "reject"]).withMessage(`${resMessages.validation.invalidFriendAction}`),
+        .isIn(["accepted", "rejected"]).withMessage(`${resMessages.validation.invalidFriendAction}`),
         
     validate
 ];
