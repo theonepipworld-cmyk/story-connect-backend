@@ -51,8 +51,9 @@ module.exports = {
           typeUserStatsError: "Type not defeined properly",
           inValidRole:"role shuld be admin or user",
           invalidFriendAction:"action must be accept or reject",
-          userBlocked:"user can view the profile as user is blocked by this user",
-          usernameAlreadyExist:"username is already exist"
+          userBlocked:"user is blocked by you or you are blocked by user",
+          usernameAlreadyExist:"username is already exist",
+          userNotLikedorView:"user can not like and view the post as user is blocked or user blocked the post owner"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

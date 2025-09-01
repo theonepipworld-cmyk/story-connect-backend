@@ -11,7 +11,7 @@ const { createCommunityService,
   getCommunityPostsService,
   removeCommunityMemberService,
   removeCommunityService,
-  updateCommunityService } = require("../../../service/user/community.service.js")
+  updateCommunityService,listAllCommunityService } = require("../../../service/user/community.service.js")
 
 
 
@@ -147,6 +147,16 @@ exports.updateCommunityDetails = async (req, res) => {
     return res.status(200).json(successResponse(resMessages.success.updateSuccessful, update));
   }
   catch (err) {
+    return res.status(400).json(errorResponse(err.message));
+  }
+}
+
+exports.getCommunities = async(req,res)=>{
+  try{
+    const allCommunities = await listAllCommunityService();
+      return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, allCommunities));
+  }
+    catch (err) {
     return res.status(400).json(errorResponse(err.message));
   }
 }

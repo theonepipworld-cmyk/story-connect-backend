@@ -165,21 +165,21 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10) => {
             status: enums.friend_Request_status.ACCEPTED,
             $or: [{ requester: userId }, { recipient: userId }]
         });
-        const allFriends = await getAllFriends(userId)
+        const allFriends = await getAllFriends(userId);
         if (!allFriends || allFriends.length === 0) {
             throw createError(404, resMessages.customError.noFriends);
         }
+
         const blockedUsers = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
         });
         const blockedIds = blockedUsers.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         );
-
-        allFriends = allFriends.filter(f => !blockedIds.includes(f._id.toString()));
+        const filteredFriends = allFriends.filter(f => !blockedIds.includes(f._id.toString()));
 
         return {
-            allFriends,
+            allFriends: filteredFriends,
             pagination: {
                 total,
                 totalPages: Math.ceil(total / limit),
@@ -187,7 +187,6 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10) => {
                 limit: parseInt(limit),
             },
         };
-
     } catch (error) {
         throw createError(500, error.message);
     }
@@ -305,7 +304,7 @@ exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
             id => !allFriendIds.includes(id) && !blockedIds.includes(id)
         );
 
-    
+
         suggestionIds = suggestionIds.sort(() => 0.5 - Math.random()).slice(0, 100);
 
         const total = suggestionIds.length;
