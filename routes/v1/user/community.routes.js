@@ -16,5 +16,5 @@ router.get("/",isAuthenticated, authorizeRoles('user','admin'),communityControll
 router.put("/remove-member",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.commmunityMemberRemove,communityController.removeCommunityMember);
 router.delete("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.communityDetails,communityController.removeCommunity);
 router.put("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.updateCommunityValidator,communityController.updateCommunityDetails);
-router.get("/all-communities",isAuthenticated, authorizeRoles('user','admin'),communityController.allCommunitiesList);
+router.get("/all-communities",isAuthenticated, authorizeRoles('user','admin'),communityController.getCommunities);
 module.exports = router;
