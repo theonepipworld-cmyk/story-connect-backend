@@ -205,7 +205,6 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
     }
 
     try {
-
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
@@ -770,9 +769,10 @@ exports.updateCommunityService = async (communityId, userId, data, file) => {
     }
 };
 
-exports.listAllCommunityService = async () => {
+exports.listAllCommunityService = async(userId) => {
     try {
         const result = await Community.find({}, { _id: 1, name: 1 });
+        console.log(result)
         return result;
     } catch (error) {
         throw new Error(error.message);
