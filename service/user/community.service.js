@@ -200,126 +200,115 @@ exports.categoryService = async () => {
 };
 
 exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => {
-    if (!userId) {
-        throw createError(400, resMessages.notFound.userNotFound);
+  if (!userId) {
+    throw createError(400, resMessages.notFound.userNotFound);
+  }
+
+  try {
+
+    const user = await isUserExist(userId);
+    if (!user) {
+      throw createError(400, resMessages.notFound.userNotFound);
     }
-    console.log(userId)
-    try {
-        const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(400, resMessages.notFound.userNotFound);
+
+    const offset = (page - 1) * limit;
+
+    const Blocked = await Block.find({
+      $or: [{ blocker: userId }, { blocked: userId }]
+    });
+
+    const blockedUserIds = (Blocked || []).map(b =>
+      b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+    );
+
+    const result = await Community.aggregate([
+      { $match: { userId: { $nin: blockedUserIds } } },
+      {
+        $lookup: {
+          from: "communitycategories",
+          localField: "category",
+          foreignField: "_id",
+          as: "categoryInfo"
         }
-        const offset = (page - 1) * limit;
-        const Blocked = await Block.find({
-            $or: [
-                { blocker: userId },
-                { blocked: userId }
-            ]
-        })
-        console.log("Blocked----------------------------", Blocked);
-        const blockedUserIds = await Blocked?.map(b =>
-            b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
-        );
-        const result = await Community.aggregate([
-            {
-                $match: {
-                    userId: { $nin: blockedUserIds }
-                }
-            },
-            {
-                $lookup: {
-                    from: "communitycategories",
-                    localField: "category",
-                    foreignField: "_id",
-                    as: "categoryInfo"
-                }
-            },
-            { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
-
-            // Search filter
-            ...(search
-                ? [
-                    {
-                        $match: {
-                            $or: [
-                                { "categoryInfo.name": { $regex: search, $options: "i" } },
-                                { name: { $regex: search, $options: "i" } },
-                            ]
-                        }
-                    }
-                ]
-                : []),
-
-            {
-                $lookup: {
-                    from: "communitymembers",
-                    let: { communityIdObj: "$_id" },
-                    pipeline: [
-                        {
-                            $match: {
-                                $expr: {
-                                    $and: [
-                                        { $eq: ["$communityId", "$$communityIdObj"] },
-                                        { $eq: ["$userId", new mongoose.Types.ObjectId(userId)] }
-                                    ]
-                                }
-                            }
-                        }
-                    ],
-                    as: "joinedInfo"
-                }
-            },
-            {
-                $addFields: {
-                    isJoinedByMe: {
-                        $gt: [
-                            { $size: { $ifNull: ["$joinedInfo", []] } },
-                            0
-                        ]
-                    }
-                }
-            },
-
-            {
-                $facet: {
-                    paginatedResults: [
-                        { $sort: { createdAt: -1 } },
-                        { $skip: offset },
-                        { $limit: limit },
-                        {
-                            $project: {
-                                name: 1,
-                                description: 1,
-                                coverImage: 1,
-                                isActive: 1,
-                                manualCategoryName: 1,
-                                memberCount: 1,
-                                "categoryInfo.name": 1,
-                                isJoinedByMe: 1,
-                                createdAt: 1
-                            }
-                        }
-                    ],
-                    totalCount: [{ $count: "count" }]
-                }
+      },
+      { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+      ...(search
+        ? [{
+            $match: {
+              $or: [
+                { "categoryInfo.name": { $regex: search, $options: "i" } },
+                { name: { $regex: search, $options: "i" } }
+              ]
             }
-        ]);
-        const communities = result[0].paginatedResults;
-        const total = result[0].totalCount[0]?.count || 0;
-
-        return {
-            communities,
-            pagination: {
-                total,
-                totalPages: Math.ceil(total / limit),
-                currentPage: page,
-                limit,
+          }]
+        : []),
+      {
+        $lookup: {
+          from: "communitymembers",
+          let: { communityIdObj: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$communityId", "$$communityIdObj"] },
+                    { $eq: ["$userId", userId] }
+                  ]
+                }
+              }
             }
-        };
-    } catch (error) {
-        throw new Error(error.message);
-    }
+          ],
+          as: "joinedInfo"
+        }
+      },
+      {
+        $addFields: {
+          isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] }
+        }
+      },
+      {
+        $facet: {
+          paginatedResults: [
+            { $sort: { createdAt: -1 } },
+            { $skip: offset },
+            { $limit: limit },
+            {
+              $project: {
+                name: 1,
+                description: 1,
+                coverImage: 1,
+                isActive: 1,
+                manualCategoryName: 1,
+                memberCount: 1,
+                "categoryInfo.name": 1,
+                isJoinedByMe: 1,
+                createdAt: 1
+              }
+            }
+          ],
+          totalCount: [{ $count: "count" }]
+        }
+      }
+    ]);
+
+    const communities = result[0]?.paginatedResults || [];
+    const total = result[0]?.totalCount?.[0]?.count || 0;
+
+    return {
+      communities,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        limit
+      }
+    };
+  } catch (error) {
+    if (error.statusCode) throw error;
+    throw new Error(error.message);
+  }
 };
+
 
 
 exports.getCommunityDetailService = async (communityId, userId) => {
