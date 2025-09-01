@@ -203,19 +203,21 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
     if (!userId) {
         throw createError(400, resMessages.notFound.userNotFound);
     }
+    console.log(userId)
     try {
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
         const offset = (page - 1) * limit;
-        const Blocked = Block.find({
+        const Blocked = await Block.find({
             $or: [
                 { blocker: userId },
                 { blocked: userId }
             ]
         })
-        const blockedUserIds = await Blocked.map(b =>
+        console.log("Blocked----------------------------", Blocked);
+        const blockedUserIds = await Blocked?.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
         );
         const result = await Community.aggregate([
