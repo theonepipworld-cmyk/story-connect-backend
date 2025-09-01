@@ -9,7 +9,6 @@ router.post("/", isAuthenticated, authorizeRoles('user','admin'),coummnityMiddle
 router.post("/join-members",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.joinedCommunity,communityController.joinCommunity);
 router.get("/user-communities",isAuthenticated, authorizeRoles('user','admin'),communityController.userCommunity);
 router.get("/category",isAuthenticated, authorizeRoles('user','admin'),communityController.categoryList);
-router.get("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.communityDetails,communityController.getCommunitydetails);
 router.get("/:id/members",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.getCommunityMembersValidation,communityController.getCommunityMembers);
 router.get("/:id/post",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.getCommunityMembersValidation,communityController.getCommunitiesPost);
 router.get("/",isAuthenticated, authorizeRoles('user','admin'),communityController.allCommunitiesList);
@@ -17,4 +16,5 @@ router.put("/remove-member",isAuthenticated, authorizeRoles('user','admin'),coum
 router.delete("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.communityDetails,communityController.removeCommunity);
 router.put("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.updateCommunityValidator,communityController.updateCommunityDetails);
 router.get("/communitiesId",isAuthenticated, authorizeRoles('user','admin'),communityController.getCommunitiesIdList);
+router.get("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.communityDetails,communityController.getCommunitydetails);
 module.exports = router;

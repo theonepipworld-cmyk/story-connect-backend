@@ -153,6 +153,7 @@ exports.updateCommunityDetails = async (req, res) => {
 
 exports.getCommunitiesIdList = async(req,res)=>{
   try{
+    console.log("userid-----------------",req.user.id)
     const allCommunities = await listAllCommunityService(req.user.id);
       return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, allCommunities));
   }
