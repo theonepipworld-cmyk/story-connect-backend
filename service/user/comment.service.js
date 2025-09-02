@@ -260,6 +260,9 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                                     $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }]
                                 },
                                 replyCount: 1,
+                                totalLikes: {
+                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
+                                },
                                 isCommentLikedByMe: 1
                             }
                         }
@@ -324,7 +327,7 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                 $match: {
                     postId: new mongoose.Types.ObjectId(postId),
                     parentCommentId: new mongoose.Types.ObjectId(parentCommentId),
-                    userId: { $nin: blockedUserIds } 
+                    userId: { $nin: blockedUserIds }
                 }
             },
             {
