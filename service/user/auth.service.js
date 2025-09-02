@@ -69,6 +69,7 @@ exports.login = async ({ email, password }) => {
 
 exports.forgotPassword = async ({ email }) => {
   const user = await checkFieldExists('email', email, true);
+  console.log(user)
   if (!user) {
     const err = new Error(resMessages.notFound.emailNotFound);
     err.statusCode = 404;

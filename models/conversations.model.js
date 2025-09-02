@@ -8,15 +8,16 @@ const conversationSchema = new mongoose.Schema({
             required: true
         }
     ],
-    lastSeen: {
+    lastMessage: {
         type: mongoose.Schema.Types.ObjectId, ref: "Message"
     },
-    unseenCount: [{    
+    unseenCount: [{
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         count: { type: Number, default: 0 }
-    
-    }]
+
+    }],
+    hiddenBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 }, { timestamps: true });
 
-conversationSchema.index({ participants: 1 }, { unique: true });
+conversationSchema.index({ participants: 1 });
 module.exports = mongoose.model("Conversation", conversationSchema);

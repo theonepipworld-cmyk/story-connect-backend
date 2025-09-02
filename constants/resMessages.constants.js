@@ -13,7 +13,9 @@ module.exports = {
         rejectReqSuccessfully:"friend request rejected Successfully",
         unFriendSuccessfully:"Unfriend user Successfully ",
         blockedSuccessfully:"user block Successfully",
-        unBlockSuccessfully:"user unblock Successfully"
+        unBlockSuccessfully:"user unblock Successfully",
+        messageSeen:"message seen successfully",
+        messagedelivered:"message delivered successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
@@ -28,7 +30,8 @@ module.exports = {
         noMutualFriend:"No mutual friend",
         noTrendingTags:"No trending Tags found",
         noBlockUser:"no Block profiles found",
-        userNotBlocked:"user is not blocked "
+        userNotBlocked:"user is not blocked ",
+        receiverNotPart:"receiver not part of conversationId."
     },
     validation: {
         missingFields: "Missing required fields",
@@ -53,7 +56,12 @@ module.exports = {
           invalidFriendAction:"action must be accept or reject",
           userBlocked:"user is blocked by you or you are blocked by user",
           usernameAlreadyExist:"username is already exist",
-          userNotLikedorView:"user can not like and view the post as user is blocked or user blocked the post owner"
+          userNotLikedorView:"user can not like and view the post as user is blocked or user blocked the post owner",
+          cannotMessageYourself:"you cant message to yourself",
+          invalidConversationId:"conversationId is invalid",
+          mediaorTextMissing:"either media or text is required to send message",
+          invalidSender:"senderId is invalid",
+          invalidReceiver:"receiverId is invalid"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
@@ -86,7 +94,8 @@ module.exports = {
          alreadyRejected:"friendReq already rejected",
          notSendReqYourself:"you cant send a request to yourself",
          noPendingReq:"No pending Request",
-         noFriends:"No friends"
+         noFriends:"No friends",
+         invalidConversation:"Invalid Conversation"
     }
 
 };

@@ -410,8 +410,9 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             throw createError(400, resMessages.notFound.userNotFound);
         }
 
-        userId = new mongoose.Types.ObjectId(userId);
-        communityId = new mongoose.Types.ObjectId(communityId);
+       userId =  new  mongoose.Types.ObjectId(userId);
+        communityId =  new mongoose.Types.ObjectId(communityId);
+        console.log(userId,communityId)
 
         const blocked = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
@@ -421,12 +422,14 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
         );
 
+        console.log(blockedUserIds)
+
         const offSet = (page - 1) * limit;
 
         const result = await CommunityMember.aggregate([
             {
                 $match: {
-                    communityId,
+                   communityId: communityId,
                     userId: { $nin: blockedUserIds }
                 }
             },
@@ -771,7 +774,7 @@ exports.updateCommunityService = async (communityId, userId, data, file) => {
 
 exports.listAllCommunityService = async(userId) => {
     try {
-        const result = await Community.find({}, { _id: 1, name: 1 });
+        const result = await Community.find({userId :  new mongoose.Types.ObjectId(userId)}, { _id: 1, name: 1 });
         console.log(result)
         return result;
     } catch (error) {

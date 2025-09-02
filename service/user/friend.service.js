@@ -83,7 +83,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             recipient: user._id
         });
 
-        console.log("existing--------------", existing)
 
         if (!existing) {
             throw createError(404, resMessages.notFound.userOrFriendIdNotFound);

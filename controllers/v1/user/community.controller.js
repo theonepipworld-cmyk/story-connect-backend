@@ -88,7 +88,7 @@ exports.getCommunityMembers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { data, pagination } = await getCommunityMemberService(req.params.id, page, limit);
+    const { data, pagination } = await getCommunityMemberService(req.params.id,req.user.id, page, limit);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data, pagination));
   }
   catch (err) {
@@ -153,7 +153,7 @@ exports.updateCommunityDetails = async (req, res) => {
 
 exports.getCommunitiesIdList = async(req,res)=>{
   try{
-    console.log("userid-----------------",req.user.id)
+   
     const allCommunities = await listAllCommunityService(req.user.id);
       return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, allCommunities));
   }

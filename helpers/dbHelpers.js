@@ -8,13 +8,16 @@ const Community = require("../models/community.model.js")
 const mongoose = require("mongoose")
 const Friend = require("../models/friends.model.js")
 const enums = require("../constants/enum.constants.js")
+const Conversation = require("../models/conversations.model.js")
 
 
 exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
   try {
+    console.log(fieldName,value)
     let query = User.findOne({ [fieldName]: value });
     if (!forUpdate) query = query.lean();
     const user = await query.exec();
+    console.log(user)
     return user;
   } catch (error) {
     throw error;
@@ -250,6 +253,17 @@ exports.getAllFriends = async (id) => {
     return friendsList;
   }
   catch (error) {
+    throw error;
+  }
+}
+
+exports.isConversationExist  = async(id)=>{
+  try{
+    const result = await Conversation.findById(id);
+    return result;
+
+  }
+  catch(error){
     throw error;
   }
 }

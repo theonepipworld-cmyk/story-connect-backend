@@ -11,6 +11,7 @@ const professionalSymbolRoutes = require("./routes/v1/user/professionalSymbol.ro
 const communityRoutes = require("./routes/v1/user/community.routes.js")
 const friendRoutes = require("./routes/v1/user/friend.routes.js")
 const blockRoutes = require("./routes/v1/user/block.routes.js")
+const chatRoutes = require("./routes/v1/user/chat.routes.js")
 const connectDB = require("./config/db.js")
 const fileUpload = require("express-fileupload")
 const cors = require("cors")
@@ -43,6 +44,7 @@ app.use('/api/v1/user/professionalSymbol', professionalSymbolRoutes);
 app.use('/api/v1/user/community', communityRoutes);
 app.use('/api/v1/user/friend', friendRoutes);
 app.use("/api/v1/user/block",blockRoutes)
+app.use("/api/v1/user/chat",chatRoutes)
  
  
  
