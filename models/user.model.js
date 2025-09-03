@@ -59,9 +59,6 @@ const userSchema = new Schema({
     iconUrl: { type: String, default: '' },
     name: { type: String, default: '' }
   },
-    manualProfessionalSymbol: {
-        type: String
-    },
   education: {
     type: [String],
     default: []
@@ -98,7 +95,10 @@ const userSchema = new Schema({
   },
   resetPasswordExpires: {
     type: Date,
-  }
+  },
+   manualProfession: {
+        type: String
+    },
 }, {
   timestamps: true
 });

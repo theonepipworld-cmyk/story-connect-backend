@@ -35,6 +35,8 @@ module.exports = {
     },
     validation: {
         missingFields: "Missing required fields",
+        invalidUsername:"invalid username field",
+        invalidBio:"invalid bio",
         incorrectPassword: "Incorrect Password.",
         emailAlreadyExist: "This email is already in use.",
         passwordsDoNotMatch: "Confirm password must be the same as the password",

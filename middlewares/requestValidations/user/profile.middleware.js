@@ -22,6 +22,21 @@ exports.avatarUpload = avatarUpload.fields([{ name: 'avatar', maxCount: 1 }, { n
 
 
 exports.updateProfileValidator = [
+  check("name")
+    .optional()
+    .isLength({ min: 3, max: 30 })
+    .withMessage(`${resMessages.validation.invalidUsername}`),
+
+  check("bio")
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage(`${resMessages.validation.invalidBio}`),
+
+  check("education")
+    .optional()
+    .isString()
+    .withMessage(`${resMessages.validation.invalidEducation}`),
+
   check("relationship")
     .optional()
     .if((value) => value !== undefined && value !== null && value !== '')
@@ -30,6 +45,11 @@ exports.updateProfileValidator = [
       return allowedValues.includes(value.toLowerCase());
     })
     .withMessage(`${resMessages.validation.invalidEnum} : In relationship`),
+
+  check("relationshipDescription")
+    .optional()
+    .isString()
+    .withMessage(`${resMessages.validation.invalidRelationshipDescription}`),
 
   check("status")
     .optional()
@@ -49,7 +69,6 @@ exports.updateProfileValidator = [
     })
     .withMessage(`${resMessages.validation.invalidEnum} : In profession`),
 
-  // Conditional field for manualProfession if profession === "other"
   check("manualProfession")
     .if((value, { req }) => req.body.profession && req.body.profession.toLowerCase() === 'other')
     .notEmpty()
@@ -57,7 +76,6 @@ exports.updateProfileValidator = [
 
   check("entryYear")
     .optional()
-    .if((value) => value !== undefined && value !== null && value !== '')
     .custom(value => {
       if (!/^\d{4}$/.test(value)) {
         throw new Error(resMessages.validation.invalidYearFormat);
@@ -72,7 +90,6 @@ exports.updateProfileValidator = [
 
   check("dateOfBirth")
     .optional()
-    .if((value) => value !== undefined && value !== null && value !== '')
     .custom(value => {
       if (!dateRegex.test(value)) {
         throw new Error(resMessages.validation.invalidDateOfBirthFormat);
@@ -90,9 +107,29 @@ exports.updateProfileValidator = [
 
   check("phone")
     .optional()
-    .if((value) => value !== undefined && value !== null && value !== '')
     .matches(phoneRegex)
     .withMessage(resMessages.validation.invalidPhoneNumber),
 
+  check("email")
+    .optional()
+    .isEmail()
+    .withMessage(resMessages.validation.invalidEmail),
+
+  check("countryOfOrigin")
+    .optional()
+    .isMongoId()
+    .withMessage(resMessages.validation.invalidCountry),
+
+  check("currentCountry")
+    .optional()
+    .isMongoId()
+    .withMessage(resMessages.validation.invalidCountry),
+
+  check("professionSymbol")
+    .optional()
+    .isMongoId()
+    .withMessage(resMessages.validation.invalidProfessionSymbol),
+
   validate
 ];
+

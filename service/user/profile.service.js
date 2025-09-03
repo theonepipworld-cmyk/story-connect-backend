@@ -72,13 +72,14 @@ exports.updateProfile = async (userId, payload, files) => {
     if (payload.bio) patch.bio = payload.bio;
     if (payload.profession) patch.profession = payload.profession;
 
+
     if (payload.profession && payload.profession.toLowerCase() === 'other') {
         if (!payload.manualProfession) {
             const err = new Error(`${resMessages.validation.professionName}`);
             err.statusCode = 400;
             throw err;
         }
-        patch.manualProfession = payload.manualProfession;
+        patch.manualProfession = (payload.manualProfession).trim();
     } else {
         patch.manualProfession = undefined;
     }
@@ -170,7 +171,7 @@ exports.updateProfile = async (userId, payload, files) => {
             patch.profileCoverImage = DEFAULT_AVATAR_URL;
         }
     }
-
+          console.log(patch)
     const updated = await User.findByIdAndUpdate(
         userId,
         { $set: patch },
