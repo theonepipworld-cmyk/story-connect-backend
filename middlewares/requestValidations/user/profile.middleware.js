@@ -49,6 +49,11 @@ exports.updateProfileValidator = [
     })
     .withMessage(`${resMessages.validation.invalidEnum} : In profession`),
 
+  // Conditional field for manualProfession if profession === "other"
+  check("manualProfession")
+    .if((value, { req }) => req.body.profession && req.body.profession.toLowerCase() === 'other')
+    .notEmpty()
+    .withMessage(`${resMessages.validation.professionName}`),
 
   check("entryYear")
     .optional()
@@ -69,34 +74,25 @@ exports.updateProfileValidator = [
     .optional()
     .if((value) => value !== undefined && value !== null && value !== '')
     .custom(value => {
-      // 1. Check format first
       if (!dateRegex.test(value)) {
         throw new Error(resMessages.validation.invalidDateOfBirthFormat);
       }
-
-      // 2. Parse and validate the date
       const dob = new Date(value);
       if (isNaN(dob.getTime())) {
         throw new Error(resMessages.validation.invalidDateOfBirth);
       }
-
-      // 3. Ensure date is not in the future
       const today = new Date();
       if (dob >= today) {
         throw new Error(resMessages.validation.invalidDateOfBirth);
       }
-
       return true;
     }),
-
 
   check("phone")
     .optional()
     .if((value) => value !== undefined && value !== null && value !== '')
     .matches(phoneRegex)
     .withMessage(resMessages.validation.invalidPhoneNumber),
-
-
 
   validate
 ];

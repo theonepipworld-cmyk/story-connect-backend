@@ -59,6 +59,9 @@ const userSchema = new Schema({
     iconUrl: { type: String, default: '' },
     name: { type: String, default: '' }
   },
+    manualProfessionalSymbol: {
+        type: String
+    },
   education: {
     type: [String],
     default: []
