@@ -6,7 +6,6 @@ const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommun
 const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
-const HashTag = require("../../models/hashTag.models.js")
 const Block = require("../../models/block.model.js")
 
 

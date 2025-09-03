@@ -10,7 +10,6 @@ const seedCommunityCategory = async() =>{
     await CommunityCategory.deleteMany();
     await CommunityCategory.insertMany(categories);
     console.log('Community Categories seeded successfully!');
-    process.exit(0);
   } catch (err) {
     console.error('Seeding failed:', err);
     process.exit(1);

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Harassment or Bullying",
+    "description": "Targeted harassment, Cyberbullying"
+  },
+  {
+    "name": "Spam or Fake Account",
+    "description": "Spam content, Fake or impersonation account"
+  },
+  {
+    "name": "Inappropriate Content",
+    "description": "Adult content, violence or graphic content"
+  },
+  {
+    "name": "Abusive Behaviour",
+    "description": "Verbal abuse, Discriminatory behaviour"
+  },
+  {
+    "name": "Privacy Violation",
+    "description": "Sharing private information, Unauthorized photos, videos"
+  },
+  {
+    "name": "Other Issues",
+    "description": "Terms of service violation, Copyright infringement"
+  }
+]

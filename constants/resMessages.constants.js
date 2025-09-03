@@ -15,7 +15,8 @@ module.exports = {
         blockedSuccessfully:"user block Successfully",
         unBlockSuccessfully:"user unblock Successfully",
         messageSeen:"message seen successfully",
-        messagedelivered:"message delivered successfully"
+        messagedelivered:"message delivered successfully",
+        reportSuccessfully:"report user successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
@@ -65,7 +66,9 @@ module.exports = {
           invalidConversationId:"conversationId is invalid",
           mediaorTextMissing:"either media or text is required to send message",
           invalidSender:"senderId is invalid",
-          invalidReceiver:"receiverId is invalid"
+          invalidReceiver:"receiverId is invalid",
+          cannotReportSelf:"you can report yourself",
+          invalidType:"Inavlid type"
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

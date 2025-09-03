@@ -29,7 +29,7 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
 
         let communityImageUrl = "";
         if (file) {
-            const uploaded = await uploadFileToS3(file, "coverImage");
+            const uploaded = await uploadFileToS3(file, "community/coverImage");
             communityImageUrl = uploaded?.Location;
         }
         let manualCategoryName = undefined;
@@ -251,7 +251,7 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                                 $expr: {
                                     $and: [
                                         { $eq: ["$communityId", "$$communityIdObj"] },
-                                        { $eq: ["$userId", userId] }
+                                        { $eq: ["$userId", new mongoose.Types.ObjectId(userId)] }
                                     ]
                                 }
                             }
