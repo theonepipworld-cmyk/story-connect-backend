@@ -33,7 +33,7 @@ exports.getBlockUsers = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const { data, pagination } = await getBlockedUserService( page, limit, req.user.id)
         return res.status(200).json(
-            successResponse(resMessages.success.blockedSuccessfully, data, pagination));
+            successResponse(resMessages.success.fetchSuccessfully, data, pagination));
     }
     catch (err) {
         return res.status(400).json(errorResponse(err.message));

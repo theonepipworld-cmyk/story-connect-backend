@@ -454,6 +454,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 avatarUrl: "$userInfo.avatarUrl",
                                 currentCountry: "$userInfo.currentCountry",
                                 profession: "$userInfo.profession",
+                                manualProfession:"$userInfo.manualProfession",
                                 bio: "$userInfo.bio"
                             }
                         },
