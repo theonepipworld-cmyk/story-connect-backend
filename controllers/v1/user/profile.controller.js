@@ -15,6 +15,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
+
 exports.updateProfile = async (req, res) => {
   try {
     const result = await profileService.updateProfile(req.user.id, req.body, req.files);
@@ -33,3 +34,18 @@ exports.deleteProfile = async (req, res) => {
     return res.status(400).json(errorResponse(err.message));
   }
 };
+
+exports.getOtherProfile = async(req,res)=>{
+  try{
+     const otherUserId = req.params.userId
+     const data ={
+      user,
+      totalFriends,
+      mutualFriends
+     } = await profileService.getOtherProfileService(otherUserId,req.user.id)
+       return res.status(200).json(successResponse(resMessages.success.getSuccessful,data));
+  }
+   catch (err) {
+    return res.status(400).json(errorResponse(err.message));
+  }
+}

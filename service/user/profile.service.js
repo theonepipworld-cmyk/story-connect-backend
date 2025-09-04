@@ -2,7 +2,7 @@ const User = require('../../models/user.model');
 const { uploadFileToS3 } = require('../../utils/s3.util');
 const { DEFAULT_AVATAR_URL } = require('../../constants/variables.constants');
 const resMessages = require('../../constants/resMessages.constants');
-const { checkFieldExists, getAllFriends } = require("../../helpers/dbHelpers.js")
+const { checkFieldExists, getAllFriends, createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const CountryList = require("../../models/countryList.model.js")
 const professionalSymbol = require("../../models/professionalSymbolModel.js")
 const Friend = require("../../models/friends.model.js")
@@ -24,11 +24,11 @@ exports.getProfile = async (userId) => {
     //     throw new Error(resMessages.validation.userBlocked);
     // }
 
-  
+
     const user = await User.findById(userId)
         .select("-passwordHash -resetPasswordExpires -resetPasswordToken")
         .lean();
-       
+
 
     if (!user) {
         throw new Error(resMessages.notFound.userNotFound);
@@ -48,7 +48,7 @@ exports.getProfile = async (userId) => {
     //     mutualFriendsCount = mutualFriendIds.length;
     // }
 
-  
+
     const totalFriends = await Friend.countDocuments({
         status: "accepted",
         $or: [{ requester: userId }, { recipient: userId }]
@@ -191,3 +191,62 @@ exports.deleteProfile = async (userId) => {
     }
     return { message: resMessages.success.deleteSuccessful };
 };
+
+exports.getOtherProfileService = async(otherUserId, loginUserId) => {
+    try {
+        console.log(otherUserId ,loginUserId)
+        if (!otherUserId || !loginUserId) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+        let isBlocked = null;
+        if (loginUserId) {
+            isBlocked = await Block.findOne({
+                $or: [
+                    { blocker: otherUserId, blocked: loginUserId },
+                    { blocker: loginUserId, blocked: otherUserId }
+                ]
+            });
+        }
+
+        if (isBlocked) {
+            throw new Error(resMessages.validation.userBlocked);
+        }
+
+
+        const user = await User.findById(otherUserId)
+            .select("-passwordHash -resetPasswordExpires -resetPasswordToken")
+            .lean();
+
+        if (!user) {
+            throw new Error(resMessages.notFound.userNotFound);
+        }
+        let mutualFriendsCount = 0;
+        if (loginUserId && loginUserId.toString() !== user._id.toString()) {
+            const loginUserFriend = await getAllFriends(loginUserId);
+            const profileUserFriend = await getAllFriends(user._id);
+
+            const loginFriendIds = new Set(loginUserFriend.map(f => f._id.toString()));
+            const mutualFriendIds = profileUserFriend
+                .map(f => f._id.toString())
+                .filter(id => loginFriendIds.has(id));
+            mutualFriendsCount = mutualFriendIds.length;
+        }
+
+
+        const totalFriends = await Friend.countDocuments({
+            status: "accepted",
+            $or: [{ requester: otherUserId }, { recipient: otherUserId }]
+        });
+
+          return {
+        user,
+        totalFriends,
+        mutualFriendsCount
+    };
+
+
+    }
+    catch (error) {
+        throw createError(500, error.message);
+    }
+}

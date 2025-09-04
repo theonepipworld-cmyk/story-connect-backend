@@ -14,6 +14,7 @@ router.put(
   updateProfileValidator,
   profileController.updateProfile
 );
+router.get('/otherprofile/:userId', isAuthenticated, authorizeRoles('user','admin'), profileController.getOtherProfile);
 
 // Soft delete user profile (deactivate)
 router.delete('/', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);
