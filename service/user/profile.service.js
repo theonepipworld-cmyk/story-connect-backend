@@ -9,7 +9,7 @@ const Friend = require("../../models/friends.model.js")
 const Block = require("../../models/block.model.js")
 
 exports.getProfile = async (userId, loginUserId) => {
-    // 🔹 Block check
+
     let isBlocked = null;
     if (loginUserId) {
         isBlocked = await Block.findOne({
@@ -24,7 +24,7 @@ exports.getProfile = async (userId, loginUserId) => {
         throw new Error(resMessages.validation.userBlocked);
     }
 
-    // 🔹 User fetch
+  
     const user = await User.findById(userId)
         .select("-passwordHash -resetPasswordExpires -resetPasswordToken")
         .lean();
@@ -33,7 +33,7 @@ exports.getProfile = async (userId, loginUserId) => {
         throw new Error(resMessages.notFound.userNotFound);
     }
 
-    // 🔹 Mutual friends count
+
     let mutualFriendsCount = 0;
     if (loginUserId && loginUserId.toString() !== user._id.toString()) {
         const loginUserFriend = await getAllFriends(loginUserId);
@@ -47,7 +47,7 @@ exports.getProfile = async (userId, loginUserId) => {
         mutualFriendsCount = mutualFriendIds.length;
     }
 
-    // 🔹 Total friends
+  
     const totalFriends = await Friend.countDocuments({
         status: "accepted",
         $or: [{ requester: userId }, { recipient: userId }]

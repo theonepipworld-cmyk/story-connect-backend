@@ -1,13 +1,13 @@
 [
-  { "name": "nurse", "code": "NR", "icon": "Nurse.svg" },
-  { "name": "doctor", "code": "DR", "icon": "Doctor.svg" },
-  { "name": "scientist", "code": "SC", "icon": "Scientist.svg" },
-  { "name": "professor", "code": "PF", "icon": "Professor.svg" },
-  { "name": "artist", "code": "AR", "icon": "Artist.svg" },
-  { "name": "chef", "code": "CH", "icon": "Chef.svg" },
-  { "name": "manager", "code": "MG", "icon": "Manager.svg" },
-  { "name": "pilot", "code": "PL", "icon": "Pilot.svg" },
-  { "name": "firefighter", "code": "FF", "icon": "FireFighter.svg" },
-  { "name": "developer", "code": "DEV", "icon": "Developer.svg" },
-  { "name": "other", "code": "OTH", "icon": null }
+  { "name": "nurse", "code": "NR", "icon": "nurse.png" },
+  { "name": "doctor", "code": "DR", "icon": "doctor.png" },
+  { "name": "scientist", "code": "SC", "icon": "scientist.png" },
+  { "name": "professor", "code": "PF", "icon": "professor.png" },
+  { "name": "artist", "code": "AR", "icon": "artist.png" },
+  { "name": "chef", "code": "CH", "icon": "chef.png" },
+  { "name": "manager", "code": "MG", "icon": "manager.png" },
+  { "name": "pilot", "code": "PL", "icon": "pilot.png" },
+  { "name": "firefighter", "code": "FF", "icon": "firefighter.png" },
+  { "name": "developer", "code": "DEV", "icon": "coding.png" },
+  { "name": "other", "code": "OTH", "icon": "other.png" }
 ]

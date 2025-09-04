@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const ProfessionSymbol = require("../models/professionalSymbolModel");
-const { uploadFileToS3 } = require("../utils/s3.util");
+const { uploadFileToS3, deleteFileFromS3 } = require("../utils/s3.util");
 const professionData = require("../data/professionalSymbol.json");
 const connectDB = require("../config/db");
 
@@ -9,8 +9,17 @@ async function seedProfessionSymbols() {
   try {
     await connectDB(); 
 
+    // Purane symbols nikaalo aur unke S3 files delete karo
+    const oldSymbols = await ProfessionSymbol.find({});
+    for (const symbol of oldSymbols) {
+      if (symbol.fileKey) {
+        await deleteFileFromS3(symbol.fileKey, "profession-icons");
+      }
+    }
+
+    // Purane records DB se delete
     await ProfessionSymbol.deleteMany({});
-    console.log("Old data cleared!");
+    console.log("Old data & S3 icons cleared!");
 
     for (const item of professionData) {
       const existing = await ProfessionSymbol.findOne({ name: item.name });
@@ -31,7 +40,7 @@ async function seedProfessionSymbols() {
         const fileObj = {
           originalname: item.icon,
           buffer: fileBuffer,
-          mimetype: "image/svg+xml",
+          mimetype: "image/png",
         };
         uploadResult = await uploadFileToS3(fileObj, "profession-icons");
       }
@@ -45,9 +54,9 @@ async function seedProfessionSymbols() {
       console.log(`Seeded: ${item.name}`);
     }
 
-    console.log("Profession Symbols seeding completed!");
+    console.log(" Profession Symbols seeding completed!");
   } catch (error) {
-    console.error("Error seeding symbols:", error);
+    console.error(" Error seeding symbols:", error);
     throw error;
   }
 }
