@@ -8,9 +8,8 @@ const {getReportCategoryService,reportUserService} = require("../../../service/u
 exports.reportUser = async(req,res)=>{
     try{
          const {reportUserId , description,category,severity} = req.body
-         const {additionalEvidence}=req.file || null
-
-         const reportUser = await reportUserService(reportUserId,description,category,severity,additionalEvidence,req.user.id)
+         console.log(req.files)
+         const reportUser = await reportUserService(reportUserId,description,category,severity,req.files,req.user.id)
           return res.status(200).json(successResponse(resMessages.success.reportSuccessfully, reportUser));
     }
     catch (err) {

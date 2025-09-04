@@ -3,7 +3,7 @@ const UserStats = require("../../models/userActivityStats.model")
 const mongoose = require("mongoose");
 const Comment = require("../../models/Comments.model")
 const { uploadFileToS3, deleteFileFromS3 } = require('../../utils/s3.util');
-const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist } = require("../../helpers/dbHelpers.js")
+const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist, getAllFriends } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
 const Community = require("../../models/community.model.js")
@@ -410,9 +410,11 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             throw createError(400, resMessages.notFound.userNotFound);
         }
 
-       userId =  new  mongoose.Types.ObjectId(userId);
-        communityId =  new mongoose.Types.ObjectId(communityId);
-        console.log(userId,communityId)
+        userId = new mongoose.Types.ObjectId(userId);
+        communityId = new mongoose.Types.ObjectId(communityId);
+
+        const loginUserFriends = await getAllFriends(userId)
+        const loginUserFriendIds = new Set(loginUserFriends.filter((f) => f._id.toString()))
 
         const blocked = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
@@ -429,7 +431,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         const result = await CommunityMember.aggregate([
             {
                 $match: {
-                   communityId: communityId,
+                    communityId: communityId,
                     userId: { $nin: blockedUserIds }
                 }
             },
@@ -454,8 +456,9 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 avatarUrl: "$userInfo.avatarUrl",
                                 currentCountry: "$userInfo.currentCountry",
                                 profession: "$userInfo.profession",
-                                manualProfession:"$userInfo.manualProfession",
-                                bio: "$userInfo.bio"
+                                manualProfession: "$userInfo.manualProfession",
+                                bio: "$userInfo.bio",
+
                             }
                         },
                         { $sort: { createdAt: -1 } },
@@ -468,8 +471,13 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                 }
             }
         ]);
+        console.log(result)
 
-        const data = result[0]?.data || [];
+        const data = (result[0]?.data || []).map(f => ({
+            ...f,
+            isThisUserFriend: loginUserFriendIds.has(f.userId)
+        }));
+
         const totalCount = result[0]?.totalCount[0]?.count || 0;
 
         return {
@@ -773,9 +781,9 @@ exports.updateCommunityService = async (communityId, userId, data, file) => {
     }
 };
 
-exports.listAllCommunityService = async(userId) => {
+exports.listAllCommunityService = async (userId) => {
     try {
-        const result = await Community.find({userId :  new mongoose.Types.ObjectId(userId)}, { _id: 1, name: 1 });
+        const result = await Community.find({ userId: new mongoose.Types.ObjectId(userId) }, { _id: 1, name: 1 });
         console.log(result)
         return result;
     } catch (error) {

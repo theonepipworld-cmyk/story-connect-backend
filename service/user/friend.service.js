@@ -153,9 +153,14 @@ exports.getAllpendingReqService = async (userId) => {
 };
 
 
-exports.getAllFriendService = async (userId, page = 1, limit = 10) => {
+exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) => {
     try {
-        if (!userId) {
+        if (!userId || !loginUserId) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+
+        const loginUser = await isUserExist(loginUserId)
+        if (!loginUser) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
 
@@ -164,18 +169,26 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10) => {
             status: enums.friend_Request_status.ACCEPTED,
             $or: [{ requester: userId }, { recipient: userId }]
         });
-        const allFriends = await getAllFriends(userId);
-        if (!allFriends || allFriends.length === 0) {
+        const allUserFriends = await getAllFriends(userId);
+        if (!allUserFriends || allUserFriends.length === 0) {
             throw createError(404, resMessages.customError.noFriends);
         }
 
+        const alLoginUserFriends = await getAllFriends(loginUserId)
+        const allLoginUserFriendsId = new Set(alLoginUserFriends.map((f) => f._id.toString()));
+
         const blockedUsers = await Block.find({
-            $or: [{ blocker: userId }, { blocked: userId }]
+            $or: [{ blocker: loginUser._id }, { blocked: loginUser._id }]
         });
         const blockedIds = blockedUsers.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         );
-        const filteredFriends = allFriends.filter(f => !blockedIds.includes(f._id.toString()));
+        const filteredFriends = allUserFriends
+            .filter((f) => !blockedIds.includes(f._id.toString()))
+            .map((f) => ({
+                ...f.toObject(), 
+                isThisUserFriend: allLoginUserFriendsId.has(f._id.toString()),
+            }));
 
         return {
             allFriends: filteredFriends,
@@ -213,10 +226,11 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
             const loginUserFriend = await getAllFriends(user._id);
             const profileUserFriend = await getAllFriends(recipient._id);
             const loginFriendIds = loginUserFriend.map(f => f._id.toString());
-            const profileFriendIds = profileUserFriend.map(f => f._id.toString());
+            const profileFriendIds = new Set(profileUserFriend.map(f => f._id.toString()));
+            
 
             const mutualFriendIds = loginFriendIds.filter(id =>
-                profileFriendIds.includes(id)
+                profileFriendIds.has(id)
             );
 
             total = mutualFriendIds.length;

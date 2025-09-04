@@ -20,13 +20,20 @@ exports.reportUserService = async (reportUserId, description, category, severity
 
         let additionalEvidence = "";
         if (file) {
-            const uploadedDocument = await uploadFileToS3(file, "user/report/evidence");
+            const uploadedDocument = await uploadFileToS3(
+                {
+                    buffer: file.buffer,
+                    mimetype: file.mimetype,
+                    originalname: file.originalname,
+                },
+                "user/report/evidence"
+            );
             additionalEvidence = uploadedDocument?.Location || "";
         }
 
         const reportData = {
             reportedUser: reportUserId,
-            reporter: userId,
+            reportedBy: userId,
             description,
             category,
             severity,
@@ -47,12 +54,12 @@ exports.reportUserService = async (reportUserId, description, category, severity
 exports.getReportCategoryService = async () => {
     try {
         const result = await ReportCategory.find({}).lean();
-
+        console.log(result)
         if (!result || result.length === 0) {
-            return {data: [] };
+            return { data: [] };
         }
 
-      return result;
+        return result;
     } catch (error) {
         throw new Error(error.message);
     }
