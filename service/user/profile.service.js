@@ -8,53 +8,49 @@ const professionalSymbol = require("../../models/professionalSymbolModel.js")
 const Friend = require("../../models/friends.model.js")
 const Block = require("../../models/block.model.js")
 
-exports.getProfile = async (userId, otheruserId) => {
-    const id = otheruserId || userId;
-    if (otheruserId) {
-        const isBlocked = await Block.findOne({
+exports.getProfile = async (userId, loginUserId) => {
+    // 🔹 Block check
+    let isBlocked = null;
+    if (loginUserId) {
+        isBlocked = await Block.findOne({
             $or: [
-                { blocker: otheruserId, blocked: userId },
-                { blocker: userId, blocked: otheruserId }
+                { blocker: userId, blocked: loginUserId },
+                { blocker: loginUserId, blocked: userId }
             ]
         });
-
-        if (isBlocked) {
-            throw new Error(resMessages.validation.userBlocked);
-        }
     }
-    const user = await User.findById(id)
-        .select('-passwordHash -resetPasswordExpires -resetPasswordToken')
+
+    if (isBlocked) {
+        throw new Error(resMessages.validation.userBlocked);
+    }
+
+    // 🔹 User fetch
+    const user = await User.findById(userId)
+        .select("-passwordHash -resetPasswordExpires -resetPasswordToken")
         .lean();
 
     if (!user) {
         throw new Error(resMessages.notFound.userNotFound);
     }
 
+    // 🔹 Mutual friends count
     let mutualFriendsCount = 0;
-
-    if (userId != user._id.toString()) {
-        const loginUserFriend = await getAllFriends(userId);
+    if (loginUserId && loginUserId.toString() !== user._id.toString()) {
+        const loginUserFriend = await getAllFriends(loginUserId);
         const profileUserFriend = await getAllFriends(user._id);
 
-        const loginFriendIds = loginUserFriend.map(f => f._id.toString());
-        const profileFriendIds = profileUserFriend.map(f => f._id.toString());
-
-        const mutualFriendIds = loginFriendIds.filter(id =>
-            profileFriendIds.includes(id)
-        );
-
-        // mutualFriends = await User.find({ _id: { $in: mutualFriendIds } })
-        //     .select("name email profilePicture");
+        const loginFriendIds = new Set(loginUserFriend.map(f => f._id.toString()));
+        const mutualFriendIds = profileUserFriend
+            .map(f => f._id.toString())
+            .filter(id => loginFriendIds.has(id));
 
         mutualFriendsCount = mutualFriendIds.length;
     }
 
+    // 🔹 Total friends
     const totalFriends = await Friend.countDocuments({
         status: "accepted",
-        $or: [
-            { requester: id },
-            { recipient: id }
-        ]
+        $or: [{ requester: userId }, { recipient: userId }]
     });
 
     return {
@@ -63,6 +59,7 @@ exports.getProfile = async (userId, otheruserId) => {
         mutualFriendsCount,
     };
 };
+
 
 
 
@@ -171,7 +168,7 @@ exports.updateProfile = async (userId, payload, files) => {
             patch.profileCoverImage = DEFAULT_AVATAR_URL;
         }
     }
-          console.log(patch)
+    console.log(patch)
     const updated = await User.findByIdAndUpdate(
         userId,
         { $set: patch },
