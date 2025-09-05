@@ -12,8 +12,8 @@ const { sendFriendReqService,
 
 exports.sendFriendReq = async (req, res) => {
     try {
-        const friendReq = await sendFriendReqService(req.user.id, req.params.id);
-        return res.status(200).json(successResponse(resMessages.success.sendReqSuccessfully));
+        const {result,isRequested} = await sendFriendReqService(req.user.id, req.params.id);
+        return res.status(200).json(successResponse(resMessages.success.sendReqSuccessfully,isRequested));
     }
     catch (err) {
         return res.status(400).json(errorResponse(err.message));

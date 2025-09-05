@@ -31,6 +31,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         if (isBlocked) {
             throw createError(403, resMessages.validation.userBlocked);
         }
+        let isRequested = false
         const existing = await Friend.findOne({
             $or: [
                 { requester: userId, recipient: friendReqId },
@@ -40,6 +41,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 
         if (existing) {
             if (existing.status === enums.friend_Request_status.PENDING) {
+                isRequested = true;
                 throw createError(400, resMessages.customError.friendReqSent);
             }
             if (existing.status === enums.friend_Request_status.ACCEPTED) {
@@ -58,7 +60,12 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             status: enums.friend_Request_status.PENDING
         });
 
-        return result;
+        if(result){
+              isRequested = true;
+        }
+        return {
+            result,
+            isRequested};
     } catch (error) {
         throw createError(500, error.message);
     }
