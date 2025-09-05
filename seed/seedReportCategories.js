@@ -8,10 +8,17 @@ const seedReportReasons = async () => {
     console.log(" Importing Report Reasons...");
     await connectDB();
 
-    await ReportReason.deleteMany();
-    await ReportReason.insertMany(reportReasons);
+    const bulkOps = reportReasons.map((item) => ({
+      updateOne: {
+        filter: { name: item.name },
+        update: { $set: item },
+        upsert: true,
+      },
+    }));
 
-    console.log(" Report reasons seeded successfully!");
+    await ReportReason.bulkWrite(bulkOps);
+
+    console.log(" Report reasons seeded successfully (with upsert)!");
     return true; 
   } catch (err) {
     console.error(" Seeding failed:", err.message);

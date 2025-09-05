@@ -44,6 +44,7 @@ exports.getOtherProfile = async(req,res)=>{
       totalFriends,
       mutualFriendsCount
      }
+     console.log(data)
        return res.status(200).json(successResponse(resMessages.success.getSuccessful,data));
   }
    catch (err) {

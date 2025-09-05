@@ -1,19 +1,26 @@
 const mongoose = require('mongoose');
-const CommunityCategory = require("../models/communityCategoryModel.js"); 
+const CommunityCategory = require("../models/communityCategoryModel.js");
 const connectDB = require("../config/db.js");
-const categories = require("../data/communityCategories.json")
+const categories = require("../data/communityCategories.json");
 
-console.log(categories)
-const seedCommunityCategory = async() =>{
+const seedCommunityCategory = async () => {
   try {
     await connectDB();
-    await CommunityCategory.deleteMany();
-    await CommunityCategory.insertMany(categories);
-    console.log('Community Categories seeded successfully!');
-  } catch (err) {
-    console.error('Seeding failed:', err);
-    process.exit(1);
-  }
-}
 
-module.exports = seedCommunityCategory
+    for (const category of categories) {
+      await CommunityCategory.updateOne(
+        { name: category.name },  
+        { $set: category },       
+        { upsert: true }           
+      );
+    }
+
+    console.log("Community Categories seeded successfully with upsert!");
+    return true;
+  } catch (err) {
+    console.error("Seeding failed:", err);
+    throw err;
+  }
+};
+
+module.exports = seedCommunityCategory;

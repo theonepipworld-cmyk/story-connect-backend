@@ -119,10 +119,18 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
         if (!user) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
+
+        const allUserCommunities = await CommunityMember.find({
+            userId: user._id
+        });
+        const allUserCommunitiesIds = new Set(allUserCommunities.map((c) => c.communityId));
+
         const offset = (page - 1) * limit;
 
         const result = await Community.aggregate([
-            { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+            {
+                $match: { _id: { $in: Array.from(allUserCommunitiesIds).map(id => new mongoose.Types.ObjectId(id)) } }
+            },
             {
                 $lookup: {
                     from: "communitycategories",
@@ -420,7 +428,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             requester: userId,
             status: enums.friend_Request_status.PENDING
         });
-        
+
         const allPendingFriendIds = new Set(
             loginUserSendedRequest.map(f => f.recipient.toString())
         );
@@ -467,7 +475,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 profession: "$userInfo.profession",
                                 manualProfession: "$userInfo.manualProfession",
                                 bio: "$userInfo.bio",
-                                userId:"$userInfo._id",
+                                userId: "$userInfo._id",
 
                             }
                         },
@@ -499,7 +507,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             }
         };
     } catch (error) {
-        if (error.statusCode) throw error; 
+        if (error.statusCode) throw error;
         throw createError(500, error.message || "Something went wrong on server");
     }
 };
@@ -792,8 +800,31 @@ exports.updateCommunityService = async (communityId, userId, data, file) => {
 
 exports.listAllCommunityService = async (userId) => {
     try {
-        const result = await Community.find({ userId: new mongoose.Types.ObjectId(userId) }, { _id: 1, name: 1 });
-        console.log(result)
+     
+        const allUserCommunities = await CommunityMember.find({
+            userId: new mongoose.Types.ObjectId(userId),
+        });
+
+        const allUserCommunitiesIds = allUserCommunities.map((c) => c.communityId);
+
+        if (!allUserCommunitiesIds.length) {
+            return [];
+        }
+
+        const result = await Community.aggregate([
+            {
+                $match: {
+                    _id: { $in: allUserCommunitiesIds.map((id) => new mongoose.Types.ObjectId(id)) },
+                },
+            },
+            {
+                $project: {
+                    name: 1,
+                },
+            },
+            { $sort: { createdAt: -1 } },
+        ]);
+
         return result;
     } catch (error) {
         throw new Error(error.message);
