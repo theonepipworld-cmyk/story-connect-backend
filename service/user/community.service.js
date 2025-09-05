@@ -10,6 +10,8 @@ const Community = require("../../models/community.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const CommunityCategory = require("../../models/communityCategoryModel.js")
 const Block = require("../../models/block.model.js")
+const Friend = require("../../models/friends.model.js")
+const enums = require("../../constants/enum.constants.js")
 
 
 
@@ -412,8 +414,16 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
 
         userId = new mongoose.Types.ObjectId(userId);
         communityId = new mongoose.Types.ObjectId(communityId);
-
+        console.log(userId);
         const loginUserFriends = await getAllFriends(userId)
+        const loginUserSendedRequest = await Friend.find({
+            requester: userId,
+            status: enums.friend_Request_status.PENDING
+        });
+        
+        const allPendingFriendIds = new Set(
+            loginUserSendedRequest.map(f => f.recipient.toString())
+        );
         const loginUserFriendIds = new Set(loginUserFriends.filter((f) => f._id.toString()))
 
         const blocked = await Block.find({
@@ -424,7 +434,6 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
         );
 
-        console.log(blockedUserIds)
 
         const offSet = (page - 1) * limit;
 
@@ -458,6 +467,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 profession: "$userInfo.profession",
                                 manualProfession: "$userInfo.manualProfession",
                                 bio: "$userInfo.bio",
+                                userId:"$userInfo._id",
 
                             }
                         },
@@ -471,11 +481,10 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                 }
             }
         ]);
-        console.log(result)
-
         const data = (result[0]?.data || []).map(f => ({
             ...f,
-            isThisUserFriend: loginUserFriendIds.has(f.userId)
+            isThisUserFriend: loginUserFriendIds.has(f.userId.toString()),
+            isreqPending: allPendingFriendIds.has(f.userId.toString())
         }));
 
         const totalCount = result[0]?.totalCount[0]?.count || 0;
@@ -490,8 +499,8 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             }
         };
     } catch (error) {
-        if (error.statusCode) throw error;
-        throw new Error(error.message);
+        if (error.statusCode) throw error; 
+        throw createError(500, error.message || "Something went wrong on server");
     }
 };
 
