@@ -60,12 +60,13 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             status: enums.friend_Request_status.PENDING
         });
 
-        if(result){
-              isRequested = true;
+        if (result) {
+            isRequested = true;
         }
         return {
             result,
-            isRequested};
+            isRequested
+        };
     } catch (error) {
         throw createError(500, error.message);
     }
@@ -182,6 +183,12 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
         }
 
         const alLoginUserFriends = await getAllFriends(loginUserId)
+        const LoginUserSendingRequest = await Friend.find({
+            requester: loginUserId,
+            status: enums.friend_Request_status.PENDING
+        });
+
+        const loginUserSenderIds = new Set(LoginUserSendingRequest.map((f)=>f.recipient.toString()));
         const allLoginUserFriendsId = new Set(alLoginUserFriends.map((f) => f._id.toString()));
 
         const blockedUsers = await Block.find({
@@ -193,8 +200,9 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
         const filteredFriends = allUserFriends
             .filter((f) => !blockedIds.includes(f._id.toString()))
             .map((f) => ({
-                ...f.toObject(), 
+                ...f.toObject(),
                 isThisUserFriend: allLoginUserFriendsId.has(f._id.toString()),
+                isPendingReq:loginUserSenderIds.has(f._id.toString())
             }));
 
         return {
@@ -234,7 +242,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
             const profileUserFriend = await getAllFriends(recipient._id);
             const loginFriendIds = loginUserFriend.map(f => f._id.toString());
             const profileFriendIds = new Set(profileUserFriend.map(f => f._id.toString()));
-            
+
 
             const mutualFriendIds = loginFriendIds.filter(id =>
                 profileFriendIds.has(id)
