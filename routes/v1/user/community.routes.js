@@ -17,6 +17,7 @@ router.delete("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMi
 router.put("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.updateCommunityValidator,communityController.updateCommunityDetails);
 router.get("/communitiesId",isAuthenticated, authorizeRoles('user','admin'),communityController.getCommunitiesIdList);
 router.get("/",isAuthenticated, authorizeRoles('user','admin'),communityController.allCommunitiesList);
+router.get("/community-by-categories/:categoryId",isAuthenticated, authorizeRoles('user','admin'),communityController.getCommunitiesByCategories);
 router.get("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.communityDetails,communityController.getCommunitydetails);
 
 module.exports = router;

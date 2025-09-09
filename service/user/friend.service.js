@@ -81,7 +81,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         console.log(userId, friendReqId)
         const user = await isUserExist(userId);
         const requester = await isUserExist(friendReqId);
-        console.log("requester------", requester)
 
         if (!requester) {
             throw createError(400, resMessages.notFound.userNotFound);

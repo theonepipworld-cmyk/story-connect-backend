@@ -11,7 +11,8 @@ const { createCommunityService,
   getCommunityPostsService,
   removeCommunityMemberService,
   removeCommunityService,
-  updateCommunityService,listAllCommunityService } = require("../../../service/user/community.service.js")
+  updateCommunityService, listAllCommunityService,
+  getCommunitiesByCategoriesService } = require("../../../service/user/community.service.js")
 
 
 
@@ -65,7 +66,7 @@ exports.allCommunitiesList = async (req, res) => {
     const search = req.query.search || ""
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { communities, pagination } = await allCommunitiesService(req.user.id,search, page, limit)
+    const { communities, pagination } = await allCommunitiesService(req.user.id, search, page, limit)
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, communities, pagination));
   }
   catch (err) {
@@ -88,7 +89,7 @@ exports.getCommunityMembers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { data, pagination } = await getCommunityMemberService(req.params.id,req.user.id, page, limit);
+    const { data, pagination } = await getCommunityMemberService(req.params.id, req.user.id, page, limit);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data, pagination));
   }
   catch (err) {
@@ -151,13 +152,25 @@ exports.updateCommunityDetails = async (req, res) => {
   }
 }
 
-exports.getCommunitiesIdList = async(req,res)=>{
-  try{
-   
+exports.getCommunitiesIdList = async (req, res) => {
+  try {
+
     const allCommunities = await listAllCommunityService(req.user.id);
-      return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, allCommunities));
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, allCommunities));
   }
-    catch (err) {
+  catch (err) {
+    return res.status(400).json(errorResponse(err.message));
+  }
+};
+
+exports.getCommunitiesByCategories = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const {communities,pagination} = await getCommunitiesByCategoriesService(req.params.categoryId,page,limit)
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, communities,pagination));
+  }
+  catch (err) {
     return res.status(400).json(errorResponse(err.message));
   }
 }

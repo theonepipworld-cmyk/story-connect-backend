@@ -28,7 +28,7 @@ exports.respondFriendReq = async (req, res) => {
         await respondFriendReqService(req.user.id, req.params.id, action);
         return res.status(200).json(
             successResponse(
-                action === "accept"
+                action === "accepted"
                     ? resMessages.success.acceptReqSuccessfully
                     : resMessages.success.rejectReqSuccessfully
             )

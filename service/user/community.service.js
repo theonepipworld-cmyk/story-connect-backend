@@ -18,7 +18,6 @@ const enums = require("../../constants/enum.constants.js")
 
 
 exports.createCommunityService = async (communityDetails, userId, file) => {
-    console.log(file)
     try {
         if (!userId) {
             throw createError(400, resMessages.notFound.userNotFound);
@@ -800,7 +799,7 @@ exports.updateCommunityService = async (communityId, userId, data, file) => {
 
 exports.listAllCommunityService = async (userId) => {
     try {
-     
+
         const allUserCommunities = await CommunityMember.find({
             userId: new mongoose.Types.ObjectId(userId),
         });
@@ -830,6 +829,72 @@ exports.listAllCommunityService = async (userId) => {
         throw new Error(error.message);
     }
 };
+
+exports.getCommunitiesByCategoriesService = async (categoryId, page = 1, limit = 10) => {
+    try {
+        if (!categoryId) {
+            throw createError(400, resMessages.notFound.communityCategoryNotFound);
+        }
+
+        const offset = (page - 1) * limit;
+
+        const result = await Community.aggregate([
+            {
+                $match: {
+                    category: new mongoose.Types.ObjectId(categoryId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "communitycategories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "categories"
+                }
+            },
+            { $unwind: { path: "$categories", preserveNullAndEmptyArrays: true } },
+            {
+                $facet: {
+                    paginatedResults: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: offset },
+                        { $limit: limit },
+                        {
+                            $project: {
+                                name: 1,
+                                description: 1,
+                                coverImage: 1,
+                                isActive: 1,
+                                manualCategoryName: 1,
+                                memberCount: 1,
+                                "categories.name": 1,
+                                createdAt: 1
+                            }
+                        }
+                    ],
+                    totalCount: [{ $count: "count" }]
+                }
+            }
+        ]);
+
+        const communities = result[0]?.paginatedResults || [];
+        const total = result[0]?.totalCount?.[0]?.count || 0;
+
+        return {
+            communities,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: page,
+                limit
+            }
+        };
+
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 
 
 
