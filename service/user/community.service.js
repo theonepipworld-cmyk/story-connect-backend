@@ -830,8 +830,12 @@ exports.listAllCommunityService = async (userId) => {
     }
 };
 
-exports.getCommunitiesByCategoriesService = async (categoryId, page = 1, limit = 10) => {
+exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1, limit = 10) => {
     try {
+        if (!userId) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+
         if (!categoryId) {
             throw createError(400, resMessages.notFound.communityCategoryNotFound);
         }
@@ -849,10 +853,34 @@ exports.getCommunitiesByCategoriesService = async (categoryId, page = 1, limit =
                     from: "communitycategories",
                     localField: "category",
                     foreignField: "_id",
-                    as: "categories"
+                    as: "categoryInfo"
                 }
             },
-            { $unwind: { path: "$categories", preserveNullAndEmptyArrays: true } },
+            { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$communityId", "$$communityIdObj"] },
+                                        { $eq: ["$userId", new mongoose.Types.ObjectId(userId)] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "joinedInfo"
+                }
+            },
+            {
+                $addFields: {
+                    isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] }
+                }
+            },
             {
                 $facet: {
                     paginatedResults: [
@@ -867,7 +895,8 @@ exports.getCommunitiesByCategoriesService = async (categoryId, page = 1, limit =
                                 isActive: 1,
                                 manualCategoryName: 1,
                                 memberCount: 1,
-                                "categories.name": 1,
+                                "categoryInfo.name": 1,
+                                isJoinedByMe: 1,
                                 createdAt: 1
                             }
                         }

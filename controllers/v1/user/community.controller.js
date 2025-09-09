@@ -167,7 +167,7 @@ exports.getCommunitiesByCategories = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const {communities,pagination} = await getCommunitiesByCategoriesService(req.params.categoryId,page,limit)
+    const {communities,pagination} = await getCommunitiesByCategoriesService(req.user.id,req.params.categoryId,page,limit)
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, communities,pagination));
   }
   catch (err) {
