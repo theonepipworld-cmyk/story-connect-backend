@@ -336,7 +336,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
 
 exports.getTrendingTagsService = async () => {
   try {
-    const result = await HashTag.find({
+    const result = await Hashtag.find({
       usageCount: { $gt: 100 }
     })
       .sort({ usageCount: -1 })
