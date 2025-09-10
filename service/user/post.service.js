@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const Comment = require("../../models/Comments.model")
 const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
-const Hashtag = require("../../models/hashTag.models.js")
+const HashTag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const Block = require("../../models/block.model.js")
 
@@ -336,8 +336,8 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
 
 exports.getTrendingTagsService = async () => {
   try {
-    const result = await Hashtag.find({
-      usageCount: { $gt: 100 }
+    const result = await HashTag.find({
+      usageCount: { $gt: 10 }
     })
       .sort({ usageCount: -1 })
       .limit(4);
@@ -345,6 +345,7 @@ exports.getTrendingTagsService = async () => {
     if (!result || result.length === 0) {
       throw createError(400, resMessages.notFound.noTrendingTags);
     }
+    console.log(result)
 
     return result;
   } catch (error) {

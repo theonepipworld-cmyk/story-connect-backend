@@ -7,7 +7,9 @@ const { authorizeRoles } = require('../../../middlewares/requestValidations/user
 const { mediaUploadHandler } = require("../../../middlewares/requestValidations/user/mediaUploadHandler.js");
 
 
-router.get("/", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPosts);
+
+
+router.get("/trending-hashtags", isAuthenticated, authorizeRoles('user', 'admin'), postController.getTrendingTags);
 router.post(
   "/",
   isAuthenticated,
@@ -16,11 +18,16 @@ router.post(
   createPostValidator,
   postController.createPost
 );
+
+
+
+
+router.get("/", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPosts);
+router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
+router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
 router.put("/:id", isAuthenticated, authorizeRoles('user'),updatePostValidator, postController.updatePost);
 router.delete("/:id", isAuthenticated, authorizeRoles('user'), postController.deletePost);
-router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
-router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
-router.get("/trending-hashtags/", isAuthenticated, authorizeRoles('user', 'admin'), postController.getTrendingTags);
+
 
 
 module.exports = router;
