@@ -1,5 +1,8 @@
 var createError = require('http-errors');
 var express = require('express');
+const http = require("http");
+
+const { initIo } = require("./socket");
 const secretVariables = require('./config/secretVariables');
 const authRoutes = require('./routes/v1/user/auth.routes.js')
 const profileRoutes = require('./routes/v1/user/profile.routes.js')
@@ -17,15 +20,15 @@ const connectDB = require("./config/db.js")
 const fileUpload = require("express-fileupload")
 const cors = require("cors")
 require('./config/db');
- 
+
 var app = express();
- 
-  connectDB();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
- app.use(cors());
+
+connectDB();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 // app.use(fileUpload());
-  app.get('/api/v1/test', (req, res) => {
+app.get('/api/v1/test', (req, res) => {
   console.log("Server is running successfully")
   res.status(200).json({
     success: true,
@@ -33,7 +36,7 @@ var app = express();
     timestamp: new Date().toISOString(),
   });
 });
- 
+
 // user section routes
 app.use('/api/v1/user/auth', authRoutes);
 app.use('/api/v1/user/profile', profileRoutes);
@@ -44,17 +47,17 @@ app.use('/api/v1/user/countryList', countryListRoutes);
 app.use('/api/v1/user/professionalSymbol', professionalSymbolRoutes);
 app.use('/api/v1/user/community', communityRoutes);
 app.use('/api/v1/user/friend', friendRoutes);
-app.use("/api/v1/user/block",blockRoutes)
-app.use("/api/v1/user/chat",chatRoutes)
-app.use("/api/v1/user/report",reportRoutes)
- 
- 
- 
+app.use("/api/v1/user/block", blockRoutes)
+app.use("/api/v1/user/chat", chatRoutes)
+app.use("/api/v1/user/report", reportRoutes)
+
+
+
 // Global 404 handler (for unknown routes)
 app.use((req, res, next) => {
   next(createError(404, 'Route not found'));
 });
- 
+
 // Global error handler
 app.use((err, req, res, next) => {
   res.status(err.status || 500).json({
@@ -62,10 +65,16 @@ app.use((err, req, res, next) => {
     message: err.message || 'Internal Server Error',
   });
 });
- 
+
+
+const server = http.createServer(app);
+const io = initIo(server);
+
+
+
+
 const PORT = secretVariables.port;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-module.exports = app;
- 
+server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+module.exports = { app, server };
+
+

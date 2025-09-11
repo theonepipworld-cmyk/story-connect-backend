@@ -7,6 +7,7 @@ const User = require("../../models/user.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
 const Block = require("../../models/block.model");
+const { getIo } = require("../../socket");
 
 
 exports.sendFriendReqService = async (userId, friendReqId) => {
@@ -62,6 +63,12 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 
         if (result) {
             isRequested = true;
+            const io = getIo();
+            io.emit("friend_request_received", {
+                from: userId,
+                to: friendReqId,
+                data: result,
+            });
         }
         return {
             result,
@@ -119,6 +126,12 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         } else {
             throw createError(400, resMessages.validation.invalidFriendAction);
         }
+        const io = getIo();
+        io.emit("friend_request_responded", {
+            from: userId,
+            to: friendReqId,
+            data: result,
+        });
 
         await existing.save();
         return existing;
@@ -144,7 +157,7 @@ exports.getAllpendingReqService = async (userId) => {
             status: enums.friend_Request_status.PENDING
         }).populate({
             path: "requester",
-            select: "name email avatarUrl currentCountry",
+            select: "username email avatarUrl currentCountry",
             match: {
                 _id: { $nin: await Block.distinct("blocked", { blocker: userId }) }
             }
@@ -249,7 +262,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
 
             total = mutualFriendIds.length;
             mutualFriends = await User.find({ _id: { $in: mutualFriendIds } })
-                .select("name email avatarUrl currentCountry bio")
+                .select("username email avatarUrl currentCountry bio")
                 .skip(skip)
                 .limit(limit);
         }

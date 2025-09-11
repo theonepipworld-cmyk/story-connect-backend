@@ -16,7 +16,8 @@ module.exports = {
         unBlockSuccessfully:"user unblock Successfully",
         messageSeen:"message seen successfully",
         messagedelivered:"message delivered successfully",
-        reportSuccessfully:"report user successfully"
+        reportSuccessfully:"report user successfully",
+        messageSent:"message sent successfully"
     },
     notFound: {
         emailNotFound: "Email not found",
