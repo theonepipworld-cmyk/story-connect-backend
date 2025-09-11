@@ -187,7 +187,7 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
             status: enums.friend_Request_status.PENDING
         });
 
-        const loginUserSenderIds = new Set(LoginUserSendingRequest.map((f)=>f.recipient.toString()));
+        const loginUserSenderIds = new Set(LoginUserSendingRequest.map((f) => f.recipient.toString()));
         const allLoginUserFriendsId = new Set(alLoginUserFriends.map((f) => f._id.toString()));
 
         const blockedUsers = await Block.find({
@@ -201,7 +201,7 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
             .map((f) => ({
                 ...f.toObject(),
                 isThisUserFriend: allLoginUserFriendsId.has(f._id.toString()),
-                isPendingReq:loginUserSenderIds.has(f._id.toString())
+                isPendingReq: loginUserSenderIds.has(f._id.toString())
             }));
 
         return {
@@ -271,99 +271,91 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
 
 exports.getSuggestionFriendsService = async (userId, page = 1, limit = 20) => {
     try {
-        if (!userId) {
-            throw createError(400, resMessages.notFound.userNotFound);
-        }
+        if (!userId) throw createError(400, resMessages.notFound.userNotFound);
 
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(400, resMessages.notFound.userNotFound);
-        }
+        if (!user) throw createError(400, resMessages.notFound.userNotFound);
 
+        // All friends of user
         const allFriends = await getAllFriends(user._id);
         const allFriendIds = allFriends.map(f => f._id.toString());
+        allFriendIds.push(user._id.toString());
 
-        const blockedUsers = await Block.find({
-            $or: [{ blocker: userId }, { blocked: userId }]
-        });
+        // Pending requests
+        const pending = await Friend.find({ requester: userId, status: enums.friend_Request_status.PENDING })
+            .distinct("recipient");
+        const allPendingFriendIds = new Set(pending.map(id => id.toString()));
+
+        // Blocked users
+        const blockedUsers = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
         const blockedIds = blockedUsers.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         );
 
-        let allFriendsOfFriends = [];
-        await Promise.all(
-            allFriendIds.map(async (fid) => {
-                const fof = await getAllFriends(fid);
-                const fofIds = fof.map(f => f._id.toString());
-                allFriendsOfFriends.push(...fofIds);
-            })
-        );
+        // Friends of friends (in one query)
+        const fof = await Friend.find({
+            $or: [
+                { requester: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED },
+                { recipient: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED }
+            ]
+        }).distinct("requester recipient");
 
-        const fofCountMap = allFriendsOfFriends.reduce((acc, id) => {
-            if (!blockedIds.includes(id)) {
-                acc[id] = (acc[id] || 0) + 1;
-            }
+        const fofIds = fof.map(id => id.toString()).filter(id => !allFriendIds.includes(id) && !blockedIds.includes(id));
+        const fofCountMap = fofIds.reduce((acc, id) => {
+            acc[id] = (acc[id] || 0) + 1;
             return acc;
         }, {});
 
-        const sameLocationUsers = await User.find({
-            "currentCountry.code": user.currentCountry?.code,
-            _id: { $ne: user._id, $nin: blockedIds }
-        });
+        // Same location
+        const sameLocationIds = await User.find(
+            { "currentCountry.code": user.currentCountry?.code, _id: { $nin: [...allFriendIds, ...blockedIds] } },
+            "_id"
+        ).distinct("_id");
 
-        const communityMemberships = await CommunityMember.find({ userId: user._id });
-        const communityIds = communityMemberships.map(c => c.communityId);
-        const matchedCommunityUsers = await CommunityMember.find({
+        // Communities
+        const communityIds = await CommunityMember.find({ userId: user._id }).distinct("communityId");
+        const communityUserIds = await CommunityMember.find({
             communityId: { $in: communityIds },
-            userId: { $ne: user._id, $nin: blockedIds }
-        }).populate("userId");
+            userId: { $nin: [...allFriendIds, ...blockedIds] }
+        }).distinct("userId");
 
-        const communityUserIds = matchedCommunityUsers.map(c => c.userId._id.toString());
-
+        // Merge candidates
         let suggestionIds = new Set([
-            ...Object.keys(fofCountMap),
-            ...sameLocationUsers.map(u => u._id.toString()),
-            ...communityUserIds
+            ...fofIds,
+            ...sameLocationIds.map(id => id.toString()),
+            ...communityUserIds.map(id => id.toString())
         ]);
 
-        allFriendIds.push(user._id.toString());
-        suggestionIds = [...suggestionIds].filter(
-            id => !allFriendIds.includes(id) && !blockedIds.includes(id)
-        );
-
-
-        suggestionIds = suggestionIds.sort(() => 0.5 - Math.random()).slice(0, 100);
-
-        const total = suggestionIds.length;
+        // Pagination
+        const idsArray = [...suggestionIds];
+        const total = idsArray.length;
         const totalPages = Math.ceil(total / limit);
         const skip = (page - 1) * limit;
-        const paginatedSuggestions = suggestionIds.slice(skip, skip + limit);
+        const paginatedSuggestions = idsArray.slice(skip, skip + limit);
 
-        // final user fetch
-        const suggestions = await User.find({
-            _id: { $in: paginatedSuggestions }
-        }).select("name email avatarUrl currentCountry bio");
+        // Final fetch
+        const suggestions = await User.find(
+            { _id: { $in: paginatedSuggestions } },
+            "username email avatarUrl currentCountry bio profession"
+        );
 
-        // attach mutual friend count
         const finalSuggestions = suggestions.map(u => ({
             ...u.toObject(),
+            isThisUserFriend: allFriendIds.includes(u._id.toString()),
+            isreqPending: allPendingFriendIds.has(u._id.toString()),
             mutualFriendsCount: fofCountMap[u._id.toString()] || 0
         }));
 
         return {
             suggestions: finalSuggestions,
-            pagination: {
-                total,
-                totalPages,
-                currentPage: parseInt(page),
-                limit: parseInt(limit),
-            }
+            pagination: { total, totalPages, currentPage: parseInt(page), limit: parseInt(limit) }
         };
 
     } catch (error) {
         throw createError(500, error.message);
     }
 };
+
 
 exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
     try {
