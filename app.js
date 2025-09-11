@@ -1,7 +1,8 @@
 var createError = require('http-errors');
 var express = require('express');
 const http = require("http");
-const { Server } = require("socket.io");
+
+const { initIo } = require("./socket");
 const secretVariables = require('./config/secretVariables');
 const authRoutes = require('./routes/v1/user/auth.routes.js')
 const profileRoutes = require('./routes/v1/user/profile.routes.js')
@@ -67,19 +68,13 @@ app.use((err, req, res, next) => {
 
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const io = initIo(server);
 
 
-io.on('connection', (socket) => {
-  console.log("New client connected with socket ID ::", socket.id);
 
-  socket.on('disconnect', () => {
-    console.log("Client disconnected with socket ID ::", socket.id);
-  });
-});
 
 const PORT = secretVariables.port;
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-module.exports = app;
-module.exports.io = io;
+module.exports = { app, server };
+
 

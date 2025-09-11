@@ -7,7 +7,7 @@ const User = require("../../models/user.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
 const Block = require("../../models/block.model");
-const io = require("../../app.js")
+const { getIo } = require("../../socket");
 
 
 exports.sendFriendReqService = async (userId, friendReqId) => {
@@ -63,6 +63,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 
         if (result) {
             isRequested = true;
+            const io = getIo();
             io.emit("friend_request_received", {
                 from: userId,
                 to: friendReqId,
@@ -125,7 +126,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         } else {
             throw createError(400, resMessages.validation.invalidFriendAction);
         }
-
+        const io = getIo();
         io.emit("friend_request_responded", {
             from: userId,
             to: friendReqId,

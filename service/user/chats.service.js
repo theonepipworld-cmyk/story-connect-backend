@@ -9,7 +9,7 @@ const Block = require("../../models/block.model.js");
 const Message = require("../../models/message.model.js")
 const Conversation = require("../../models/conversations.model.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
-const io = require("../../app.js")
+const { getIo } = require("../../socket");
 
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
@@ -52,7 +52,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
             const savedTextMessage = await textMessage.save();
             messages.push(savedTextMessage);
-
+            const io = getIo();
             io.emit("newMessage", savedTextMessage);
 
 
@@ -339,10 +339,11 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             return u;
         });
         await conversation.save();
+        const io = getIo();
         io.emit("messages_seen", {
             conversationId,
             seenBy: receiverId,
-               data:result
+            data: result
         });
 
 
@@ -377,10 +378,11 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             },
             { $set: { status: "delivered" } }
         );
+        const io = getIo();
         io.emit("messages_delivered", {
             conversationId,
             deliveredBy: receiverId,
-            data:result
+            data: result
         });
 
 
@@ -399,11 +401,11 @@ exports.updateMessageService = async (conversationId, messageId, messageText, us
             { _id: messageId },
             { $set: { text: messageText } }
         );
-
+        const io = getIo();
         io.emit("messages_updated", {
             conversationId,
             updatedby: userId,
-            updatedMessage:message
+            updatedMessage: message
         });
         return update;
     } catch (error) {
@@ -415,10 +417,11 @@ exports.deleteMessageservice = async (conversationId, messageId, userId) => {
     try {
         const { message } = await validateMessageAction(conversationId, messageId, userId);
         const deleted = await Message.deleteOne({ _id: messageId });
+        const io = getIo();
         io.emit("messages_deleted", {
             conversationId,
             deletedby: userId,
-            deletedMessage:message
+            deletedMessage: message
         });
         return deleted;
     } catch (error) {

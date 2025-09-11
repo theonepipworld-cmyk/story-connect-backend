@@ -5,7 +5,7 @@ const userActivityStats = require("../../constants/variables.constants.js")
 const { isPostExist, validateComment, createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js");
 const Block = require("../../models/block.model.js");
-const io = require("../../app.js")
+const {io} = require("../../app.js")
 
 //add likes ,views ,commentlikes of users on post
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
