@@ -9,7 +9,7 @@ const Block = require("../../models/block.model.js");
 const Message = require("../../models/message.model.js")
 const Conversation = require("../../models/conversations.model.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
-const io = require("../../server.js")
+const io = require("../../app.js")
 
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
@@ -23,6 +23,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!sender) throw createError(404, resMessages.validation.invalidSender);
         if (!receiver) throw createError(404, resMessages.validation.invalidReceiver);
 
+        console.log(sender, receiver)
+
         if (senderId.toString() === receiverId.toString()) throw createError(404, resMessages.validation.cannotMessageYourself);
 
         const isBlocked = await Block.findOne({ blocker: receiverId, blocked: senderId });
@@ -30,13 +32,16 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         let conversation = await Conversation.findOne({ participants: { $all: [senderId, receiverId] } });
         if (!conversation) {
-            conversation = new Conversation({ participants: [senderId, receiverId], unseenCount: {} });
+            conversation = new Conversation({
+                participants: [senderId, receiverId], unseenCount: [
+                    { userId: senderId, count: 0 },
+                    { userId: receiverId, count: 0 }
+                ]
+            });
             await conversation.save();
         }
 
         const messages = [];
-
-
         if (messageText) {
             const textMessage = new Message({
                 conversationId: conversation._id,
@@ -48,15 +53,17 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const savedTextMessage = await textMessage.save();
             messages.push(savedTextMessage);
 
-            io.to(receiverId.toString()).emit("newMessage", savedTextMessage);
+            io.emit("newMessage", savedTextMessage);
 
 
             conversation.lastMessage = savedTextMessage._id;
-            const unseenEntry = conversation.unseenCount.map((u) => u.userId.toString() === receiverId.toString())
+            let unseenEntry = conversation.unseenCount.find(
+                (u) => u.userId.toString() === receiverId.toString()
+            );
+
             if (unseenEntry) {
-                unseenEntry.count += 1
-            }
-            else {
+                unseenEntry.count += 1;
+            } else {
                 conversation.unseenCount.push({ userId: receiverId, count: 1 });
             }
         }
@@ -64,7 +71,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         files = Array.isArray(files) ? files : [];
         for (const file of files) {
-            const uploadedFile = await uploadFileToS3(file, `messages/${conversation._id}/`);
+            const uploadedFile = await uploadFileToS3(file, `messages/${conversation._id}`);
             const fileType = file.mimetype.startsWith("image/")
                 ? "image"
                 : file.mimetype.startsWith("video/")
@@ -81,15 +88,17 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const savedFileMessage = await fileMessage.save();
             messages.push(savedFileMessage);
 
-            io.to(receiverId.toString()).emit("newMessage", savedFileMessage);
+            io.emit("newMessage", savedFileMessage);
 
 
             conversation.lastMessage = savedFileMessage._id;
-            const unseenEntry = conversation.unseenCount.map((u) => u.userId.toString() === receiverId.toString())
+            let unseenEntry = conversation.unseenCount.find(
+                (u) => u.userId.toString() === receiverId.toString()
+            );
+
             if (unseenEntry) {
-                unseenEntry.count += 1
-            }
-            else {
+                unseenEntry.count += 1;
+            } else {
                 conversation.unseenCount.push({ userId: receiverId, count: 1 });
             }
         }
@@ -104,7 +113,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 };
 
 
-exports.getUserConversationService = async (userId, page = 1, limit = 10) => {
+exports.getUserConversationService = async (userId, page = 1, limit = 10, search = "") => {
     try {
         if (!userId) {
             throw createError(404, resMessages.validation.missingFields);
@@ -112,7 +121,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10) => {
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(404, resMessages.validation.invalidUser);
+            throw createError(404, resMessages.notFound.userNotFound);
         }
 
         const offset = (page - 1) * limit;
@@ -131,10 +140,66 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10) => {
                     as: "participantsInfo",
                 },
             },
+            // Filter by search term if provided
+            ...(search
+                ? [
+                    {
+                        $addFields: {
+                            participantsInfo: {
+                                $filter: {
+                                    input: "$participantsInfo",
+                                    as: "p",
+                                    cond: {
+                                        $regexMatch: {
+                                            input: "$$p.username",
+                                            regex: search,
+                                            options: "i", // case-insensitive
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ]
+                : []),
+            // Only keep conversations where the other participant exists after search filter
             {
-                $unwind: {
-                    path: "$participantsInfo",
-                    preserveNullAndEmptyArrays: true,
+                $match: {
+                    "participantsInfo.0": { $exists: true },
+                },
+            },
+            {
+                $addFields: {
+                    otherParticipant: {
+                        $arrayElemAt: [
+                            {
+                                $filter: {
+                                    input: "$participantsInfo",
+                                    as: "p",
+                                    cond: { $ne: ["$$p._id", new mongoose.Types.ObjectId(userId)] },
+                                },
+                            },
+                            0,
+                        ],
+                    },
+                    unseenCountForUser: {
+                        $arrayElemAt: [
+                            {
+                                $map: {
+                                    input: {
+                                        $filter: {
+                                            input: "$unseenCount",
+                                            as: "u",
+                                            cond: { $eq: ["$$u.userId", new mongoose.Types.ObjectId(userId)] },
+                                        },
+                                    },
+                                    as: "matched",
+                                    in: "$$matched.count",
+                                },
+                            },
+                            0,
+                        ],
+                    },
                 },
             },
             {
@@ -151,9 +216,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10) => {
                     preserveNullAndEmptyArrays: true,
                 },
             },
-            {
-                $sort: { updatedAt: -1 },
-            },
+            { $sort: { updatedAt: -1 } },
             {
                 $facet: {
                     data: [
@@ -162,13 +225,14 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10) => {
                         {
                             $project: {
                                 _id: 1,
-                                participants: 1,
-                                "participantsInfo._id": 1,
-                                "participantsInfo.username": 1,
-                                "participantsInfo.avatarUrl": 1,
+                                participant: {
+                                    _id: "$otherParticipant._id",
+                                    username: "$otherParticipant.username",
+                                    avatarUrl: "$otherParticipant.avatarUrl",
+                                },
                                 lastMessage: "$lastMessageInfo.text",
                                 lastMessageAt: "$lastMessageInfo.createdAt",
-                                unseenCount: 1,
+                                unseenCount: { $ifNull: ["$unseenCountForUser", 0] },
                                 updatedAt: 1,
                             },
                         },
@@ -195,14 +259,12 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10) => {
     }
 };
 
-exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, page = 1, limit = 20) => {
+
+exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10) => {
     try {
         if (!userId || !conversationId || !lastMessageId) {
             throw createError(404, resMessages.validation.missingFields);
         }
-        console.log(conversationId, lastMessageId, userId)
-
-        const offset = (page - 1) * limit;
 
         const user = await isUserExist(userId);
         if (!user) {
@@ -215,33 +277,26 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         }
 
         if (!conversation.participants.includes(new mongoose.Types.ObjectId(userId))) {
-            throw createError(404, resMessages.auth.unauthorizedAccess);
+            throw createError(403, resMessages.auth.unauthorizedAccess);
         }
 
         const lastMessage = await Message.findById(lastMessageId);
         if (!lastMessage) {
             throw createError(404, resMessages.validation.invalidMessageId);
         }
-        const totalCount = await Message.countDocuments({
-            conversationId: conversationId,
-        });
 
         const messages = await Message.find({
-            conversationId: conversationId,
-            _id: { $lt: lastMessageId },
+            conversationId,
+            _id: { $lte: lastMessage._id }
         })
             .sort({ createdAt: -1 })
-            .skip(offset)
             .limit(limit)
             .populate("sender", "username avatarUrl currentCountry");
 
         return {
-            data: messages,
+            data: messages.reverse(),
             pagination: {
-                totalCount,
-                totalPages: Math.ceil(totalCount / limit),
-                currentPage: parseInt(page),
-                limit: parseInt(limit),
+                limit,
                 hasMore: messages.length === limit,
             },
         };
@@ -249,6 +304,8 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         throw error;
     }
 };
+
+
 
 exports.seenMessageService = async (conversationId, receiverId) => {
     try {
@@ -282,6 +339,13 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             return u;
         });
         await conversation.save();
+        io.emit("messages_seen", {
+            conversationId,
+            seenBy: receiverId,
+               data:result
+        });
+
+
         return result;
 
 
@@ -313,6 +377,12 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             },
             { $set: { status: "delivered" } }
         );
+        io.emit("messages_delivered", {
+            conversationId,
+            deliveredBy: receiverId,
+            data:result
+        });
+
 
         return result;
     }
@@ -330,6 +400,11 @@ exports.updateMessageService = async (conversationId, messageId, messageText, us
             { $set: { text: messageText } }
         );
 
+        io.emit("messages_updated", {
+            conversationId,
+            updatedby: userId,
+            updatedMessage:message
+        });
         return update;
     } catch (error) {
         throw error;
@@ -340,7 +415,11 @@ exports.deleteMessageservice = async (conversationId, messageId, userId) => {
     try {
         const { message } = await validateMessageAction(conversationId, messageId, userId);
         const deleted = await Message.deleteOne({ _id: messageId });
-
+        io.emit("messages_deleted", {
+            conversationId,
+            deletedby: userId,
+            deletedMessage:message
+        });
         return deleted;
     } catch (error) {
         throw error;

@@ -10,7 +10,15 @@ exports.sendMessageValidator = [
         .notEmpty()
         .withMessage(`${resMessages.validation.missingFields}: receiverId`)
         .isMongoId()
-        .withMessage(`${resMessages.validation.invalidId}: receiverId`),
+        .withMessage(`${resMessages.validation.invalidId}: receiverId`)
+        .bail()
+        .custom(async (receiverId) => {
+            const user = await isUserExist(receiverId);
+            if (!user) {
+                throw new Error(resMessages.notFound.userNotFound);
+            }
+            return true;
+        }),
 
     body("message")
         .optional()
@@ -22,7 +30,6 @@ exports.sendMessageValidator = [
         .isIn(["text", "image", "video", "file"])
         .withMessage(`${resMessages.validation.invalidType}: type`),
 
-
     body().custom((value, { req }) => {
         const hasMessage = req.body.message && req.body.message.trim() !== "";
         const hasFiles = req.files && req.files.length > 0;
@@ -33,7 +40,7 @@ exports.sendMessageValidator = [
         return true;
     }),
 
-    validate
+    validate,
 ];
 
 exports.MessageValidator = [

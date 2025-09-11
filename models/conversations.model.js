@@ -12,9 +12,9 @@ const conversationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, ref: "Message"
     },
     unseenCount: [{
+        _id: false,
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         count: { type: Number, default: 0 }
-
     }],
     hiddenBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 }, { timestamps: true });

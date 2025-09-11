@@ -7,7 +7,7 @@ const chatMiddleware = require("../../../middlewares/requestValidations/user/cha
 const { mediaUploadHandler } = require("../../../middlewares/requestValidations/user/mediaUploadHandler.js");
 
 
-router.post("/send-message", isAuthenticated, authorizeRoles('user'), mediaUploadHandler,chatMiddleware.sendMessageValidator,chatController.sendMessageToUser);
+router.post("/send-message", isAuthenticated, authorizeRoles('user'),mediaUploadHandler,chatMiddleware.sendMessageValidator,chatController.sendMessageToUser);
 router.get("/converations", isAuthenticated, authorizeRoles('user'),chatController.getConversations);
 router.get("/chat-history", isAuthenticated, authorizeRoles('user'),chatController.getloadMoreMessages);
 router.put("/update-message", isAuthenticated, authorizeRoles('user'),chatMiddleware.updateMessageValidator,chatController.updateMessage)
