@@ -29,11 +29,12 @@ module.exports = {
         communityCategoryNotFound:"community category not found",
         memberNotFound:"member not found",
         userOrFriendIdNotFound:"either friend or user id is missing",
+        noFriendFound:"no Friend found",
         noMutualFriend:"No mutual friend",
         noTrendingTags:"No trending Tags found",
         noBlockUser:"no Block profiles found",
         userNotBlocked:"user is not blocked ",
-        receiverNotPart:"receiver not part of conversationId."
+        receiverNotPart:"receiver not part of conversationId.",
     },
     validation: {
         missingFields: "Missing required fields",
@@ -69,7 +70,8 @@ module.exports = {
           invalidSender:"senderId is invalid",
           invalidReceiver:"receiverId is invalid",
           cannotReportSelf:"you can report yourself",
-          invalidType:"Inavlid type"
+          invalidType:"Inavlid type",
+          idIsSame:"User cannot respond to their own friend request."
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
