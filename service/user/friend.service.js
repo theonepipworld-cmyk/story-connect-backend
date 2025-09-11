@@ -85,7 +85,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         if (!userId || !friendReqId) {
             throw createError(400, resMessages.notFound.userOrFriendIdNotFound);
         }
-        console.log(userId, friendReqId)
         const user = await isUserExist(userId);
         const requester = await isUserExist(friendReqId);
 
@@ -93,13 +92,14 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             throw createError(400, resMessages.notFound.userNotFound);
         }
         const existing = await Friend.findOne({
-            requester: friendReqId,
+            requester: new mongoose.Types.ObjectId(friendReqId),
             recipient: user._id
         });
+        console.log(existing)
 
 
         if (!existing) {
-            throw createError(404, resMessages.notFound.userOrFriendIdNotFound);
+            throw createError(404, resMessages.notFound.noFriendFound);
         }
         const isBlocked = await Block.findOne({
             $or: [
@@ -126,14 +126,16 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         } else {
             throw createError(400, resMessages.validation.invalidFriendAction);
         }
-        const io = getIo();
+
+
+
+        await existing.save();
+                const io = getIo();
         io.emit("friend_request_responded", {
             from: userId,
             to: friendReqId,
-            data: result,
+            data: existing,
         });
-
-        await existing.save();
         return existing;
 
     } catch (error) {
