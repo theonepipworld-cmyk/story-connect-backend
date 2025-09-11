@@ -85,6 +85,9 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         if (!userId || !friendReqId) {
             throw createError(400, resMessages.notFound.userOrFriendIdNotFound);
         }
+        if (userId === friendReqId) {
+            throw createError(400,resMessages.validation.idIsSame);
+        }
         const user = await isUserExist(userId);
         const requester = await isUserExist(friendReqId);
 
@@ -130,7 +133,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
 
 
         await existing.save();
-                const io = getIo();
+        const io = getIo();
         io.emit("friend_request_responded", {
             from: userId,
             to: friendReqId,
