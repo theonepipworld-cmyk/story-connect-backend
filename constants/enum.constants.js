@@ -11,8 +11,14 @@ const notification_Types = {
   comment: "comment"
 }
 
+const typePost = {
+  IMAGE:"image",
+  VIDEO:"video"
+}
+
 module.exports = {
   friend_Request_status,
-  notification_Types
+  notification_Types,
+  typePost
 };
 
