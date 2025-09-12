@@ -60,7 +60,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         }
 
         if (type === userActivityStats.userStats.Likes) {
-            togglePostLike(stats, user);
+            const liked = togglePostLike(stats, user);
             if (liked) {
                 await Notification.create({
                     user: post.userId,
@@ -77,7 +77,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             if (!alreadyView) stats.views.push({ userId, userName: username });
             stats.totalViews = stats.views.length;
 
-        } 
+        }
         else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
             const comment = await Comment.findById(commentId).populate("userId", "username");
@@ -95,48 +95,48 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             }
         }
 
-            await stats.save();
-            return stats;
+        await stats.save();
+        return stats;
 
-        } catch (error) {
-            throw new Error(error.message);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+
+//get all liked or views users those liked or view the post
+exports.getAllLikedUserService = async (postId, type, userId) => {
+    try {
+        const isPostIdExist = await isPostExist(postId);
+        if (!isPostIdExist) {
+            throw createError(400, resMessages.notFound.postNotFound);
         }
-    };
 
+        const blocked = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        });
 
-    //get all liked or views users those liked or view the post
-    exports.getAllLikedUserService = async (postId, type, userId) => {
-        try {
-            const isPostIdExist = await isPostExist(postId);
-            if (!isPostIdExist) {
-                throw createError(400, resMessages.notFound.postNotFound);
-            }
+        const blockedUserIds = (blocked || []).map(b =>
+            b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+        );
 
-            const blocked = await Block.find({
-                $or: [{ blocker: userId }, { blocked: userId }]
-            });
-
-            const blockedUserIds = (blocked || []).map(b =>
-                b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
-            );
-
-            let stats;
-            if (type === userActivityStats.userStats.Likes) {
-                stats = await userStats.findOne({ postId }).select("likes");
-            } else if (type === userActivityStats.userStats.Views) {
-                stats = await userStats.findOne({ postId }).select("views");
-            }
-
-            if (!stats) {
-                throw new Error(resMessages.customError.noUserStatsFound);
-            }
-
-            let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
-
-            resultArr = resultArr.filter(u => !blockedUserIds.some(bid => bid.toString() === u.userId.toString()));
-
-            return resultArr;
-        } catch (error) {
-            throw new Error(error.message);
+        let stats;
+        if (type === userActivityStats.userStats.Likes) {
+            stats = await userStats.findOne({ postId }).select("likes");
+        } else if (type === userActivityStats.userStats.Views) {
+            stats = await userStats.findOne({ postId }).select("views");
         }
-    };
+
+        if (!stats) {
+            throw new Error(resMessages.customError.noUserStatsFound);
+        }
+
+        let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
+
+        resultArr = resultArr.filter(u => !blockedUserIds.some(bid => bid.toString() === u.userId.toString()));
+
+        return resultArr;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};

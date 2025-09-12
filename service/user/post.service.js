@@ -8,6 +8,7 @@ const HashTag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const Block = require("../../models/block.model.js")
 const Community = require("../../models/community.model.js")
+const enums = require("../../constants/enum.constants.js")
 
 
 // Create Post
@@ -391,7 +392,7 @@ exports.getAllPostService = async (search, page, limit, userId) => {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
-    
+
     const user = await isUserExist(userId)
     if (!user) {
       throw createError(400, resMessages.notFound.userNotFound);
@@ -407,7 +408,7 @@ exports.getAllPostService = async (search, page, limit, userId) => {
       b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
     );
 
-    console.log("blockedUserIds",blockedUserIds)
+    console.log("blockedUserIds", blockedUserIds)
     const allFriendIds = [];
     const allCommunityIds = [];
     const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds));
@@ -422,6 +423,115 @@ exports.getAllPostService = async (search, page, limit, userId) => {
         limit: parseInt(limit),
       },
     };
+  }
+  catch (error) {
+    throw error;
+  }
+};
+
+
+exports.getHighlightedPostsService = async (userId) => {
+  try {
+    if (!userId) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+
+    const user = await isUserExist(userId)
+    if (!user) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    let matchStage = {
+      $or: [
+        { $and: [{ $or: [{ type: enums.typePost.IMAGE }, { type: null }] }, { storyOfTheMonth: true }] },
+        { $and: [{ type: enums.typePost.VIDEO }, { videoOfTheMonth: true }] }
+      ]
+    };
+    const pipeline = [
+      { $match: matchStage },
+      {
+        $facet: {
+          paginatedPosts: [
+            // Join stats
+            {
+              $lookup: {
+                from: "userstats",
+                localField: "_id",
+                foreignField: "postId",
+                as: "stats",
+              },
+            },
+            {
+              $addFields: {
+                totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
+                totalViews: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] } },
+                isPostLikedByMe: {
+                  $let: {
+                    vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
+                    in: {
+                      $anyElementTrue: {
+                        $map: {
+                          input: { $ifNull: ["$$statsDoc.likes", []] },
+                          as: "like",
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            // Join comments
+            {
+              $lookup: {
+                from: "comments",
+                localField: "_id",
+                foreignField: "postId",
+                as: "comments",
+              },
+            },
+            {
+              $addFields: {
+                totalComments: { $size: { $ifNull: ["$comments", []] } }
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                postHeading: 1,
+                postDescription: 1,
+                mediaUrls: 1,
+                hashtags: 1,
+                communityId: 1,
+                type: 1,
+                storyOfTheMonth: 1,
+                videoOfTheMonth: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                totalLikes: 1,
+                totalViews: 1,
+                totalComments: 1,
+                isPostLikedByMe: 1,
+              },
+            },
+            { $sort: { createdAt: -1 } },
+          ],
+          totalCount: [
+            { $count: "count" }
+          ]
+        }
+      }
+    ];
+
+    const result = await Post.aggregate(pipeline);
+    const posts = result[0]?.paginatedPosts || [];
+
+    const storyOfTheMonthPosts = posts.filter(post => post.storyOfTheMonth);
+    const videoOfTheMonthPosts = posts.filter(post => post.videoOfTheMonth);
+    return {
+      storyOfTheMonthPosts,
+      videoOfTheMonthPosts
+    }
+
   }
   catch (error) {
     throw error;
