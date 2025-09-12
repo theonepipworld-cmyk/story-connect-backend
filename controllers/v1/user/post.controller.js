@@ -18,33 +18,33 @@ exports.createPost = async (req, res) => {
     let cleanHashtags = [];
     if (req.body.hashTags && Array.isArray(req.body.hashTags)) {
       cleanHashtags = req.body.hashTags
-        .map(tag => tag.trim().toLowerCase().replace(/^#/, "")) 
+        .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
         .filter((tag, index, self) => tag && self.indexOf(tag) === index);
     }
 
     const postData = {
       ...req.body,
-       mediaUrls,
-       hashtags: cleanHashtags,
+      mediaUrls,
+      hashtags: cleanHashtags,
     };
 
-    const post = await postService.createPost(postData,cleanHashtags);
+    const post = await postService.createPost(postData, cleanHashtags);
     return res.status(200).json(successResponse(resMessages.success.createSuccessful, post));
   } catch (error) {
     console.log(error, "error")
-      res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // Get All Posts
-exports.getPosts = async (req, res) => {
+exports.getUserFeedPosts = async (req, res) => {
   try {
-    const {search} = req.query || ""
+    const { search } = req.query || ""
     const userId = req.user.id
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-      const { posts, pagination } = await postService.getAllPosts(page, limit, search ,userId);
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully,posts,pagination));
+    const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, search, userId);
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts, pagination));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -53,8 +53,8 @@ exports.getPosts = async (req, res) => {
 // Get Single Post
 exports.getPostById = async (req, res) => {
   try {
-     const userId = req.user.id
-    const {post} = await postService.getPostById(req.params.id,userId);
+    const userId = req.user.id
+    const { post } = await postService.getPostById(req.params.id, userId);
     if (!post)
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
@@ -96,12 +96,12 @@ exports.getPostsOfProfile = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const type = req.query.type
-      const userId = req.user.id
-    const { posts, pagination }  = await postService.getProfilePost(req.params.id,page,limit,userId,type)
+    const userId = req.user.id
+    const { posts, pagination } = await postService.getProfilePost(req.params.id, page, limit, userId, type)
     if (!posts) {
       return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
     }
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts,pagination));
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts, pagination));
   }
   catch (error) {
     res.status(400).json({ success: false, message: error.message })
@@ -109,10 +109,23 @@ exports.getPostsOfProfile = async (req, res) => {
 };
 
 
-exports.getTrendingTags = async(req,res)=>{
-  try{
-      const trendingTags = await postService.getTrendingTagsService()
-       return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, trendingTags));
+exports.getTrendingTags = async (req, res) => {
+  try {
+    const trendingTags = await postService.getTrendingTagsService()
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, trendingTags));
+  }
+  catch (error) {
+    res.status(400).json({ success: false, message: error.message })
+  }
+}
+
+exports.getAllPost = async (req, res) => {
+  try {
+    const { search } = req.query || ""
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const result = await postService.getAllPostService(search,page,limit,req.user?.id)
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, result));
   }
   catch (error) {
     res.status(400).json({ success: false, message: error.message })

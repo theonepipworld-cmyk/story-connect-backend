@@ -13,7 +13,7 @@ const Conversation = require("../models/conversations.model.js")
 
 exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
   try {
-    console.log(fieldName,value)
+    console.log(fieldName, value)
     let query = User.findOne({ [fieldName]: value });
     if (!forUpdate) query = query.lean();
     const user = await query.exec();
@@ -128,15 +128,24 @@ exports.validateComment = async (postId, commentId, parentCommentId, isReply = f
 }
 
 exports.createError = (status, message) => {
-  const err = new Error(message); 
+  const err = new Error(message);
   err.statusCode = status;
   return err;
 };
 
-exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = "", user, blockedUserIds = []) => {
+exports.postAggregationPipeline = (
+  match = {},
+  page = 1,
+  limit = 10,
+  search = "",
+  user,
+  blockedUserIds = [],
+  allFriendIds = [],
+  allCommunityIds = []
+) => {
   const skip = (page - 1) * limit;
-  const searchMatch = search
 
+  const searchMatch = search
     ? {
       $or: [
         { hashtags: { $in: [search.toLowerCase()] } },
@@ -145,8 +154,31 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
       ],
     }
     : {};
+
+  const baseMatch = {
+    ...match,
+    ...searchMatch,
+    userId: { $nin: blockedUserIds },
+  };
+
+  const orConditions = [];
+  if (allFriendIds.length > 0) {
+    orConditions.push({ userId: { $in: allFriendIds } });
+  }
+  if (allCommunityIds.length > 0) {
+    orConditions.push({
+      $and: [
+        { communityId: { $in: allCommunityIds } },
+        { userId: { $ne: user._id } },
+      ],
+    });
+  }
+
+  const finalMatch =
+    orConditions.length > 0 ? { ...baseMatch, $or: orConditions } : baseMatch;
+
   return [
-    { $match: { ...match, ...searchMatch, userId: { $nin: blockedUserIds }, } },
+    { $match: finalMatch },
     {
       $facet: {
         data: [
@@ -159,6 +191,7 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
             },
           },
           { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
           {
             $lookup: {
               from: "userstats",
@@ -169,8 +202,12 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
           },
           {
             $addFields: {
-              totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
-              totalViews: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] } },
+              totalLikes: {
+                $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] },
+              },
+              totalViews: {
+                $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] },
+              },
               isPostLikedByMe: {
                 $let: {
                   vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
@@ -179,14 +216,15 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
                       $map: {
                         input: { $ifNull: ["$$statsDoc.likes", []] },
                         as: "like",
-                        in: { $eq: ["$$like.userId", { $toString: user._id }] }
-                      }
-                    }
-                  }
-                }
-              }
-            }
+                        in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
+
           {
             $lookup: {
               from: "comments",
@@ -226,7 +264,9 @@ exports.postAggregationPipeline = (match = {}, page = 1, limit = 10, search = ""
             },
           },
 
-          { $sort: { createdAt: -1 } },
+          {
+            $sort: { createdAt: -1 }
+          },
           { $skip: skip },
           { $limit: limit },
         ],
@@ -257,13 +297,13 @@ exports.getAllFriends = async (id) => {
   }
 }
 
-exports.isConversationExist  = async(id)=>{
-  try{
+exports.isConversationExist = async (id) => {
+  try {
     const result = await Conversation.findById(id);
     return result;
 
   }
-  catch(error){
+  catch (error) {
     throw error;
   }
 }
