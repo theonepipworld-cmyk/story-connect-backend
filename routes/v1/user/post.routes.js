@@ -17,8 +17,6 @@ router.post(
   postController.createPost
 );
 
-
-router.get("/", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPosts);
 router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
 router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
 router.put("/:id", isAuthenticated, authorizeRoles('user'),updatePostValidator, postController.updatePost);
