@@ -47,7 +47,7 @@ exports.createPost = async (data, cleanHashTags) => {
 };
 
 // Get All Posts
-exports.getUserFeedPostsService = async (page, limit, search, userId) => {
+exports.getUserFeedPostsService = async (page, limit, search, userId,hashtagSearch) => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
@@ -74,7 +74,7 @@ exports.getUserFeedPostsService = async (page, limit, search, userId) => {
     const blockedUserIds = Blocked.map(b =>
       b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
     );
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds, allFriendIds, allCommunityIds));
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds, allFriendIds, allCommunityIds,hashtagSearch));
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {
@@ -386,7 +386,7 @@ exports.getTrendingTagsService = async () => {
   }
 };
 
-exports.getAllPostService = async (search, page, limit, userId) => {
+exports.getAllPostService = async (search, page, limit, userId,hashtagSearch) => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
@@ -410,7 +410,7 @@ exports.getAllPostService = async (search, page, limit, userId) => {
     console.log("blockedUserIds", blockedUserIds)
     const allFriendIds = [];
     const allCommunityIds = [];
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds));
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds,hashtagSearch));
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {
