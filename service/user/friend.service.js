@@ -8,6 +8,7 @@ const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
 const Block = require("../../models/block.model");
 const { getIo } = require("../../socket");
+const Notification = require("../../models/notification.model.js");
 
 
 exports.sendFriendReqService = async (userId, friendReqId) => {
@@ -68,6 +69,14 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 from: userId,
                 to: friendReqId,
                 data: result,
+            });
+
+            await Notification.create({
+                user: friendReqId,
+                sender: userId,
+                type:enums.notification_Types.FRIEND_REQUEST,
+                message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                postId: null
             });
         }
         return {
@@ -138,6 +147,18 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             from: userId,
             to: friendReqId,
             data: existing,
+        });
+
+        await Notification.create({
+            user: existing.requester,
+            sender: userId,
+            type: existing.status === enums.friend_Request_status.ACCEPTED
+                ? resMessages.success.acceptReqSuccessfully
+                : resMessages.success.rejectReqSuccessfully,
+            message: existing.status === enums.friend_Request_status.ACCEPTED
+                ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
+                : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
+            postId: null
         });
         return existing;
 
@@ -287,30 +308,30 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
     }
 }
 
-exports.getSuggestionFriendsService = async ( page = 1, limit = 20,userId) => {
+exports.getSuggestionFriendsService = async (page = 1, limit = 20, search, userId) => {
     try {
         if (!userId) throw createError(400, resMessages.notFound.userNotFound);
 
         const user = await isUserExist(userId);
         if (!user) throw createError(400, resMessages.notFound.userNotFound);
 
-       
+
         const allFriends = await getAllFriends(user._id);
         const allFriendIds = allFriends.map(f => f._id.toString());
         allFriendIds.push(user._id.toString());
 
-      
+
         const pending = await Friend.find({ requester: userId, status: enums.friend_Request_status.PENDING })
             .distinct("recipient");
         const allPendingFriendIds = new Set(pending.map(id => id.toString()));
 
-      
+
         const blockedUsers = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
         const blockedIds = blockedUsers.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         );
 
-      
+
         const fof = await Friend.find({
             $or: [
                 { requester: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED },
@@ -324,27 +345,27 @@ exports.getSuggestionFriendsService = async ( page = 1, limit = 20,userId) => {
             return acc;
         }, {});
 
-       
+
         const sameLocationIds = await User.find(
             { "currentCountry.code": user.currentCountry?.code, _id: { $nin: [...allFriendIds, ...blockedIds] } },
             "_id"
         ).distinct("_id");
 
-      
+
         const communityIds = await CommunityMember.find({ userId: user._id }).distinct("communityId");
         const communityUserIds = await CommunityMember.find({
             communityId: { $in: communityIds },
             userId: { $nin: [...allFriendIds, ...blockedIds] }
         }).distinct("userId");
 
-     
+
         let suggestionIds = new Set([
             ...fofIds,
             ...sameLocationIds.map(id => id.toString()),
             ...communityUserIds.map(id => id.toString())
         ]);
 
-      
+
         let idsArray = [...suggestionIds];
         for (let i = idsArray.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -356,9 +377,14 @@ exports.getSuggestionFriendsService = async ( page = 1, limit = 20,userId) => {
         const skip = (page - 1) * limit;
         const paginatedSuggestions = idsArray.slice(skip, skip + limit);
 
- 
+
         const suggestions = await User.find(
-            { _id: { $in: paginatedSuggestions } },
+            {
+                _id: { $in: paginatedSuggestions },
+                ...(search
+                    ? { username: { $regex: search, $options: "i" } }
+                    : {})
+            },
             "username email avatarUrl currentCountry bio profession"
         );
 

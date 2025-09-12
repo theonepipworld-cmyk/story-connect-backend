@@ -76,7 +76,8 @@ exports.getSuggestionFriends = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
-        const { suggestions, pagination } = await getSuggestionFriendsService(page,limit,req.user.id)
+        const search = req.query.search || ""
+        const { suggestions, pagination } = await getSuggestionFriendsService(page,limit,search,req.user.id)
         return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, suggestions, pagination));
     }
     catch (err) {

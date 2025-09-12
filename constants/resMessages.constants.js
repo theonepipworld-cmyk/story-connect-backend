@@ -17,8 +17,17 @@ module.exports = {
         messageSeen:"message seen successfully",
         messagedelivered:"message delivered successfully",
         reportSuccessfully:"report user successfully",
-        messageSent:"message sent successfully"
+        messageSent:"message sent successfully",
     },
+
+    notifications:{
+         acceptedFriendReq:"accepted your friend request",
+        rejectedFriendReq:"rejected your friend request",
+        sendFriendReq:"Send you friend request",
+        likedPost:"liked your post",
+        comment:"comment your post"
+    },
+
     notFound: {
         emailNotFound: "Email not found",
         postNotFound: "post not found",
