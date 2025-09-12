@@ -20,8 +20,6 @@ router.post(
 );
 
 
-
-
 router.get("/", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPosts);
 router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
 router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);

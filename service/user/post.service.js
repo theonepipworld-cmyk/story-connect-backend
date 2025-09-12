@@ -25,7 +25,7 @@ exports.createPost = async (data, cleanHashTags) => {
   if (cleanHashTags?.length > 0) {
     await Promise.all(
       cleanHashTags.map(async (tag) => {
-        await Hashtag.findOneAndUpdate(
+        await HashTag.findOneAndUpdate(
           { tag: tag },
           {
             $inc: { usageCount: 1 },

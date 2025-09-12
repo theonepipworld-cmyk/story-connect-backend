@@ -24,7 +24,7 @@ exports.createPost = async (req, res) => {
 
     const postData = {
       ...req.body,
-      mediaUrls,
+       mediaUrls,
        hashtags: cleanHashtags,
     };
 
