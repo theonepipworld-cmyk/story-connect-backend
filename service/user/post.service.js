@@ -414,7 +414,7 @@ exports.getAllPostService = async (search, page, limit, userId) => {
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {
-      posts: data,
+     data,
       pagination: {
         total,
         totalPages: Math.ceil(total / limit),
