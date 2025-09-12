@@ -2,184 +2,217 @@ const Post = require("../../models/post.model")
 const UserStats = require("../../models/userActivityStats.model")
 const mongoose = require("mongoose");
 const Comment = require("../../models/Comments.model")
-const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist } = require("../../helpers/dbHelpers.js")
+const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist, getAllFriends } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
 const Hashtag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const Block = require("../../models/block.model.js")
+const Community = require("../../models/community.model.js")
 
 
 // Create Post
 exports.createPost = async (data, cleanHashTags) => {
-  if (data.postType === "community") {
-    if (!data.communityId) {
-      throw createError(400, resMessages.notFound.communityNotFound);
+  try {
+    if (data.postType === "community") {
+      if (!data.communityId) {
+        throw createError(400, resMessages.notFound.communityNotFound);
+      }
+      const communityExists = await isCommunityExist(data.communityId);
+      if (!communityExists) {
+        throw createError(400, resMessages.notFound.communityNotFound);
+      }
     }
-    const communityExists = await isCommunityExist(data.communityId);
-    if (!communityExists) {
-      throw createError(400, resMessages.notFound.communityNotFound);
+    const post = new Post(data);
+    //update hashTagColection
+    if (cleanHashTags?.length > 0) {
+      await Promise.all(
+        cleanHashTags.map(async (tag) => {
+          await Hashtag.findOneAndUpdate(
+            { tag: tag },
+            {
+              $inc: { usageCount: 1 },
+              $addToSet: { posts: post._id }
+            },
+            { upsert: true, new: true }
+          );
+        })
+      );
     }
-  }
-  const post = new Post(data);
-  //update hashTagColection
-  if (cleanHashTags?.length > 0) {
-    await Promise.all(
-      cleanHashTags.map(async (tag) => {
-        await Hashtag.findOneAndUpdate(
-          { tag: tag },
-          {
-            $inc: { usageCount: 1 },
-            $addToSet: { posts: post._id }
-          },
-          { upsert: true, new: true }
-        );
-      })
-    );
-  }
 
-  return await post.save();
+    return await post.save();
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Get All Posts
-exports.getAllPosts = async (page, limit, search, userId) => {
-  if (!userId) {
-    throw createError(400, resMessages.notFound.userNotFound);
-  }
-  const user = await isUserExist(userId)
-  if (!user) {
-    throw createError(400, resMessages.notFound.userNotFound);
-  }
+exports.getUserFeedPostsService = async (page, limit, search, userId) => {
+  try {
+    if (!userId) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    const user = await isUserExist(userId)
+    if (!user) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
 
-  const Blocked = await Block.find({
-    $or: [
-      { blocked: userId },
-      { blocker: userId }
-    ]
-  });
+    const allFriends = await getAllFriends(user._id);
+    const allFriendIds = allFriends.map(f => f._id.toString());
+    const allCommunities = await Community.find({
+      userId: user._id
+    });
+    const allCommunityIds = allCommunities.map(c => c._id);
 
-  const blockedUserIds = Blocked.map(b =>
-    b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
-  );
-  const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds));
-  const data = result[0].data;
-  const total = result[0].totalCount[0]?.count || 0;
-  return {
-    posts: data,
-    pagination: {
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: parseInt(page),
-      limit: parseInt(limit),
-    },
-  };
+    const Blocked = await Block.find({
+      $or: [
+        { blocked: userId },
+        { blocker: userId }
+      ]
+    });
+
+    const blockedUserIds = Blocked.map(b =>
+      b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+    );
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds, allFriendIds, allCommunityIds));
+    const data = result[0].data;
+    const total = result[0].totalCount[0]?.count || 0;
+    return {
+      posts: data,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit),
+      },
+    };
+  }
+  catch (error) {
+    throw error;
+  }
 };
 
 
 //get Single Post
 exports.getPostById = async (id, userId) => {
-  if (!userId) {
-    throw createError(400, resMessages.notFound.userNotFound);
-  }
-  const user = await isUserExist(userId)
-  if (!user) {
-    throw createError(400, resMessages.notFound.userNotFound);
-  }
-  const post = await isPostExist(id);
-  const isBlocked = await Block.findOne({
-    $or: [
-      { blocker: post.userId, blocked: userId },
-      { blocker: userId, blocked: post.userId }
-    ]
-  });
-  if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
+  try {
+    if (!userId) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    const user = await isUserExist(userId)
+    if (!user) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    const post = await isPostExist(id);
+    const isBlocked = await Block.findOne({
+      $or: [
+        { blocker: post.userId, blocked: userId },
+        { blocker: userId, blocked: post.userId }
+      ]
+    });
+    if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
 
-  const result = await Post.aggregate(
-    postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "", user, [])
-  );
-  const data = result[0].data;
-  return {
-    post: data
+    const result = await Post.aggregate(
+      postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "", user, [])
+    );
+    const data = result[0].data;
+    return {
+      post: data
+    }
+  } catch (error) {
+    throw error;
   }
 };
 
 // Update Post
 exports.updatePost = async (id, updateData, userId) => {
-  if (!userId) {
-    throw createError(400, resMessages.notFound.userNotFound);
-  }
-  const isPostIdExist = await isPostExist(id);
-  if (!isPostIdExist) {
-    throw createError(400, resMessages.notFound.postNotFound);
-  }
-  if (isPostIdExist.userId.toString() != userId.toString()) {
-    throw new Error(resMessages.customError.NotAuthorized);
-  }
+  try {
+    if (!userId) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    const isPostIdExist = await isPostExist(id);
+    if (!isPostIdExist) {
+      throw createError(400, resMessages.notFound.postNotFound);
+    }
+    if (isPostIdExist.userId.toString() != userId.toString()) {
+      throw new Error(resMessages.customError.NotAuthorized);
+    }
 
-  let cleanHashtags = []
-  cleanHashtags = updateData.hashtags
-    .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
-    .filter((tag, index, self) => tag && self.indexOf(tag) === index);
-  updateData.hashtags = cleanHashtags;
-  const oldTags = isPostIdExist.hashtags
-  const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag))
-  const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag))
-  const post = await Post.findByIdAndUpdate(id, updateData, {
-    new: true,
-    runValidators: true,
-  });
+    let cleanHashtags = []
+    cleanHashtags = updateData.hashtags
+      .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
+      .filter((tag, index, self) => tag && self.indexOf(tag) === index);
+    updateData.hashtags = cleanHashtags;
+    const oldTags = isPostIdExist.hashtags
+    const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag))
+    const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag))
+    const post = await Post.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
-  await Promise.all([
-    ...addTags.map(tag =>
-      Hashtag.findOneAndUpdate(
-        { tag },
-        { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
-        { upsert: true }
-      )
-    ),
-    ...removeTags.map(async tag => {
-      const updated = await Hashtag.findOneAndUpdate(
-        { tag },
-        { $inc: { usageCount: -1 }, $pull: { posts: post._id } },
-        { new: true }
-      );
-      if (updated?.usageCount <= 0) await Hashtag.deleteOne({ tag });
-    })
-  ]);
+    await Promise.all([
+      ...addTags.map(tag =>
+        Hashtag.findOneAndUpdate(
+          { tag },
+          { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
+          { upsert: true }
+        )
+      ),
+      ...removeTags.map(async tag => {
+        const updated = await Hashtag.findOneAndUpdate(
+          { tag },
+          { $inc: { usageCount: -1 }, $pull: { posts: post._id } },
+          { new: true }
+        );
+        if (updated?.usageCount <= 0) await Hashtag.deleteOne({ tag });
+      })
+    ]);
 
-  return post;
+    return post;
+  }
+  catch (error) {
+    throw error;
+  }
 };
 
 // Delete Post
 exports.deletePost = async (id, userId) => {
-  if (!userId) {
-    throw createError(400, resMessages.notFound.userNotFound);
-  }
-  const isPostIdExist = await isPostExist(id);
-  if (!isPostIdExist) {
-    throw createError(400, resMessages.notFound.postNotFound);
-  }
-  if (isPostIdExist.userId.toString() != userId.toString()) {
-    throw new Error(resMessages.customError.NotAuthorized);
-  }
-  const post = await Post.findById(id);
-  if (!post) return null;
+  try {
+    if (!userId) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    const isPostIdExist = await isPostExist(id);
+    if (!isPostIdExist) {
+      throw createError(400, resMessages.notFound.postNotFound);
+    }
+    if (isPostIdExist.userId.toString() != userId.toString()) {
+      throw new Error(resMessages.customError.NotAuthorized);
+    }
+    const post = await Post.findById(id);
+    if (!post) return null;
 
-  // Delete each media file from S3
-  if (isPostIdExist.mediaUrls && isPostIdExist.mediaUrls.length > 0) {
-    await Promise.all(isPostIdExist.mediaUrls.map(url => deleteFileFromS3(url)));
+    // Delete each media file from S3
+    if (isPostIdExist.mediaUrls && isPostIdExist.mediaUrls.length > 0) {
+      await Promise.all(isPostIdExist.mediaUrls.map(url => deleteFileFromS3(url)));
+    }
+
+    // Delete post from DB
+    await Post.findByIdAndDelete(id);
+    // delete this post from userstats collection
+    await UserStats.findOneAndDelete({ postId: id });
+    // Delete post ref from hashtags
+    await Hashtag.updateMany(
+      { posts: id },
+      { $pull: { posts: id } }
+    );
+
+    return isPostIdExist;
   }
 
-  // Delete post from DB
-  await Post.findByIdAndDelete(id);
-  // delete this post from userstats collection
-  await UserStats.findOneAndDelete({ postId: id });
-  // Delete post ref from hashtags
-  await Hashtag.updateMany(
-    { posts: id },
-    { $pull: { posts: id } }
-  );
+  catch (error) {
+    throw error;
+  }
 
-  return isPostIdExist;
 };
 
 exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profile") => {
@@ -330,7 +363,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
     };
 
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
@@ -348,9 +381,51 @@ exports.getTrendingTagsService = async () => {
 
     return result;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
+
+exports.getAllPostService = async (search, page, limit, userId) => {
+  try {
+    if (!userId) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    
+    const user = await isUserExist(userId)
+    if (!user) {
+      throw createError(400, resMessages.notFound.userNotFound);
+    }
+    const Blocked = await Block.find({
+      $or: [
+        { blocked: userId },
+        { blocker: userId }
+      ]
+    });
+
+    const blockedUserIds = Blocked.map(b =>
+      b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+    );
+
+    console.log("blockedUserIds",blockedUserIds)
+    const allFriendIds = [];
+    const allCommunityIds = [];
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds));
+    const data = result[0].data;
+    const total = result[0].totalCount[0]?.count || 0;
+    return {
+      posts: data,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit),
+      },
+    };
+  }
+  catch (error) {
+    throw error;
+  }
+}
 
 
 
