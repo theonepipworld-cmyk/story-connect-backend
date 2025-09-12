@@ -415,7 +415,7 @@ exports.getAllPostService = async (search, page, limit, userId) => {
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {
-     data,
+      data,
       pagination: {
         total,
         totalPages: Math.ceil(total / limit),
@@ -451,6 +451,16 @@ exports.getHighlightedPostsService = async (userId) => {
       {
         $facet: {
           paginatedPosts: [
+            {
+              $lookup: {
+                from: "users",
+                localField: "userId", 
+                foreignField: "_id",
+                as: "userInfo"
+              }
+            },
+            { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+
             // Join stats
             {
               $lookup: {
@@ -511,6 +521,13 @@ exports.getHighlightedPostsService = async (userId) => {
                 totalViews: 1,
                 totalComments: 1,
                 isPostLikedByMe: 1,
+                user: {
+                  _id: "$userInfo._id",
+                  username: "$userInfo.username",
+                  avatarUrl: "$userInfo.avatarUrl",
+                  currentCountry:"$userInfo.currentCountry",
+                  email:"$userInfo.email"
+                }
               },
             },
             { $sort: { createdAt: -1 } },

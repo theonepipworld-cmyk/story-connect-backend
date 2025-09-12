@@ -101,13 +101,14 @@ exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) 
 //handle like and dislike of post
 exports.togglePostLike = (stats, user) => {
   const existingIndex = stats.likes.findIndex(l => l.userId.toString() === user._id.toString());
-  console.log(existingIndex);
   if (existingIndex === -1) {
     stats.likes.push({ userId: user._id, userName: user.username, avatarUrl: user.avatarUrl, currentCountryCode: user.currentCountry.code });
     stats.totalLikes = stats.likes.length;
+    return true
   } else {
     stats.likes.splice(existingIndex, 1);
     stats.totalLikes = stats.likes.length;
+    return false
   }
 };
 
