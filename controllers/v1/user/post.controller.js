@@ -124,8 +124,8 @@ exports.getAllPost = async (req, res) => {
     const { search } = req.query || ""
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const result = await postService.getAllPostService(search, page, limit, req.user?.id)
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, result));
+    const {data ,pagination} = await postService.getAllPostService(search, page, limit, req.user?.id)
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data,pagination));
   }
   catch (error) {
     res.status(400).json({ success: false, message: error.message })
