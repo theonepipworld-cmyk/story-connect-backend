@@ -43,7 +43,7 @@ exports.getUserFeedPosts = async (req, res) => {
     let textSearch = search;
     let hashtagSearch = null;
 
-    if (search.startsWith("#")) {
+    if (search && search.startsWith("#")) {
       hashtagSearch = search.replace("#", "").trim();
       textSearch = null;
     }
@@ -131,7 +131,7 @@ exports.getAllPost = async (req, res) => {
     let textSearch = search;
     let hashtagSearch = null;
 
-    if (search.startsWith("#")) {
+    if (search && search.startsWith("#")) {
       hashtagSearch = search.replace("#", "").trim();
       textSearch = null;
     }
