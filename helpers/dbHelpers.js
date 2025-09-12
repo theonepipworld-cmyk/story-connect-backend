@@ -142,23 +142,31 @@ exports.postAggregationPipeline = (
   user,
   blockedUserIds = [],
   allFriendIds = [],
-  allCommunityIds = []
+  allCommunityIds = [],
+  hashtagSearch = ""
 ) => {
   const skip = (page - 1) * limit;
 
   const searchMatch = search
     ? {
       $or: [
-        { hashtags: { $in: [search.toLowerCase()] } },
+        { hashtags: { $regex: search, $options: "i" } },
         { postHeading: { $regex: search, $options: "i" } },
         { postDescription: { $regex: search, $options: "i" } },
       ],
     }
     : {};
 
+  
+  const hashtagMatch = hashtagSearch
+    ? { hashtags: { $regex: hashtagSearch, $options: "i" } }
+    : {};
+
+
   const baseMatch = {
     ...match,
     ...searchMatch,
+    ...hashtagMatch,
     userId: { $nin: blockedUserIds },
   };
 

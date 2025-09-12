@@ -40,10 +40,16 @@ exports.createPost = async (req, res) => {
 exports.getUserFeedPosts = async (req, res) => {
   try {
     const { search } = req.query || ""
-    const userId = req.user.id
+    let textSearch = search;
+    let hashtagSearch = null;
+
+    if (search.startsWith("#")) {
+      hashtagSearch = search.replace("#", "").trim();
+      textSearch = null;
+    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, search, userId);
+    const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, textSearch, userId, hashtagSearch);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts, pagination));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -122,10 +128,18 @@ exports.getTrendingTags = async (req, res) => {
 exports.getAllPost = async (req, res) => {
   try {
     const { search } = req.query || ""
+    let textSearch = search;
+    let hashtagSearch = null;
+
+    if (search.startsWith("#")) {
+      hashtagSearch = search.replace("#", "").trim();
+      textSearch = null;
+    }
+  
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const {data ,pagination} = await postService.getAllPostService(search, page, limit, req.user?.id)
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data,pagination));
+    const { data, pagination } = await postService.getAllPostService(search, page, limit, req.user?.id,hashtagSearch)
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data, pagination));
   }
   catch (error) {
     res.status(400).json({ success: false, message: error.message })
@@ -135,10 +149,10 @@ exports.getAllPost = async (req, res) => {
 
 exports.getHighlightedPosts = async (req, res) => {
   try {
-    const {storyOfTheMonthPosts,videoOfTheMonthPosts} = await postService.getHighlightedPostsService(req.user?.id)
+    const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await postService.getHighlightedPostsService(req.user?.id)
     const data = {
       storyOfTheMonthPosts,
-          videoOfTheMonthPosts
+      videoOfTheMonthPosts
     }
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data));
   }
