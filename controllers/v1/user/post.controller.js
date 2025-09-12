@@ -49,7 +49,7 @@ exports.getUserFeedPosts = async (req, res) => {
     }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, textSearch, userId, hashtagSearch);
+    const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, textSearch, req.user?.id, hashtagSearch);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts, pagination));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
