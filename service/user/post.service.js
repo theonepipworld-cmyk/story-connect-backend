@@ -47,7 +47,7 @@ exports.createPost = async (data, cleanHashTags) => {
 };
 
 // Get All Posts
-exports.getUserFeedPostsService = async (page, limit, search, userId,hashtagSearch) => {
+exports.getUserFeedPostsService = async (page, limit, search, userId, hashtagSearch) => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
@@ -62,7 +62,9 @@ exports.getUserFeedPostsService = async (page, limit, search, userId,hashtagSear
     const allCommunities = await Community.find({
       userId: user._id
     });
+
     const allCommunityIds = allCommunities.map(c => c._id);
+
 
     const Blocked = await Block.find({
       $or: [
@@ -74,7 +76,7 @@ exports.getUserFeedPostsService = async (page, limit, search, userId,hashtagSear
     const blockedUserIds = Blocked.map(b =>
       b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
     );
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds, allFriendIds, allCommunityIds,hashtagSearch));
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds, allCommunityIds, hashtagSearch,search));
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {
@@ -386,7 +388,7 @@ exports.getTrendingTagsService = async () => {
   }
 };
 
-exports.getAllPostService = async (search, page, limit, userId,hashtagSearch) => {
+exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch) => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
@@ -407,10 +409,13 @@ exports.getAllPostService = async (search, page, limit, userId,hashtagSearch) =>
       b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
     );
 
-    console.log("blockedUserIds", blockedUserIds)
     const allFriendIds = [];
     const allCommunityIds = [];
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, search, user, blockedUserIds,hashtagSearch));
+    hashtagSearch = hashtagSearch || "";
+    console.log(hashtagSearch)
+    console.log(search)
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds,
+      allCommunityIds, hashtagSearch, search));
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {
@@ -453,7 +458,7 @@ exports.getHighlightedPostsService = async (userId) => {
             {
               $lookup: {
                 from: "users",
-                localField: "userId", 
+                localField: "userId",
                 foreignField: "_id",
                 as: "userInfo"
               }
@@ -524,8 +529,8 @@ exports.getHighlightedPostsService = async (userId) => {
                   _id: "$userInfo._id",
                   username: "$userInfo.username",
                   avatarUrl: "$userInfo.avatarUrl",
-                  currentCountry:"$userInfo.currentCountry",
-                  email:"$userInfo.email"
+                  currentCountry: "$userInfo.currentCountry",
+                  email: "$userInfo.email"
                 }
               },
             },
