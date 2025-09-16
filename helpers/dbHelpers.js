@@ -139,9 +139,9 @@ exports.postAggregationPipeline = (
   page = 1,
   limit = 10,
   user,
-  blockedUserIds = [],
-  allFriendIds = [],
-  allCommunityIds = [],
+  blockedUserIds,
+  allFriendIds,
+  allCommunityIds,
   hashtagSearch = "",
   search = "",
 ) => {
@@ -150,7 +150,7 @@ exports.postAggregationPipeline = (
   search = search || "";
   hashtagSearch = hashtagSearch || "";
 
-  console.log(search)
+
 
 
 
@@ -177,27 +177,40 @@ exports.postAggregationPipeline = (
     userId: { $nin: blockedUserIds },
   };
 
-  const orConditions = [];
-  if (allFriendIds.length > 0) {
-    orConditions.push({ userId: { $in: allFriendIds } });
-  }
+  const friendObjectIds = allFriendIds.map(id => new mongoose.Types.ObjectId(id));
+  let orConditions = [];
+
   if (allCommunityIds.length > 0) {
+    orConditions.push({ communityId: { $in: allCommunityIds } });
+  }
+
+  if (allFriendIds.length > 0) {
     orConditions.push({
       $and: [
-        { communityId: { $in: allCommunityIds } },
-        { userId: { $ne: user._id } },
-      ],
+        { userId: { $in: friendObjectIds } },
+        { $or: [{ communityId: { $exists: false } }, { communityId: null }] }
+      ]
     });
   }
 
-  const finalMatch =
-    orConditions.length > 0 ? { ...baseMatch, $or: orConditions } : baseMatch;
+
+  if (orConditions.length === 0) {
+    orConditions.push({}); 
+  }
+
+  const finalMatch = {
+    $and: [
+      baseMatch,
+      { $or: orConditions }
+    ]
+  };
 
   return [
     { $match: finalMatch },
     {
       $facet: {
         data: [
+
           {
             $lookup: {
               from: "users",
@@ -208,6 +221,27 @@ exports.postAggregationPipeline = (
           },
           { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
 
+
+          {
+            $lookup: {
+              from: "communities",
+              localField: "communityId",
+              foreignField: "_id",
+              as: "community",
+            },
+          },
+          { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
+
+          {
+            $lookup: {
+              from: "communitycategories",
+              localField: "community.category",
+              foreignField: "_id",
+              as: "communityCategory",
+            },
+          },
+
+          { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
           {
             $lookup: {
               from: "userstats",
@@ -241,6 +275,7 @@ exports.postAggregationPipeline = (
             },
           },
 
+
           {
             $lookup: {
               from: "comments",
@@ -253,6 +288,17 @@ exports.postAggregationPipeline = (
             $addFields: {
               totalComments: { $size: "$comments" },
             },
+          },
+          {
+            $addFields: {
+              "community.categoryName": {
+                $cond: {
+                  if: { $eq: ["$communityCategory.name", "Others"] },
+                  then: "$community.manualCategoryName",
+                  else: "$communityCategory.name"
+                }
+              }
+            }
           },
 
           {
@@ -273,6 +319,9 @@ exports.postAggregationPipeline = (
               "user.email": 1,
               "user.avatarUrl": 1,
               "user.currentCountry": 1,
+              "community.name": 1,
+              "community.category": 1,
+              "community.categoryName": 1,
               totalLikes: 1,
               totalViews: 1,
               totalComments: 1,
@@ -280,9 +329,7 @@ exports.postAggregationPipeline = (
             },
           },
 
-          {
-            $sort: { createdAt: -1 }
-          },
+          { $sort: { createdAt: -1 } },
           { $skip: skip },
           { $limit: limit },
         ],
