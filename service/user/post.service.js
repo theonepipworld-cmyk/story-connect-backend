@@ -47,7 +47,7 @@ exports.createPost = async (data, cleanHashTags) => {
 };
 
 // Get All Posts
-exports.getUserFeedPostsService = async (page, limit, search, userId, hashtagSearch) => {
+exports.getUserFeedPostsService = async (page, limit, userId,) => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
@@ -63,8 +63,6 @@ exports.getUserFeedPostsService = async (page, limit, search, userId, hashtagSea
     });
 
     const allCommunityIds = allCommunities.map(c => c._id);
-
-
     const Blocked = await Block.find({
       $or: [
         { blocked: userId },
@@ -72,10 +70,12 @@ exports.getUserFeedPostsService = async (page, limit, search, userId, hashtagSea
       ]
     });
 
+    console.log(allFriendIds,allCommunityIds)
+
     const blockedUserIds = Blocked.map(b =>
       b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
     );
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds, allCommunityIds, hashtagSearch,search));
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds, allCommunityIds));
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {

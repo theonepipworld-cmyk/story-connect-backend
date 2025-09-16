@@ -39,17 +39,9 @@ exports.createPost = async (req, res) => {
 // Get All Posts
 exports.getUserFeedPosts = async (req, res) => {
   try {
-    const { search } = req.query || ""
-    let textSearch = search;
-    let hashtagSearch = null;
-
-    if (search && search.startsWith("#")) {
-      hashtagSearch = search.replace("#", "").trim();
-      textSearch = null;
-    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, textSearch, req.user?.id, hashtagSearch);
+    const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, req.user?.id);
     return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts, pagination));
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
