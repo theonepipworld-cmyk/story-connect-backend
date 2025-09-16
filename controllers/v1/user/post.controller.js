@@ -47,8 +47,6 @@ exports.getUserFeedPosts = async (req, res) => {
       hashtagSearch = search.replace("#", "").trim();
       textSearch = null;
     }
-
-    console.log(textSearch)
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, textSearch, req.user?.id, hashtagSearch);

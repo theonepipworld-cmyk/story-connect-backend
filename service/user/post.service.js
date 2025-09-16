@@ -56,7 +56,6 @@ exports.getUserFeedPostsService = async (page, limit, search, userId, hashtagSea
     if (!user) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
-
     const allFriends = await getAllFriends(user._id);
     const allFriendIds = allFriends.map(f => f._id.toString());
     const allCommunities = await Community.find({

@@ -19,6 +19,7 @@ module.exports = {
         messagedelivered:"message delivered successfully",
         reportSuccessfully:"report user successfully",
         messageSent:"message sent successfully",
+        seenSuccessfully:"seen successfully"
     },
 
     notifications:{
@@ -45,6 +46,7 @@ module.exports = {
         noBlockUser:"no Block profiles found",
         userNotBlocked:"user is not blocked ",
         receiverNotPart:"receiver not part of conversationId.",
+        noNotifciationFound:" Notifications not found"
     },
     validation: {
         missingFields: "Missing required fields",
