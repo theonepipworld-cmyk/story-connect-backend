@@ -8,6 +8,7 @@ const HashTag = require("../../models/hashTag.models.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const Block = require("../../models/block.model.js")
 const Community = require("../../models/community.model.js")
+const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
 
 
@@ -58,11 +59,10 @@ exports.getUserFeedPostsService = async (page, limit, userId,) => {
     }
     const allFriends = await getAllFriends(user._id);
     const allFriendIds = allFriends.map(f => f._id.toString());
-    const allCommunities = await Community.find({
-      userId: user._id
-    });
+    const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
+    const allCommunityIds = joinedCommunities.map(c => c.communityId);
 
-    const allCommunityIds = allCommunities.map(c => c._id);
+
     const Blocked = await Block.find({
       $or: [
         { blocked: userId },
@@ -70,12 +70,13 @@ exports.getUserFeedPostsService = async (page, limit, userId,) => {
       ]
     });
 
-    console.log(allFriendIds,allCommunityIds)
+    console.log(allFriendIds, allCommunityIds)
+    let allIds = []
 
     const blockedUserIds = Blocked.map(b =>
       b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
     );
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds, allCommunityIds));
+    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds, allCommunityIds, allIds));
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {
@@ -217,7 +218,7 @@ exports.deletePost = async (id, userId) => {
 
 };
 
-exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profile") => {
+exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
@@ -233,6 +234,11 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
       ]
     });
     if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
+
+    const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
+
+    const allCommunityIds = joinedCommunities.map(c => c.communityId);
+
     const skip = (page - 1) * limit;
     let matchStage = {};
     if (type == "profile") {
@@ -331,9 +337,18 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type = "profil
                 isPostLikedByMe: 1,
                 ...(type === "community"
                   ? {
-                    "categoryInfo._id": 1,
-                    "categoryInfo.name": 1,
-                    "communityInfo.manualName": 1
+                    community: {
+                      _id: "$communityInfo._id",
+                      name: "$communityInfo.name",
+                      categoryName: {
+                        $cond: {
+                          if: { $eq: ["$categoryInfo.name", "Others"] },
+                          then: "$communityInfo.manualCategoryName",
+                          else: "$categoryInfo.name"
+                        }
+                      },
+                      isJoinedByMe: { $in: ["$communityId", allCommunityIds] }
+                    }
                   }
                   : {})
               },
@@ -398,6 +413,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     if (!user) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
+
     const Blocked = await Block.find({
       $or: [
         { blocked: userId },
@@ -411,11 +427,15 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
     const allFriendIds = [];
     const allCommunityIds = [];
+    let allIds = [];
+
+    const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
+    allIds = joinedCommunities.map(c => c.communityId);
+
     hashtagSearch = hashtagSearch || "";
-    console.log(hashtagSearch)
-    console.log(search)
+    search = search || ""
     const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds,
-      allCommunityIds, hashtagSearch, search));
+      allCommunityIds, allIds, hashtagSearch, search));
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
     return {

@@ -134,7 +134,7 @@ exports.createError = (status, message) => {
   return err;
 };
 
-exports.postAggregationPipeline = (
+exports.postAggregationPipeline =  (
   match = {},
   page = 1,
   limit = 10,
@@ -142,6 +142,7 @@ exports.postAggregationPipeline = (
   blockedUserIds,
   allFriendIds,
   allCommunityIds,
+  allIds ,
   hashtagSearch = "",
   search = "",
 ) => {
@@ -149,8 +150,10 @@ exports.postAggregationPipeline = (
 
   search = search || "";
   hashtagSearch = hashtagSearch || "";
-
-
+  
+  if(allCommunityIds.length >0){
+    allIds = allCommunityIds
+  }
 
 
 
@@ -195,7 +198,7 @@ exports.postAggregationPipeline = (
 
 
   if (orConditions.length === 0) {
-    orConditions.push({}); 
+    orConditions.push({});
   }
 
   const finalMatch = {
@@ -220,7 +223,6 @@ exports.postAggregationPipeline = (
             },
           },
           { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-
 
           {
             $lookup: {
@@ -291,12 +293,29 @@ exports.postAggregationPipeline = (
           },
           {
             $addFields: {
-              "community.categoryName": {
-                $cond: {
-                  if: { $eq: ["$communityCategory.name", "Others"] },
-                  then: "$community.manualCategoryName",
-                  else: "$communityCategory.name"
-                }
+              community: {
+                $cond: [
+                  { $ifNull: ["$communityId", false] },
+                  {
+                    _id: "$community._id",
+                    name: "$community.name",
+                    categoryName: {
+                      $cond: {
+                        if: { $eq: ["$communityCategory.name", "Others"] },
+                        then: "$community.manualCategoryName",
+                        else: "$communityCategory.name"
+                      }
+                    },
+                    isJoinedByMe: {
+                      $cond: [
+                        { $in: ["$communityId", allIds] },
+                        true,
+                        false
+                      ]
+                    }
+                  },
+                  "$$REMOVE"
+                ]
               }
             }
           },
@@ -319,9 +338,7 @@ exports.postAggregationPipeline = (
               "user.email": 1,
               "user.avatarUrl": 1,
               "user.currentCountry": 1,
-              "community.name": 1,
-              "community.category": 1,
-              "community.categoryName": 1,
+              community: 1,
               totalLikes: 1,
               totalViews: 1,
               totalComments: 1,
