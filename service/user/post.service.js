@@ -155,7 +155,7 @@ exports.updatePost = async (id, updateData, userId) => {
 
     await Promise.all([
       ...addTags.map(tag =>
-        Hashtag.findOneAndUpdate(
+        HashTag.findOneAndUpdate(
           { tag },
           { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
           { upsert: true }
@@ -204,7 +204,7 @@ exports.deletePost = async (id, userId) => {
     // delete this post from userstats collection
     await UserStats.findOneAndDelete({ postId: id });
     // Delete post ref from hashtags
-    await Hashtag.updateMany(
+    await HashTag.updateMany(
       { posts: id },
       { $pull: { posts: id } }
     );
