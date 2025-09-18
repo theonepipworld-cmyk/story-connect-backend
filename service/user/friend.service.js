@@ -153,8 +153,8 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             user: existing.requester,
             sender: userId,
             type: existing.status === enums.friend_Request_status.ACCEPTED
-                ? resMessages.success.acceptReqSuccessfully
-                : resMessages.success.rejectReqSuccessfully,
+                ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
+                :enums.notification_Types.FRIEND_REQUEST,
             message: existing.status === enums.friend_Request_status.ACCEPTED
                 ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
                 : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
