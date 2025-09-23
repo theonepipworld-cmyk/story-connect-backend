@@ -154,6 +154,35 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                 ]
                 : []),
             {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
+                        { $sort: { createdAt: -1 } }, 
+                        { $limit: 3 },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: "$userInfo" },
+                        {
+                            $project: {
+                                _id: 0,
+                                "userInfo._id": 1,
+                                "userInfo.name": 1,
+                                "userInfo.profileImage": 1
+                            }
+                        }
+                    ],
+                    as: "membersPreview"
+                }
+            },
+            {
                 $project: {
                     name: 1,
                     description: 1,
@@ -162,6 +191,7 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                     manualCategoryName: 1,
                     memberCount: 1,
                     "categoryInfo.name": 1,
+                    membersPreview:1,
                     createdAt: 1
 
                 }
@@ -270,6 +300,36 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                 }
             },
             {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
+                        { $sort: { createdAt: -1 } },
+                        { $limit: 3 },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: "$userInfo" },
+                        {
+                            $project: {
+                                _id: 0,
+                                "userInfo._id": 1,
+                                "userInfo.name": 1,
+                                "userInfo.avatarUrl": 1
+                            }
+                        }
+                    ],
+                    as: "membersPreview"
+                }
+            },
+
+            {
                 $addFields: {
                     isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] }
                 }
@@ -290,6 +350,7 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                                 memberCount: 1,
                                 "categoryInfo.name": 1,
                                 isJoinedByMe: 1,
+                                membersPreview: 1,
                                 createdAt: 1
                             }
                         }
@@ -877,6 +938,36 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
                 }
             },
             {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
+                        { $sort: { createdAt: -1 } },
+                        { $limit: 3},
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: "$userInfo" },
+                        {
+                            $project: {
+                                _id: 0,
+                                "userInfo._id": 1,
+                                "userInfo.name": 1,
+                                "userInfo.avatarUrl": 1
+                            }
+                        }
+                    ],
+                    as: "membersPreview"
+                }
+            },
+
+            {
                 $addFields: {
                     isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] }
                 }
@@ -896,6 +987,7 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
                                 manualCategoryName: 1,
                                 memberCount: 1,
                                 "categoryInfo.name": 1,
+                                membersPreview: 1,
                                 isJoinedByMe: 1,
                                 createdAt: 1
                             }
