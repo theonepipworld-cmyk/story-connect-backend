@@ -175,7 +175,7 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                                 _id: 0,
                                 "userInfo._id": 1,
                                 "userInfo.name": 1,
-                                "userInfo.profileImage": 1
+                                "userInfo.avatarUrl": 1
                             }
                         }
                     ],
