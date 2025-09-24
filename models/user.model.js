@@ -99,6 +99,15 @@ const userSchema = new Schema({
    manualProfession: {
         type: String
     },
+     deviceToken: {
+    type: String,
+    required: true,
+  },
+   language: {
+    type: String,
+    enum: ['en', 'fr', 'es', 'cr'],
+    default: 'en'
+  },
 }, {
   timestamps: true
 });

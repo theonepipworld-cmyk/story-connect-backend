@@ -90,6 +90,7 @@ exports.joinCommunityService = async (userId, data) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
+
         if (blocked) throw createError(403, resMessages.validation.userBlocked);
         const joined = await CommunityMember.create({
             userId: user._id,
@@ -109,7 +110,7 @@ exports.joinCommunityService = async (userId, data) => {
 };
 
 exports.userCommunityService = async (userId, search = "", page = 1, limit = 10) => {
-    console.log("userId", userId)
+
     if (!userId) {
         throw createError(400, resMessages.notFound.userNotFound);
     }
@@ -159,7 +160,7 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                     let: { communityIdObj: "$_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
-                        { $sort: { createdAt: -1 } }, 
+                        { $sort: { createdAt: -1 } },
                         { $limit: 3 },
                         {
                             $lookup: {
@@ -174,7 +175,6 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                             $project: {
                                 _id: 0,
                                 "userInfo._id": 1,
-                                "userInfo.name": 1,
                                 "userInfo.avatarUrl": 1
                             }
                         }
@@ -191,7 +191,7 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                     manualCategoryName: 1,
                     memberCount: 1,
                     "categoryInfo.name": 1,
-                    membersPreview:1,
+                    membersPreview: 1,
                     createdAt: 1
 
                 }
@@ -320,7 +320,6 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                             $project: {
                                 _id: 0,
                                 "userInfo._id": 1,
-                                "userInfo.name": 1,
                                 "userInfo.avatarUrl": 1
                             }
                         }
@@ -397,6 +396,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 { blocker: userId, blocked: communityUserId }
             ]
         })
+
         if (blocked) {
             throw new Error(resMessages.validation.userBlocked);
         }
@@ -476,34 +476,26 @@ exports.getCommunityDetailService = async (communityId, userId) => {
 
 exports.getCommunityMemberService = async (communityId, userId, page = 1, limit = 10) => {
     try {
-        if (!userId) {
-            throw createError(400, resMessages.notFound.userNotFound);
-        }
+        if (!userId) throw createError(400, resMessages.notFound.userNotFound);
 
         userId = new mongoose.Types.ObjectId(userId);
         communityId = new mongoose.Types.ObjectId(communityId);
-        console.log(userId);
-        const loginUserFriends = await getAllFriends(userId)
+        const loginUserFriends = await getAllFriends(userId);
         const loginUserSendedRequest = await Friend.find({
             requester: userId,
             status: enums.friend_Request_status.PENDING
         });
 
-        const allPendingFriendIds = new Set(
-            loginUserSendedRequest.map(f => f.recipient.toString())
-        );
-        const loginUserFriendIds = new Set(loginUserFriends.filter((f) => f._id.toString()))
+        const allPendingFriendIds = new Set(loginUserSendedRequest.map(f => f.recipient.toString()));
+        const loginUserFriendIds = new Set(loginUserFriends.map(f => f._id.toString()));
 
-        const blocked = await Block.find({
-            $or: [{ blocker: userId }, { blocked: userId }]
-        });
-
+  
+        const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
         const blockedUserIds = (blocked || []).map(b =>
-            b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+            b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         );
 
-
-        const offSet = (page - 1) * limit;
+        const offset = (page - 1) * limit;
 
         const result = await CommunityMember.aggregate([
             {
@@ -536,23 +528,21 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 manualProfession: "$userInfo.manualProfession",
                                 bio: "$userInfo.bio",
                                 userId: "$userInfo._id",
-
                             }
                         },
                         { $sort: { createdAt: -1 } },
-                        { $skip: offSet },
+                        { $skip: offset },
                         { $limit: limit }
                     ],
-                    totalCount: [
-                        { $count: "count" }
-                    ]
+                    totalCount: [{ $count: "count" }]
                 }
             }
         ]);
+
         const data = (result[0]?.data || []).map(f => ({
             ...f,
             isThisUserFriend: loginUserFriendIds.has(f.userId.toString()),
-            isreqPending: allPendingFriendIds.has(f.userId.toString())
+            isReqPending: allPendingFriendIds.has(f.userId.toString())
         }));
 
         const totalCount = result[0]?.totalCount[0]?.count || 0;
@@ -566,11 +556,13 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                 limit
             }
         };
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, error.message || "Something went wrong on server");
     }
 };
+
 
 
 exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
@@ -944,7 +936,7 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
                     pipeline: [
                         { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
                         { $sort: { createdAt: -1 } },
-                        { $limit: 3},
+                        { $limit: 3 },
                         {
                             $lookup: {
                                 from: "users",
@@ -958,7 +950,6 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
                             $project: {
                                 _id: 0,
                                 "userInfo._id": 1,
-                                "userInfo.name": 1,
                                 "userInfo.avatarUrl": 1
                             }
                         }

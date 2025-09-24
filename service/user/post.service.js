@@ -47,40 +47,200 @@ exports.createPost = async (data, cleanHashTags) => {
   }
 };
 
-// Get All Posts
-exports.getUserFeedPostsService = async (page, limit, userId,) => {
+// Get user feed Posts
+exports.getUserFeedPostsService = async (page, limit, userId) => {
   try {
-    if (!userId) {
-      throw createError(400, resMessages.notFound.userNotFound);
-    }
-    const user = await isUserExist(userId)
-    if (!user) {
-      throw createError(400, resMessages.notFound.userNotFound);
-    }
+    if (!userId) throw createError(400, resMessages.notFound.userNotFound);
+
+    const user = await isUserExist(userId);
+    if (!user) throw createError(400, resMessages.notFound.userNotFound);
+
     const allFriends = await getAllFriends(user._id);
     const allFriendIds = allFriends.map(f => f._id.toString());
+
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
-    const allCommunityIds = joinedCommunities.map(c => c.communityId);
+    const allCommunityIds = joinedCommunities.map(c => c.communityId.toString());
 
-
-    const Blocked = await Block.find({
-      $or: [
-        { blocked: userId },
-        { blocker: userId }
-      ]
-    });
-
-    console.log(allFriendIds, allCommunityIds)
-    let allIds = []
-
-    const blockedUserIds = Blocked.map(b =>
-      b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+    const blocked = await Block.find({ $or: [{ blocked: userId }, { blocker: userId }] });
+    const blockedUserIds = blocked.map(b =>
+      b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
     );
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds, allCommunityIds, allIds));
-    const data = result[0].data;
-    const total = result[0].totalCount[0]?.count || 0;
+
+    const baseMatch = {
+      userId: { $nin: [...blockedUserIds, userId] },
+    };
+
+    const friendObjectIds = allFriendIds.map(id => new mongoose.Types.ObjectId(id));
+    const orConditions = [];
+
+    if (allCommunityIds.length > 0) {
+      orConditions.push({
+        $and: [
+          { communityId: { $in: allCommunityIds.map(id => new mongoose.Types.ObjectId(id)) } },
+          { userId: { $ne: new mongoose.Types.ObjectId(userId) } }
+        ]
+      });
+    }
+
+    if (allFriendIds.length > 0) {
+      orConditions.push({
+        $and: [
+          { userId: { $in: friendObjectIds } },
+          { $or: [{ communityId: { $exists: false } }, { communityId: null }] }
+        ]
+      });
+    }
+
+    if (orConditions.length === 0) orConditions.push({});
+
+    const finalMatch = { $and: [baseMatch, { $or: orConditions }] };
+    const skip = (page - 1) * limit;
+
+    const result = await Post.aggregate([
+      { $match: finalMatch },
+
+      {
+        $facet: {
+          data: [
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+
+
+            {
+              $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                as: "user",
+              },
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
+
+            {
+              $lookup: {
+                from: "communities",
+                localField: "communityId",
+                foreignField: "_id",
+                as: "community",
+              },
+            },
+            { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
+
+            {
+              $lookup: {
+                from: "communitycategories",
+                localField: "community.category",
+                foreignField: "_id",
+                as: "communityCategory",
+              },
+            },
+            { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
+
+
+            {
+              $lookup: {
+                from: "userstats",
+                localField: "_id",
+                foreignField: "postId",
+                as: "stats",
+              },
+            },
+            {
+              $addFields: {
+                totalLikes: {
+                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] },
+                },
+                totalViews: {
+                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] },
+                },
+                isPostLikedByMe: {
+                  $let: {
+                    vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
+                    in: {
+                      $anyElementTrue: {
+                        $map: {
+                          input: { $ifNull: ["$$statsDoc.likes", []] },
+                          as: "like",
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+
+
+            {
+              $lookup: {
+                from: "comments",
+                localField: "_id",
+                foreignField: "postId",
+                as: "comments",
+              },
+            },
+            { $addFields: { totalComments: { $size: "$comments" } } },
+
+
+            {
+              $addFields: {
+                community: {
+                  $cond: [
+                    { $ifNull: ["$communityId", false] },
+                    {
+                      _id: "$community._id",
+                      name: "$community.name",
+                      categoryName: {
+                        $cond: {
+                          if: { $eq: ["$communityCategory.name", "Others"] },
+                          then: "$community.manualCategoryName",
+                          else: "$communityCategory.name",
+                        },
+                      },
+                      isJoinedByMe: { $in: ["$communityId", allCommunityIds.map(id => new mongoose.Types.ObjectId(id))] },
+                    },
+                    "$$REMOVE",
+                  ],
+                },
+              },
+            },
+
+            {
+              $project: {
+                _id: 1,
+                postHeading: 1,
+                postDescription: 1,
+                mediaUrls: 1,
+                hashtags: 1,
+                communityId: 1,
+                type: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                "user._id": 1,
+                "user.username": 1,
+                "user.email": 1,
+                "user.avatarUrl": 1,
+                "user.currentCountry": 1,
+                community: 1,
+                totalLikes: 1,
+                totalViews: 1,
+                totalComments: 1,
+                isPostLikedByMe: 1,
+              },
+            },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ]);
+
+    const posts = result[0]?.data || [];
+    const total = result[0]?.totalCount[0]?.count || 0;
+
     return {
-      posts: data,
+      posts,
       pagination: {
         total,
         totalPages: Math.ceil(total / limit),
@@ -88,11 +248,11 @@ exports.getUserFeedPostsService = async (page, limit, userId,) => {
         limit: parseInt(limit),
       },
     };
-  }
-  catch (error) {
+  } catch (error) {
     throw error;
   }
 };
+
 
 
 //get Single Post
@@ -252,7 +412,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
       {
         $facet: {
           paginatedPosts: [
-            // Join stats
+
             {
               $lookup: {
                 from: "userstats",
@@ -403,41 +563,204 @@ exports.getTrendingTagsService = async () => {
   }
 };
 
-exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch) => {
+exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
 
-    const user = await isUserExist(userId)
+    const user = await isUserExist(userId);
     if (!user) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
 
-    const Blocked = await Block.find({
-      $or: [
-        { blocked: userId },
-        { blocker: userId }
-      ]
+
+    const blocked = await Block.find({
+      $or: [{ blocked: userId }, { blocker: userId }]
     });
 
-    const blockedUserIds = Blocked.map(b =>
+
+
+    const blockedUserIds = blocked.map(b =>
       b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
     );
 
-    const allFriendIds = [];
-    const allCommunityIds = [];
-    let allIds = [];
-
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
-    allIds = joinedCommunities.map(c => c.communityId);
+    const allIds = joinedCommunities.map(c => c.communityId);
 
-    hashtagSearch = hashtagSearch || "";
-    search = search || ""
-    const result = await Post.aggregate(postAggregationPipeline({}, page, limit, user, blockedUserIds, allFriendIds,
-      allCommunityIds, allIds, hashtagSearch, search));
+
+    const baseMatch = {
+      userId: { $nin: blockedUserIds }
+    };
+
+    if (search) {
+      baseMatch.$or = [
+        { postHeading: { $regex: search, $options: "i" } },
+        { postDescription: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (hashtagSearch) {
+      baseMatch.hashtags = { $regex: `^${hashtagSearch}$`, $options: "i" };
+    }
+    const skip = (page - 1) * limit;
+
+    const result = await Post.aggregate([
+      { $match: baseMatch },
+      {
+        $facet: {
+          data: [
+
+            {
+              $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                as: "user",
+              },
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
+
+            {
+              $lookup: {
+                from: "communities",
+                localField: "communityId",
+                foreignField: "_id",
+                as: "community",
+              },
+            },
+            { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
+
+
+            {
+              $lookup: {
+                from: "communitycategories",
+                localField: "community.category",
+                foreignField: "_id",
+                as: "communityCategory",
+              },
+            },
+            { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
+
+
+            {
+              $lookup: {
+                from: "userstats",
+                localField: "_id",
+                foreignField: "postId",
+                as: "stats",
+              },
+            },
+            {
+              $addFields: {
+                totalLikes: {
+                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] },
+                },
+                totalViews: {
+                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] },
+                },
+                isPostLikedByMe: {
+                  $let: {
+                    vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
+                    in: {
+                      $anyElementTrue: {
+                        $map: {
+                          input: { $ifNull: ["$$statsDoc.likes", []] },
+                          as: "like",
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+
+
+            {
+              $lookup: {
+                from: "comments",
+                localField: "_id",
+                foreignField: "postId",
+                as: "comments",
+              },
+            },
+            {
+              $addFields: {
+                totalComments: { $size: "$comments" },
+              },
+            },
+
+
+            {
+              $addFields: {
+                community: {
+                  $cond: [
+                    { $ifNull: ["$communityId", false] },
+                    {
+                      _id: "$community._id",
+                      name: "$community.name",
+                      categoryName: {
+                        $cond: {
+                          if: { $eq: ["$communityCategory.name", "Others"] },
+                          then: "$community.manualCategoryName",
+                          else: "$communityCategory.name",
+                        },
+                      },
+                      isJoinedByMe: {
+                        $cond: [
+                          { $in: ["$communityId", allIds] },
+                          true,
+                          false,
+                        ],
+                      },
+                    },
+                    "$$REMOVE",
+                  ],
+                },
+              },
+            },
+
+
+            {
+              $project: {
+                _id: 1,
+                postHeading: 1,
+                postDescription: 1,
+                mediaUrls: 1,
+                hashtags: 1,
+                communityId: 1,
+                type: 1,
+                storyOfTheMonth: 1,
+                videoOfTheMonth: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                "user._id": 1,
+                "user.username": 1,
+                "user.email": 1,
+                "user.avatarUrl": 1,
+                "user.currentCountry": 1,
+                community: 1,
+                totalLikes: 1,
+                totalViews: 1,
+                totalComments: 1,
+                isPostLikedByMe: 1,
+              },
+            },
+
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ]);
+
     const data = result[0].data;
     const total = result[0].totalCount[0]?.count || 0;
+
     return {
       data,
       pagination: {
@@ -447,8 +770,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
         limit: parseInt(limit),
       },
     };
-  }
-  catch (error) {
+  } catch (error) {
     throw error;
   }
 };

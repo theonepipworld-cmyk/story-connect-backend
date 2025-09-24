@@ -7,12 +7,17 @@ const { getJWT } = require("../../../utils/commonFunctions.util.js")
 const User = require('../../../models/user.model.js');
 const { google_client_id } = require("../../../config/secretVariables.js");
 const authService = require("../../../service/user/auth.service.js")
+const { getMessage } = require("../../../constants/locales/index.js")
 
-
+const getLang = (req) => req.lang || 'en';
 exports.login = async (req, res) => {
   try {
+    const lang = getLang(req);
     const result = await authService.login(req.body);
-    return res.status(200).json(successResponse(resMessages.success.loginSuccessful, result.token));
+    return res.status(200).json(successResponse(
+      getMessage(lang, 'success', 'loginSuccessful'),
+      result.token
+    ));
   } catch (error) {
     return res.status(error.statusCode || 500).json(errorResponse(error.message || resMessages.generalError.somethingWentWrong));
   }
@@ -108,3 +113,23 @@ exports.googleAuth = async (req, res) => {
     return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
   }
 };
+
+exports.savedDeviceToken = async (req, res) => {
+  try {
+    const { userId, token } = req.body;
+    if (!userId || !token) {
+      return res.status(400).json({ success: false, message: resMessages.validation.missingFields });
+    }
+
+    await User.findByIdAndUpdate(
+      userId,
+      { deviceToken: token },
+      { new: true }
+    );
+
+    return res.json({ success: true, message: resMessages.success.deviceTokenSaved });
+  } catch (error) {
+    console.error("Save Device Token Error:", error);
+    return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
+  }
+}

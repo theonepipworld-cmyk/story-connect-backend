@@ -19,7 +19,8 @@ module.exports = {
         messagedelivered:"message delivered successfully",
         reportSuccessfully:"report user successfully",
         messageSent:"message sent successfully",
-        seenSuccessfully:"seen successfully"
+        seenSuccessfully:"seen successfully",
+        deviceTokenSaved:"Device token saved/updated successfully"
     },
 
     notifications:{

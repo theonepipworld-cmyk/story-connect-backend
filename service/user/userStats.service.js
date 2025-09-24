@@ -33,6 +33,8 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             ]
         });
 
+        console.log("blocked-----------",blocked);
+
         if (blocked) {
             throw createError(403, resMessages.validation.userNotLikedorView);
         }
