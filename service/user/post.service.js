@@ -63,13 +63,14 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
 
     const blocked = await Block.find({ $or: [{ blocked: userId }, { blocker: userId }] });
     const blockedUserIds = blocked.map(b =>
-      b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
+      new mongoose.Types.ObjectId(
+        b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+      )
     );
 
     const baseMatch = {
-      userId: { $nin: [...blockedUserIds, userId] },
+      userId: { $nin: [...blockedUserIds, new mongoose.Types.ObjectId(userId)] }
     };
-
     const friendObjectIds = allFriendIds.map(id => new mongoose.Types.ObjectId(id));
     const orConditions = [];
 
@@ -116,7 +117,6 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
               },
             },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-
 
             {
               $lookup: {

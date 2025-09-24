@@ -109,18 +109,6 @@ exports.getCommunitiesPost = async (req, res) => {
   }
 };
 
-// exports.getuserCommunitiesFeed  =async(req,res)=>{
-//   try{
-//    const page  =req.query.page || 1
-//     const limit = req.query.limit || 10
-//     const{data,pagination} = await getuserCommunitiesFeedService(req.user.id,page,limit)
-//       return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully,data,pagination));
-// }
-//   catch (err) {
-//     return res.status(400).json(errorResponse(err.message));
-//   }
-// };
-
 
 exports.removeCommunityMember = async (req, res) => {
   try {

@@ -192,9 +192,9 @@ exports.deleteProfile = async (userId) => {
     return { message: resMessages.success.deleteSuccessful };
 };
 
-exports.getOtherProfileService = async(otherUserId, loginUserId) => {
+exports.getOtherProfileService = async (otherUserId, loginUserId) => {
     try {
-        console.log(otherUserId ,loginUserId)
+        console.log(otherUserId, loginUserId)
         if (!otherUserId || !loginUserId) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
@@ -238,13 +238,23 @@ exports.getOtherProfileService = async(otherUserId, loginUserId) => {
             $or: [{ requester: otherUserId }, { recipient: otherUserId }]
         });
 
-          return {
-        user,
-        totalFriends,
-        mutualFriendsCount
-    };
+        return {
+            user,
+            totalFriends,
+            mutualFriendsCount
+        };
 
 
+    }
+    catch (error) {
+        throw createError(500, error.message);
+    }
+};
+
+
+exports.changeLanguageService = async (userId,lang) => {
+    try {
+   
     }
     catch (error) {
         throw createError(500, error.message);

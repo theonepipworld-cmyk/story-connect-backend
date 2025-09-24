@@ -4,12 +4,12 @@ const profileService = require("../../../service/user/profile.service.js")
 
 exports.getProfile = async (req, res) => {
   try {
-    const {user,totalFriends} = await profileService.getProfile(req.user.id);
+    const { user, totalFriends } = await profileService.getProfile(req.user.id);
     const responseData = {
       ...user,
       totalFriends
     };
-    return res.status(200).json(successResponse(resMessages.success.getSuccessful,responseData));
+    return res.status(200).json(successResponse(resMessages.success.getSuccessful, responseData));
   } catch (err) {
     return res.status(400).json(errorResponse(err.message));
   }
@@ -35,19 +35,30 @@ exports.deleteProfile = async (req, res) => {
   }
 };
 
-exports.getOtherProfile = async(req,res)=>{
-  try{
-     const otherUserId = req.params.userId
-     const {user,totalFriends,mutualFriendsCount} = await profileService.getOtherProfileService(otherUserId,req.user.id)
-     const data ={
+exports.getOtherProfile = async (req, res) => {
+  try {
+    const otherUserId = req.params.userId
+    const { user, totalFriends, mutualFriendsCount } = await profileService.getOtherProfileService(otherUserId, req.user.id)
+    const data = {
       ...user,
       totalFriends,
       mutualFriendsCount
-     }
-     console.log(data)
-       return res.status(200).json(successResponse(resMessages.success.getSuccessful,data));
+    }
+    return res.status(200).json(successResponse(resMessages.success.getSuccessful, data));
   }
-   catch (err) {
+  catch (err) {
+    return res.status(400).json(errorResponse(err.message));
+  }
+}
+
+
+exports.changeLanguage = async (req, res) => {
+  try {
+    const { lang } = req.body
+    const result = await profileService.changeLanguageService(req.user.id,lang);
+    return res.status(200).json(successResponse(resMessages.success.updateSuccessful, result));
+  }
+  catch (err) {
     return res.status(400).json(errorResponse(err.message));
   }
 }
