@@ -20,7 +20,8 @@ module.exports = {
         reportSuccessfully:"report user successfully",
         messageSent:"message sent successfully",
         seenSuccessfully:"seen successfully",
-        deviceTokenSaved:"Device token saved/updated successfully"
+        deviceTokenSaved:"Device token saved/updated successfully",
+        leaveMember:"user leave the community successfully"
     },
 
     notifications:{
@@ -84,7 +85,9 @@ module.exports = {
           invalidReceiver:"receiverId is invalid",
           cannotReportSelf:"you can report yourself",
           invalidType:"Inavlid type",
-          idIsSame:"User cannot respond to their own friend request."
+          idIsSame:"User cannot respond to their own friend request.",
+          ownerCantRemove:"owner can not remove himself"
+          
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",

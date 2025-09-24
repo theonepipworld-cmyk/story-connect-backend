@@ -13,6 +13,7 @@ router.get("/:id/members",isAuthenticated, authorizeRoles('user','admin'),coummn
 router.get("/:id/post",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.getCommunityMembersValidation,communityController.getCommunitiesPost);
 
 router.put("/remove-member",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.commmunityMemberRemove,communityController.removeCommunityMember);
+router.delete("/leave-member/:communityId",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.commmunityMemberLeave,communityController.leaveCommunity);
 router.delete("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.communityDetails,communityController.removeCommunity);
 router.put("/:id",isAuthenticated, authorizeRoles('user','admin'),coummnityMiddleware.updateCommunityValidator,communityController.updateCommunityDetails);
 router.get("/communitiesId",isAuthenticated, authorizeRoles('user','admin'),communityController.getCommunitiesIdList);

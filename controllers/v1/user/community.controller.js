@@ -12,7 +12,7 @@ const { createCommunityService,
   removeCommunityMemberService,
   removeCommunityService,
   updateCommunityService, listAllCommunityService,
-  getCommunitiesByCategoriesService } = require("../../../service/user/community.service.js")
+  getCommunitiesByCategoriesService ,leaveCommunityService } = require("../../../service/user/community.service.js")
 
 
 
@@ -132,6 +132,17 @@ exports.removeCommunityMember = async (req, res) => {
   }
 };
 
+exports.leaveCommunity = async (req, res) => {
+  try {
+    const leaveMember = await leaveCommunityService(req.params.communityId, req.user.id);
+    return res.status(200).json(successResponse(resMessages.success.leaveMember, leaveMember));
+  }
+  catch (err) {
+    return res.status(400).json(errorResponse(err.message));
+  }
+};
+
+
 exports.removeCommunity = async (req, res) => {
   try {
     const remove = await removeCommunityService(req.params.id, req.user.id)
@@ -167,8 +178,8 @@ exports.getCommunitiesByCategories = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const {communities,pagination} = await getCommunitiesByCategoriesService(req.user.id,req.params.categoryId,page,limit)
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, communities,pagination));
+    const { communities, pagination } = await getCommunitiesByCategoriesService(req.user.id, req.params.categoryId, page, limit)
+    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, communities, pagination));
   }
   catch (err) {
     return res.status(400).json(errorResponse(err.message));

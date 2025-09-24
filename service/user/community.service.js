@@ -489,7 +489,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         const allPendingFriendIds = new Set(loginUserSendedRequest.map(f => f.recipient.toString()));
         const loginUserFriendIds = new Set(loginUserFriends.map(f => f._id.toString()));
 
-  
+
         const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
         const blockedUserIds = (blocked || []).map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
@@ -1006,6 +1006,53 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
         throw new Error(error.message);
     }
 };
+
+
+exports.leaveCommunityService = async (communityId, userId) => {
+    if (!userId) {
+        throw createError(400, resMessages.notFound.userNotFound);
+    }
+
+    try {
+        const user = await isUserExist(userId);
+        console.log(communityId)
+        if (!user) {
+            throw createError(400, resMessages.notFound.userNotFound);
+        }
+
+        communityId = new mongoose.Types.ObjectId(communityId);
+
+
+        const membership = await CommunityMember.findOne({
+            communityId: communityId,
+            userId: user._id
+        });
+
+        console.log(membership)
+
+        if (!membership) {
+            throw createError(400, resMessages.notFound.communityNotFound);
+        }
+
+
+        if (membership.role === "admin") {
+            throw createError(400, resMessages.validation.ownerCantRemove);
+        }
+
+
+        const result = await CommunityMember.deleteOne({
+            communityId: communityId,
+            userId: user._id
+        });
+
+        return result;
+
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, error.message || "Something went wrong on server");
+    }
+};
+
 
 
 
