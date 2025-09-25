@@ -798,8 +798,8 @@ exports.removeCommunityService = async (communityId, userId) => {
 
         if (result) {
             await CommunityMember.deleteMany({ communityId: community._id })
-            const posts = Post.find({ communityId: community._id });
-            const postIds = posts.map((p) => p._id.toString());
+            const posts = await Post.find({ communityId: community._id });
+            const postIds = posts?.map((p) => p._id.toString());
             if (postIds.length > 0) {
                 await UserStats.deleteMany({
                     postId: { $in: postIds }
@@ -871,6 +871,7 @@ exports.listAllCommunityService = async (userId) => {
             },
             {
                 $project: {
+                     _id:1,
                     name: 1,
                 },
             },
