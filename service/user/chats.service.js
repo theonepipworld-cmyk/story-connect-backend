@@ -87,7 +87,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
             const savedFileMessage = await fileMessage.save();
             messages.push(savedFileMessage);
-
+            const io = getIo();
             io.emit("newMessage", savedFileMessage);
 
 
@@ -231,7 +231,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     avatarUrl: "$otherParticipant.avatarUrl",
                                 },
                                 lastMessage: "$lastMessageInfo.text",
-                                lastMessageId:"$lastMessageInfo._id",
+                                lastMessageId: "$lastMessageInfo._id",
                                 lastMessageAt: "$lastMessageInfo.createdAt",
                                 unseenCount: { $ifNull: ["$unseenCountForUser", 0] },
                                 updatedAt: 1,

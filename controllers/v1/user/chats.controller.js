@@ -53,6 +53,7 @@ exports.getConversations = async (req, res) => {
 exports.getloadMoreMessages = async (req, res) => {
     try {
         const userId = req.user.id;
+        console.log(userId)
         const { conversationId, lastMessageId } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
