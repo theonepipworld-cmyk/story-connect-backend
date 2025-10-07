@@ -299,32 +299,24 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             .limit(limit)
             .populate("sender", "username avatarUrl currentCountry");
 
-    
-     
-        const messagesToMark = messages
-            .filter(msg =>
-                msg.sender.toString() !== userId && 
-                !msg.seenBy?.some(s => s.userId.toString() === currentUserId) 
-            )
-            .map(msg => msg._id);
 
-    
-        if (messagesToMark.length > 0) {
-            await Message.updateMany(
-                { _id: { $in: messagesToMark } },
-                { $push: { seenBy: { userId: userId, seenAt: new Date() } } }
-            );
-        }
 
-           await Conversation.updateOne(
+
+
+        await Conversation.updateOne(
             { _id: conversationId, "unseenCount.userId": userId },
             { $set: { "unseenCount.$.count": 0 } }
         );
 
-       
+        await Message.updateMany(
+            { conversationId, sender: { $ne: userId }, status: { $ne: "seen" } },
+            { $set: { status: "seen", updatedAt: new Date() } }
+        );
+
+
 
         return {
-            data:messages.reverse(),
+            data: messages.reverse(),
             pagination: {
                 total: totalMessages,
                 totalPages,
