@@ -86,7 +86,8 @@ module.exports = {
           cannotReportSelf:"you can report yourself",
           invalidType:"Inavlid type",
           idIsSame:"User cannot respond to their own friend request.",
-          ownerCantRemove:"owner can not remove himself"
+          ownerCantRemove:"owner can not remove himself",
+          invalidMessageId:" last message id is invalid"
           
     },
     auth: {

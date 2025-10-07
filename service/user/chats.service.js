@@ -261,7 +261,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
 };
 
 
-exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10) => {
+exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10, page = 1) => {
     try {
         if (!userId || !conversationId || !lastMessageId) {
             throw createError(404, resMessages.validation.missingFields);
@@ -281,6 +281,10 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             throw createError(403, resMessages.auth.unauthorizedAccess);
         }
 
+        const totalMessages = await Message.countDocuments({ conversationId });
+        const totalPages = Math.ceil(totalMessages / limit);
+        const skip = (page - 1) * limit;
+
         const lastMessage = await Message.findById(lastMessageId);
         if (!lastMessage) {
             throw createError(404, resMessages.validation.invalidMessageId);
@@ -288,17 +292,20 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 
         const messages = await Message.find({
             conversationId,
-            _id: { $lte: lastMessage._id }
         })
             .sort({ createdAt: -1 })
+            .skip(skip)
             .limit(limit)
             .populate("sender", "username avatarUrl currentCountry");
 
         return {
             data: messages.reverse(),
             pagination: {
+                total: totalMessages,
+                totalPages,
+                currentPage: page,
                 limit,
-                hasMore: messages.length === limit,
+                hasMore: page < totalPages, 
             },
         };
     } catch (error) {
