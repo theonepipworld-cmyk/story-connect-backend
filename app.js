@@ -16,6 +16,7 @@ const friendRoutes = require("./routes/v1/user/friend.routes.js")
 const blockRoutes = require("./routes/v1/user/block.routes.js")
 const chatRoutes = require("./routes/v1/user/chat.routes.js")
 const reportRoutes = require("./routes/v1/user/report.routes.js")
+const notificationRoutes = require("./routes/v1/user/notification.routes.js")
 const connectDB = require("./config/db.js")
 const fileUpload = require("express-fileupload")
 const cors = require("cors")
@@ -50,6 +51,7 @@ app.use('/api/v1/user/friend', friendRoutes);
 app.use("/api/v1/user/block", blockRoutes)
 app.use("/api/v1/user/chat", chatRoutes)
 app.use("/api/v1/user/report", reportRoutes)
+app.use("/api/v1/user/notification", notificationRoutes)
 
 
 

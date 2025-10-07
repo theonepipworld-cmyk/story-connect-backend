@@ -309,8 +309,8 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         );
 
         await Message.updateMany(
-            { conversationId, sender: { $ne: userId }, status: { $ne: "seen" } },
-            { $set: { status: "seen", updatedAt: new Date() } }
+            { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN} },
+            { $set: { status:  enums.messages_Status.SEEN , updatedAt: new Date() } }
         );
 
 
