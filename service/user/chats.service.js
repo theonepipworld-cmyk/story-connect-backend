@@ -153,7 +153,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                         $regexMatch: {
                                             input: "$$p.username",
                                             regex: search,
-                                            options: "i", // case-insensitive
+                                            options: "i", 
                                         },
                                     },
                                 },
@@ -162,7 +162,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                     },
                 ]
                 : []),
-            // Only keep conversations where the other participant exists after search filter
+            
             {
                 $match: {
                     "participantsInfo.0": { $exists: true },
@@ -298,15 +298,28 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             .limit(limit)
             .populate("sender", "username avatarUrl currentCountry");
 
+        const unseenCount = await Message.countDocuments({
+            conversationId,
+            createdAt: { $gt: lastMessage.createdAt },
+            sender: { $ne: userId },
+        });
+
+        const data = {
+            result: messages.reverse(),
+            unseenCount
+
+        }
+
         return {
-            data: messages.reverse(),
+            data,
             pagination: {
                 total: totalMessages,
                 totalPages,
                 currentPage: page,
                 limit,
-                hasMore: page < totalPages, 
+                hasMore: page < totalPages,
             },
+
         };
     } catch (error) {
         throw error;

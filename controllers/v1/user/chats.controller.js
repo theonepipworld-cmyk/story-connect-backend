@@ -42,7 +42,7 @@ exports.getConversations = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const search = req.query.search || ""
-        const { data, pagination } = await getUserConversationService(userId, page, limit,search);
+        const { data, pagination } = await getUserConversationService(userId, page, limit, search);
         return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data, pagination));
     }
     catch (err) {
@@ -57,6 +57,8 @@ exports.getloadMoreMessages = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const { data, pagination } = await loadMoreMessagesService(userId, conversationId, lastMessageId, limit)
+       
+
         return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data, pagination));
     }
     catch (err) {
