@@ -7,6 +7,7 @@ const CountryList = require("../../models/countryList.model.js")
 const professionalSymbol = require("../../models/professionalSymbolModel.js")
 const Friend = require("../../models/friends.model.js")
 const Block = require("../../models/block.model.js")
+const enums = require("../../constants/enum.constants.js")
 
 exports.getProfile = async (userId) => {
 
@@ -194,7 +195,7 @@ exports.deleteProfile = async (userId) => {
 
 exports.getOtherProfileService = async (otherUserId, loginUserId) => {
     try {
-        console.log(otherUserId, loginUserId)
+
         if (!otherUserId || !loginUserId) {
             throw createError(400, resMessages.notFound.userNotFound);
         }
@@ -238,10 +239,22 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             $or: [{ requester: otherUserId }, { recipient: otherUserId }]
         });
 
+        const friendship = await Friend.findOne({
+            $or: [
+                { requester: loginUserId, recipient: otherUserId },
+                { requester: otherUserId, recipient: loginUserId }
+            ]
+        });
+
+        const isThisUserFriend = friendship?.status === enums.friend_Request_status.ACCEPTED;
+        const isreqPending = friendship?.status === enums.friend_Request_status.PENDING;
+
         return {
             user,
             totalFriends,
-            mutualFriendsCount
+            mutualFriendsCount,
+            isThisUserFriend,
+            isreqPending
         };
 
 
@@ -252,9 +265,9 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
 };
 
 
-exports.changeLanguageService = async (userId,lang) => {
+exports.changeLanguageService = async (userId, lang) => {
     try {
-   
+
     }
     catch (error) {
         throw createError(500, error.message);

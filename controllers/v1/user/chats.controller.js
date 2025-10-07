@@ -56,7 +56,7 @@ exports.getloadMoreMessages = async (req, res) => {
         const { conversationId, lastMessageId } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const { data, pagination } = await loadMoreMessagesService(userId, conversationId, lastMessageId, limit)
+        const { data, pagination } = await loadMoreMessagesService(userId, conversationId, lastMessageId, limit,page)
        
 
         return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data, pagination));

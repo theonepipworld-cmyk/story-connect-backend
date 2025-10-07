@@ -38,11 +38,13 @@ exports.deleteProfile = async (req, res) => {
 exports.getOtherProfile = async (req, res) => {
   try {
     const otherUserId = req.params.userId
-    const { user, totalFriends, mutualFriendsCount } = await profileService.getOtherProfileService(otherUserId, req.user.id)
+    const { user, totalFriends, mutualFriendsCount ,isThisUserFriend , isreqPending } = await profileService.getOtherProfileService(otherUserId, req.user.id)
     const data = {
       ...user,
       totalFriends,
-      mutualFriendsCount
+      mutualFriendsCount,
+      isThisUserFriend,
+      isreqPending
     }
     return res.status(200).json(successResponse(resMessages.success.getSuccessful, data));
   }

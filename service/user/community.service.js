@@ -28,6 +28,11 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
             throw createError(400, resMessages.notFound.userNotFound);
         }
 
+        const existingCommunity = await Community.findOne({ name: communityDetails.name });
+        if (existingCommunity) {
+            throw createError(400, resMessages.validation.duplicateCommunityName);
+        }
+
         let communityImageUrl = "";
         if (file) {
             const uploaded = await uploadFileToS3(file, "community/coverImage");
@@ -191,7 +196,7 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                     manualCategoryName: 1,
                     memberCount: 1,
                     "categoryInfo.name": 1,
-                    "categoryInfo._id":1,
+                    "categoryInfo._id": 1,
                     membersPreview: 1,
                     createdAt: 1
 
@@ -349,7 +354,7 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                                 manualCategoryName: 1,
                                 memberCount: 1,
                                 "categoryInfo.name": 1,
-                                 "categoryInfo._id": 1,
+                                "categoryInfo._id": 1,
                                 isJoinedByMe: 1,
                                 membersPreview: 1,
                                 createdAt: 1
@@ -463,7 +468,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                     "userInfo.email": 1,
                     "userInfo.avatarUrl": 1,
                     "categoryInfo.name": 1,
-                      "categoryInfo._id": 1,
+                    "categoryInfo._id": 1,
                     "userInfo.currentCountry": 1,
                     isJoinedByMe: 1,
                     createdAt: 1
@@ -874,7 +879,7 @@ exports.listAllCommunityService = async (userId) => {
             },
             {
                 $project: {
-                     _id:1,
+                    _id: 1,
                     name: 1,
                 },
             },
