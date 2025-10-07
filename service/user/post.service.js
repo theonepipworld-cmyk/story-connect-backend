@@ -580,17 +580,26 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     });
 
 
-
     const blockedUserIds = blocked.map(b =>
-      b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+      new mongoose.Types.ObjectId(
+        b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+      )
     );
+
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
     const allIds = joinedCommunities.map(c => c.communityId);
 
 
     const baseMatch = {
-      userId: { $nin: blockedUserIds }
+      $expr: {
+        $not: {
+          $in: [
+            { $toObjectId: "$userId" },  
+            [...blockedUserIds.map(id => new mongoose.Types.ObjectId(id)), new mongoose.Types.ObjectId(userId)] 
+          ]
+        }
+      }
     };
 
     if (search) {
