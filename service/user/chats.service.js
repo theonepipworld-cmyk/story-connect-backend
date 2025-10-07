@@ -10,6 +10,7 @@ const Message = require("../../models/message.model.js")
 const Conversation = require("../../models/conversations.model.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const { getIo } = require("../../socket");
+const enums = require("../../constants/enum.constants.js")
 
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
@@ -153,7 +154,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                         $regexMatch: {
                                             input: "$$p.username",
                                             regex: search,
-                                            options: "i", 
+                                            options: "i",
                                         },
                                     },
                                 },
@@ -162,7 +163,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                     },
                 ]
                 : []),
-            
+
             {
                 $match: {
                     "participantsInfo.0": { $exists: true },
@@ -298,20 +299,32 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             .limit(limit)
             .populate("sender", "username avatarUrl currentCountry");
 
-        const unseenCount = await Message.countDocuments({
-            conversationId,
-            createdAt: { $gt: lastMessage.createdAt },
-            sender: { $ne: userId },
-        });
+    
+     
+        const messagesToMark = messages
+            .filter(msg =>
+                msg.sender.toString() !== userId && 
+                !msg.seenBy?.some(s => s.userId.toString() === currentUserId) 
+            )
+            .map(msg => msg._id);
 
-        const data = {
-            result: messages.reverse(),
-            unseenCount
-
+    
+        if (messagesToMark.length > 0) {
+            await Message.updateMany(
+                { _id: { $in: messagesToMark } },
+                { $push: { seenBy: { userId: userId, seenAt: new Date() } } }
+            );
         }
 
+           await Conversation.updateOne(
+            { _id: conversationId, "unseenCount.userId": userId },
+            { $set: { "unseenCount.$.count": 0 } }
+        );
+
+       
+
         return {
-            data,
+            data:messages.reverse(),
             pagination: {
                 total: totalMessages,
                 totalPages,
