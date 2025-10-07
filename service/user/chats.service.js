@@ -231,6 +231,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     avatarUrl: "$otherParticipant.avatarUrl",
                                 },
                                 lastMessage: "$lastMessageInfo.text",
+                                lastMessageId:"$lastMessageInfo._id",
                                 lastMessageAt: "$lastMessageInfo.createdAt",
                                 unseenCount: { $ifNull: ["$unseenCountForUser", 0] },
                                 updatedAt: 1,
