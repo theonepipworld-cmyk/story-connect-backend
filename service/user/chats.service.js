@@ -267,7 +267,7 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         if (!userId || !conversationId || !lastMessageId) {
             throw createError(404, resMessages.validation.missingFields);
         }
-
+  console.log(page)
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(404, resMessages.notFound.userNotFound);
