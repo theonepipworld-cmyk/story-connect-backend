@@ -10,6 +10,7 @@ const authService = require("../../../service/user/auth.service.js")
 const { getMessage } = require("../../../constants/locales/index.js")
 
 const getLang = (req) => req.lang || 'en';
+
 exports.login = async (req, res) => {
   try {
     const lang = getLang(req);

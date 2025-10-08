@@ -568,6 +568,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     if (!userId) {
       throw createError(400, resMessages.notFound.userNotFound);
     }
+    console.log(userId)
 
     const user = await isUserExist(userId);
     if (!user) {
