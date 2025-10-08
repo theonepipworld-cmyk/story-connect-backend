@@ -99,7 +99,6 @@ const userSchema = new Schema({
    manualProfession: {
         type: String
     },
-
      deviceToken: {
     type: String,
     required: false,
