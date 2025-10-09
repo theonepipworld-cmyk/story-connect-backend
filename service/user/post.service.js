@@ -10,6 +10,7 @@ const Block = require("../../models/block.model.js")
 const Community = require("../../models/community.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
+const Friend =require("../../models/friends.model.js")
 
 
 // Create Post
@@ -58,6 +59,19 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
     const allFriends = await getAllFriends(user._id);
     const allFriendIds = allFriends.map(f => f._id.toString());
 
+    const pendingRequests = await Friend.find({
+      $or: [
+        { sender: user._id, status: "pending" },
+        { receiver: user._id, status: "pending" },
+      ],
+    });
+
+    const pendingUserIds = pendingRequests.map(req =>
+      req.sender.toString() === user._id.toString()
+        ? req.receiver.toString()
+        : req.sender.toString()
+    );
+
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
     const allCommunityIds = joinedCommunities.map(c => c.communityId.toString());
 
@@ -68,33 +82,53 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
       )
     );
 
-    const baseMatch = {
-      userId: { $nin: [...blockedUserIds, new mongoose.Types.ObjectId(userId)] }
-    };
+    // const baseMatch = {
+    //   userId: { $nin: [...blockedUserIds, new mongoose.Types.ObjectId(userId)] }
+    // };
+
     const friendObjectIds = allFriendIds.map(id => new mongoose.Types.ObjectId(id));
     const orConditions = [];
-
-    if (allCommunityIds.length > 0) {
-      orConditions.push({
-        $and: [
-          { communityId: { $in: allCommunityIds.map(id => new mongoose.Types.ObjectId(id)) } },
-          { userId: { $ne: new mongoose.Types.ObjectId(userId) } }
+    const baseMatch = {
+      userId: {
+        $nin: [
+          ...blockedUserIds,
+          new mongoose.Types.ObjectId(userId)
         ]
-      });
+      }
+    };
+
+    console.log(allFriendIds, allCommunityIds)
+
+
+    let finalMatch;
+    if (allFriendIds.length > 0 || allCommunityIds.length > 0) {
+      const orConditions = [];
+
+      if (allCommunityIds.length > 0) {
+        orConditions.push({
+          $and: [
+            { communityId: { $in: allCommunityIds.map(id => new mongoose.Types.ObjectId(id)) } },
+            { userId: { $ne: new mongoose.Types.ObjectId(userId) } }
+          ]
+        });
+      }
+
+      if (allFriendIds.length > 0) {
+        orConditions.push({
+          $and: [
+            { userId: { $in: allFriendIds.map(id => new mongoose.Types.ObjectId(id)) } },
+            { $or: [{ communityId: { $exists: false } }, { communityId: null }] }
+          ]
+        });
+      }
+
+      finalMatch = { $and: [baseMatch, { $or: orConditions }] };
+    } else {
+      finalMatch = baseMatch;
     }
 
-    if (allFriendIds.length > 0) {
-      orConditions.push({
-        $and: [
-          { userId: { $in: friendObjectIds } },
-          { $or: [{ communityId: { $exists: false } }, { communityId: null }] }
-        ]
-      });
-    }
 
-    if (orConditions.length === 0) orConditions.push({});
 
-    const finalMatch = { $and: [baseMatch, { $or: orConditions }] };
     const skip = (page - 1) * limit;
 
     const result = await Post.aggregate([
@@ -206,6 +240,14 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
                 },
               },
             },
+            {
+              $addFields: {
+                isFriend: { $in: ["$userId", allFriendIds.map(id => new mongoose.Types.ObjectId(id))] },
+                isPendingRequest: {
+                  $in: ["$userId", pendingUserIds.map(id => new mongoose.Types.ObjectId(id))],
+                },
+              },
+            },
 
             {
               $project: {
@@ -228,6 +270,8 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
                 totalViews: 1,
                 totalComments: 1,
                 isPostLikedByMe: 1,
+                isFriend: 1,
+                isPendingRequest: 1,
               },
             },
           ],
@@ -596,8 +640,8 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
       $expr: {
         $not: {
           $in: [
-            { $toObjectId: "$userId" },  
-            [...blockedUserIds.map(id => new mongoose.Types.ObjectId(id)), new mongoose.Types.ObjectId(userId)] 
+            { $toObjectId: "$userId" },
+            [...blockedUserIds.map(id => new mongoose.Types.ObjectId(id)), new mongoose.Types.ObjectId(userId)]
           ]
         }
       }
