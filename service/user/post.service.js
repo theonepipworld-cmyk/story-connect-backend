@@ -10,7 +10,7 @@ const Block = require("../../models/block.model.js")
 const Community = require("../../models/community.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
-const Friend =require("../../models/friends.model.js")
+const Friend = require("../../models/friends.model.js")
 
 
 // Create Post
@@ -619,6 +619,22 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
       throw createError(400, resMessages.notFound.userNotFound);
     }
 
+    const allFriends = await getAllFriends(user._id);
+    const allFriendIds = allFriends.map(f => f._id.toString());
+
+    const pendingRequests = await Friend.find({
+      $or: [
+        { sender: user._id, status: "pending" },
+        { receiver: user._id, status: "pending" },
+      ],
+    });
+
+    const pendingUserIds = pendingRequests.map(req =>
+      req.sender.toString() === user._id.toString()
+        ? req.receiver.toString()
+        : req.sender.toString()
+    );
+
 
     const blocked = await Block.find({
       $or: [{ blocked: userId }, { blocker: userId }]
@@ -775,6 +791,12 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 },
               },
             },
+            {
+              $addFields: {
+                isFriend: { $in: ["$userId", allFriendIds.map(id => new mongoose.Types.ObjectId(id))] },
+                isPendingRequest: { $in: ["$userId", pendingUserIds.map(id => new mongoose.Types.ObjectId(id))] }
+              }
+            },
 
 
             {
@@ -800,6 +822,8 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 totalViews: 1,
                 totalComments: 1,
                 isPostLikedByMe: 1,
+                isFriend: 1,
+                isPendingRequest: 1
               },
             },
 
