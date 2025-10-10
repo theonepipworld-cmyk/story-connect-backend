@@ -42,7 +42,7 @@ exports.signup = async (data) => {
 };
 
 
-exports.login = async ({ email, password ,device_token }) => {
+exports.login = async ({ email, password, device_token }) => {
   const user = await checkFieldExists('email', email);
   if (!user) {
     const err = new Error(resMessages.notFound.emailNotFound);
@@ -71,8 +71,7 @@ exports.login = async ({ email, password ,device_token }) => {
   }
 
   if (device_token) {
-    user.device_token = device_token;
-    await user.save();
+    await User.updateOne({ _id: user._id }, { device_token });
   }
 
 
