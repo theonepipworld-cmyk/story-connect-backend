@@ -42,7 +42,7 @@ exports.signup = async (data) => {
 };
 
 
-exports.login = async ({ email, password }) => {
+exports.login = async ({ email, password ,device_token }) => {
   const user = await checkFieldExists('email', email);
   if (!user) {
     const err = new Error(resMessages.notFound.emailNotFound);
