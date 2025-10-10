@@ -9,6 +9,7 @@ const enums = require("../../constants/enum.constants.js")
 const Block = require("../../models/block.model");
 const { getIo } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
+const pushNotification = require("../../utils/pushNotification.js")
 
 
 exports.sendFriendReqService = async (userId, friendReqId) => {
@@ -74,10 +75,19 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             await Notification.create({
                 user: friendReqId,
                 sender: userId,
-                type:enums.notification_Types.FRIEND_REQUEST,
+                type: enums.notification_Types.FRIEND_REQUEST,
                 message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
                 postId: null
             });
+            
+            if (recipient.device_token) {
+                await pushNotification.androidPushNotification(
+                    recipient.device_token,
+                    `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                    "friend_request",
+                    { senderId: userId.toString(), type: "friend_request" }
+                );
+            }
         }
         return {
             result,
@@ -154,7 +164,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             sender: userId,
             type: existing.status === enums.friend_Request_status.ACCEPTED
                 ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
-                :enums.notification_Types.FRIEND_REQUEST,
+                : enums.notification_Types.FRIEND_REQUEST,
             message: existing.status === enums.friend_Request_status.ACCEPTED
                 ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
                 : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,

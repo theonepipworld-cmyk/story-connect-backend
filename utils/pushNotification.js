@@ -1,9 +1,9 @@
 const admin = require("firebase-admin");
-//const serviceAccount = require("../../spectra-customer-app-firebase-adminsdk-fbsvc-510119e087.json");
+const serviceAccount = require("../../spectra-customer-app-firebase-adminsdk-fbsvc-510119e087.json");
  
-// admin.initializeApp({
-//   credential: admin.credential.cert(serviceAccount),
-// });
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
  
 const androidPushNotification = (registrationToken, messageBody, type = 'Story Connect',extraData = '') => {
   try{

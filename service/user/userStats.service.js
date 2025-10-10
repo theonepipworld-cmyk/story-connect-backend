@@ -8,6 +8,7 @@ const Block = require("../../models/block.model.js");
 const { getIo } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
 const enums = require("../../constants/enum.constants.js")
+const pushNotification = require("../../utils/pushNotification.js")
 
 //add likes ,views ,commentlikes of users on post
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
@@ -33,7 +34,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             ]
         });
 
-        console.log("blocked-----------",blocked);
 
         if (blocked) {
             throw createError(403, resMessages.validation.userNotLikedorView);
@@ -63,7 +63,17 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
+
             if (liked && post.userId.toString() !== userId.toString()) {
+                const postOwner = await isUserExist(post.userId);
+                if (postOwner && postOwner.device_token) {
+                    await pushNotification.androidPushNotification(
+                        postOwner.device_token,
+                        `${username} ${resMessages.notifications.likedPost}`,
+                        "like",
+                        { postId: postId.toString(), senderId: userId.toString() }
+                    );
+                }
                 await Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -71,6 +81,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     message: `${username} ${resMessages.notifications.likedPost}`,
                     postId
                 });
+
                 const io = getIo();
                 io.emit("post_liked", { postId, userId, username });
             }
@@ -86,6 +97,16 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             const comment = await Comment.findById(commentId).populate("userId", "username");
 
             if (comment && comment.userId.toString() !== userId.toString()) {
+
+                const commentOwner = comment.userId;
+                if (commentOwner.device_token) {
+                    await pushNotification.androidPushNotification(
+                        commentOwner.device_token,
+                        `${username} ${resMessages.notifications.comment}`,
+                        "comment",
+                        { postId: postId.toString(), commentId: commentId.toString(), senderId: userId.toString(), parentCommentId: parentCommentId ? parentCommentId.toString() : null }
+                    );
+                }
                 await Notification.create({
                     user: comment.userId,
                     sender: userId,
@@ -118,7 +139,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         // }
 
         // return responseData;
-       
+
 
     } catch (error) {
         throw new Error(error.message);

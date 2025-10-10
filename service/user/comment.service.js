@@ -8,6 +8,7 @@ const Comment = require('../../models/Comments.model');
 const { isPostExist, createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const UserStats = require("../../models/userActivityStats.model");
 const Block = require("../../models/block.model.js");
+const pushNotification = require("../../utils/pushNotification.js");
 
 
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
@@ -48,6 +49,20 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 parentCommentId,
                 { $inc: { replyCount: 1 } }
             );
+        }
+        if (post.userId.toString() !== userId.toString()) {
+            const postOwner = await User.findById(post.userId);
+            if (postOwner && postOwner.device_token) {
+                const notificationMessage = parentCommentId
+                    ? `${userId} replied to your comment.`
+                    : `${userId} commented on your post.`;
+                await pushNotification.androidPushNotification(postOwner.device_token, notificationMessage, "comment", {
+                    postId: postId.toString(),
+                    commentId: comment._id.toString(),
+                    senderId: userId.toString(),
+                    parentCommentId: parentCommentId ? parentCommentId.toString() : null
+                });
+            }
         }
 
         return comment;

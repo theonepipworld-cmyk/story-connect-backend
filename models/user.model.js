@@ -55,7 +55,7 @@ const userSchema = new Schema({
     type: String,
   },
   professionSymbol: {
-     _id: {type: mongoose.Schema.Types.ObjectId},
+    _id: { type: mongoose.Schema.Types.ObjectId },
     iconUrl: { type: String, default: '' },
     name: { type: String, default: '' }
   },
@@ -81,12 +81,12 @@ const userSchema = new Schema({
     type: String,
   },
   countryOfOrigin: {
-     _id: {type: mongoose.Schema.Types.ObjectId},
+    _id: { type: mongoose.Schema.Types.ObjectId },
     code: { type: String, default: '' },
     name: { type: String, default: '' }
   },
   currentCountry: {
-     _id: {type: mongoose.Schema.Types.ObjectId},
+    _id: { type: mongoose.Schema.Types.ObjectId },
     code: { type: String, default: '' },
     name: { type: String, default: '' }
   },
@@ -96,14 +96,14 @@ const userSchema = new Schema({
   resetPasswordExpires: {
     type: Date,
   },
-   manualProfession: {
-        type: String
-    },
-     deviceToken: {
+  manualProfession: {
+    type: String
+  },
+  device_token: {
     type: String,
     required: false,
   },
-   language: {
+  language: {
     type: String,
     enum: ['en', 'fr', 'es', 'cr'],
     default: 'en'

@@ -11,6 +11,7 @@ const Conversation = require("../../models/conversations.model.js")
 const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const { getIo } = require("../../socket");
 const enums = require("../../constants/enum.constants.js")
+const pushNotification = require("../../utils/pushNotification.js")
 
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
@@ -24,8 +25,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!sender) throw createError(404, resMessages.validation.invalidSender);
         if (!receiver) throw createError(404, resMessages.validation.invalidReceiver);
 
-        console.log(sender, receiver)
-
         if (senderId.toString() === receiverId.toString()) throw createError(404, resMessages.validation.cannotMessageYourself);
 
         const isBlocked = await Block.findOne({ blocker: receiverId, blocked: senderId });
@@ -34,7 +33,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         let conversation = await Conversation.findOne({ participants: { $all: [senderId, receiverId] } });
         if (!conversation) {
             conversation = new Conversation({
-                participants: [senderId, receiverId], unseenCount: [
+                participants: [senderId, receiverId],
+                unseenCount: [
                     { userId: senderId, count: 0 },
                     { userId: receiverId, count: 0 }
                 ]
@@ -43,6 +43,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         }
 
         const messages = [];
+
+        // Handle text message
         if (messageText) {
             const textMessage = new Message({
                 conversationId: conversation._id,
@@ -53,30 +55,30 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
             const savedTextMessage = await textMessage.save();
             messages.push(savedTextMessage);
+
             const io = getIo();
             io.emit("newMessage", savedTextMessage);
 
-
             conversation.lastMessage = savedTextMessage._id;
-            let unseenEntry = conversation.unseenCount.find(
-                (u) => u.userId.toString() === receiverId.toString()
-            );
 
-            if (unseenEntry) {
-                unseenEntry.count += 1;
-            } else {
-                conversation.unseenCount.push({ userId: receiverId, count: 1 });
+            let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
+            if (unseenEntry) unseenEntry.count += 1;
+            else conversation.unseenCount.push({ userId: receiverId, count: 1 });
+
+            if (receiver.device_token) {
+                await pushNotification.androidPushNotification(receiver.device_token, messageText, "message", {
+                    conversationId: conversation._id.toString(),
+                    senderId: senderId.toString()
+                });
             }
         }
 
-
+        // Handle files
         files = Array.isArray(files) ? files : [];
         for (const file of files) {
             const uploadedFile = await uploadFileToS3(file, `messages/${conversation._id}`);
-            const fileType = file.mimetype.startsWith("image/")
-                ? "image"
-                : file.mimetype.startsWith("video/")
-                    ? "video"
+            const fileType = file.mimetype.startsWith("image/") ? "image"
+                : file.mimetype.startsWith("video/") ? "video"
                     : "file";
 
             const fileMessage = new Message({
@@ -88,19 +90,22 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
             const savedFileMessage = await fileMessage.save();
             messages.push(savedFileMessage);
+
             const io = getIo();
             io.emit("newMessage", savedFileMessage);
 
-
             conversation.lastMessage = savedFileMessage._id;
-            let unseenEntry = conversation.unseenCount.find(
-                (u) => u.userId.toString() === receiverId.toString()
-            );
 
-            if (unseenEntry) {
-                unseenEntry.count += 1;
-            } else {
-                conversation.unseenCount.push({ userId: receiverId, count: 1 });
+            let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
+            if (unseenEntry) unseenEntry.count += 1;
+            else conversation.unseenCount.push({ userId: receiverId, count: 1 });
+
+            if (receiver.device_token) {
+                await pushNotification.androidPushNotification(receiver.device_token, `📎 Sent a ${fileType}`, "message", {
+                    conversationId: conversation._id.toString(),
+                    senderId: senderId.toString(),
+                    fileType
+                });
             }
         }
 
@@ -108,10 +113,12 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         await conversation.save();
 
         return messages;
+
     } catch (error) {
         throw error;
     }
 };
+
 
 
 exports.getUserConversationService = async (userId, page = 1, limit = 10, search = "") => {
@@ -267,7 +274,7 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         if (!userId || !conversationId || !lastMessageId) {
             throw createError(404, resMessages.validation.missingFields);
         }
-  console.log(page)
+        console.log(page)
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(404, resMessages.notFound.userNotFound);
@@ -309,8 +316,8 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         );
 
         await Message.updateMany(
-            { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN} },
-            { $set: { status:  enums.messages_Status.SEEN , updatedAt: new Date() } }
+            { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
+            { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
         );
 
 

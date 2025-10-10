@@ -21,15 +21,20 @@ exports.signup = async (data) => {
   }
 
   const hashedPassword = await hashPassword(password);
-  const newUser = new User({
+  const newUserData = {
     email,
     username,
     phone,
     dateOfBirth,
     passwordHash: hashedPassword,
-    lastSeen: new Date()
-  });
+    lastSeen: new Date(),
+  };
 
+  if (device_token) {
+    newUserData.device_token = device_token;
+  }
+
+  const newUser = new User(newUserData);
   await newUser.save();
   const token = await getJWT(email, newUser._id, newUser.role, newUser.username);
 
@@ -58,11 +63,18 @@ exports.login = async ({ email, password }) => {
     throw err;
   }
   const token = await getJWT(email, user._id, user.role, user.username);
+
   if (!token) {
     const err = new Error(resMessages.generalError.somethingWentWrong);
     err.statusCode = 400;
     throw err;
   }
+
+  if (device_token) {
+    user.device_token = device_token;
+    await user.save();
+  }
+
 
   return { token };
 };
