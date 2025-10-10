@@ -821,6 +821,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 totalLikes: 1,
                 totalViews: 1,
                 totalComments: 1,
+                
                 isPostLikedByMe: 1,
                 isFriend: 1,
                 isPendingRequest: 1
