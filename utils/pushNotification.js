@@ -4,6 +4,8 @@ const serviceAccount = require("../story-connect-c35dc-firebase-adminsdk-fbsvc-f
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
+
+
  
 const androidPushNotification = (registrationToken, messageBody, type = 'Story Connect',extraData = '') => {
   try{

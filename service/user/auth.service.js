@@ -7,7 +7,7 @@ const { sendEmail } = require('../../utils/email.util.js');
 const { RESET_PASS_LINK } = require("../../constants/variables.constants.js")
 
 exports.signup = async (data) => {
-  const { email, password, username, phone, dateOfBirth } = data;
+  const { email, password, username, phone, dateOfBirth ,device_token} = data;
 
   const [emailExist, usernameExist] = await Promise.all([
     checkFieldExists('email', email),
