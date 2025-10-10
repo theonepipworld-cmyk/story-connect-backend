@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("../../spectra-customer-app-firebase-adminsdk-fbsvc-510119e087.json");
+const serviceAccount = require("../story-connect-c35dc-firebase-adminsdk-fbsvc-f40a5a7783.json")
  
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
