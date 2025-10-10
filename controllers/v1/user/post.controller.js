@@ -8,6 +8,7 @@ exports.createPost = async (req, res) => {
   try {
     req.body.userId = req.user.id;
     
+    
     let mediaUrls = [];
     if (req.files && req.files.length > 0) {
       const uploadPromises = req.files.map(file => uploadFileToS3(file, "posts"));
