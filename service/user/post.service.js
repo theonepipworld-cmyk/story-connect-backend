@@ -60,17 +60,19 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
     const allFriendIds = allFriends.map(f => f._id.toString());
 
     const pendingRequests = await Friend.find({
+      status: enums.friend_Request_status.PENDING,
       $or: [
-        { sender: user._id, status: "pending" },
-        { receiver: user._id, status: "pending" },
-      ],
+        { requester: user._id },
+        { recipient: user._id }
+      ]
     });
 
+
+
     const pendingUserIds = pendingRequests.map(req =>
-      req.sender.toString() === user._id.toString()
-        ? req.receiver.toString()
-        : req.sender.toString()
+      req.requester._id.toString() === user._id.toString() ? req.recipient : req.requester
     );
+
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
     const allCommunityIds = joinedCommunities.map(c => c.communityId.toString());
@@ -623,16 +625,17 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     const allFriendIds = allFriends.map(f => f._id.toString());
 
     const pendingRequests = await Friend.find({
+      status: enums.friend_Request_status.PENDING,
       $or: [
-        { sender: user._id, status: "pending" },
-        { receiver: user._id, status: "pending" },
-      ],
+        { requester: user._id },
+        { recipient: user._id }
+      ]
     });
 
+
+
     const pendingUserIds = pendingRequests.map(req =>
-      req.sender.toString() === user._id.toString()
-        ? req.receiver.toString()
-        : req.sender.toString()
+      req.requester._id.toString() === user._id.toString() ? req.recipient : req.requester
     );
 
 
@@ -646,7 +649,6 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
         b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
       )
     );
-
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
     const allIds = joinedCommunities.map(c => c.communityId);
@@ -821,7 +823,6 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 totalLikes: 1,
                 totalViews: 1,
                 totalComments: 1,
-                
                 isPostLikedByMe: 1,
                 isFriend: 1,
                 isPendingRequest: 1

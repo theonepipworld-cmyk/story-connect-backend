@@ -235,7 +235,7 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
 
 
         const totalFriends = await Friend.countDocuments({
-            status: "accepted",
+            status: enums.friend_Request_status.ACCEPTED,
             $or: [{ requester: otherUserId }, { recipient: otherUserId }]
         });
 

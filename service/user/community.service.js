@@ -591,6 +591,21 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
             ]
         });
         if (blocked) throw createError(403, resMessages.validation.userBlocked);
+
+
+        const allFriends = await getAllFriends(user._id);
+        const allFriendIds = allFriends.map(f => f._id.toString());
+
+        const pendingRequests = await Friend.find({
+            status: enums.friend_Request_status.PENDING,
+            $or: [{ requester: user._id }, { recipient: user._id }],
+        });
+
+        const pendingUserIds = pendingRequests.map(req =>
+            req.requester._id.toString() === user._id.toString()
+                ? req.recipient
+                : req.requester
+        );
         const offSet = (page - 1) * limit
         const result = await Post.aggregate([
             {
@@ -651,6 +666,23 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                             },
                         },
                         {
+                            $addFields: {
+                                isFriend: {
+                                    $in: [
+                                        "$userId",
+                                        allFriendIds.map(id => new mongoose.Types.ObjectId(id)),
+                                    ],
+                                },
+                                isPendingRequest: {
+                                    $in: [
+                                        "$userId",
+                                        pendingUserIds.map(id => new mongoose.Types.ObjectId(id)),
+                                    ],
+                                },
+                            },
+                        },
+
+                        {
                             $project: {
                                 _id: 1,
                                 postHeading: 1,
@@ -672,6 +704,8 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 totalViews: 1,
                                 totalComments: 1,
                                 isPostLikedByMe: 1,
+                                isFriend: 1,
+                                isPendingRequest: 1,
                             },
                         },
                         {
