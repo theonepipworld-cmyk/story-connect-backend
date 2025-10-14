@@ -22,6 +22,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         }
         const user = await isUserExist(userId);
         const recipient = await isUserExist(friendReqId);
+        console.log(recipient.device_token)
         if (!recipient) {
             throw createError(400, resMessages.notFound.ReqUser);
         }
@@ -79,7 +80,8 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
                 postId: null
             });
-            
+
+
             if (recipient.device_token) {
                 await pushNotification.androidPushNotification(
                     recipient.device_token,

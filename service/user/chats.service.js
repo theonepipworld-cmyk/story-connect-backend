@@ -148,7 +148,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                     as: "participantsInfo",
                 },
             },
-            // Filter by search term if provided
+
             ...(search
                 ? [
                     {
@@ -237,6 +237,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     _id: "$otherParticipant._id",
                                     username: "$otherParticipant.username",
                                     avatarUrl: "$otherParticipant.avatarUrl",
+                                    isOnline: { $ifNull: ["$otherParticipant.isOnline", false] }, 
                                 },
                                 lastMessage: "$lastMessageInfo.text",
                                 lastMessageId: "$lastMessageInfo._id",
@@ -274,7 +275,7 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         if (!userId || !conversationId || !lastMessageId) {
             throw createError(404, resMessages.validation.missingFields);
         }
-        console.log(page)
+        
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(404, resMessages.notFound.userNotFound);
@@ -312,15 +313,14 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 
         await Conversation.updateOne(
             { _id: conversationId, "unseenCount.userId": userId },
-            { $set: { "unseenCount.$.count": 0 } }
+            { $set: { "unseenCount.$.count": 0 } },
+            { timestamps: false }
         );
 
         await Message.updateMany(
             { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
             { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
         );
-
-
 
         return {
             data: messages.reverse(),

@@ -441,6 +441,8 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     });
     if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
 
+ 
+
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
 
     const allCommunityIds = joinedCommunities.map(c => c.communityId);
@@ -556,7 +558,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
                       isJoinedByMe: { $in: ["$communityId", allCommunityIds] }
                     }
                   }
-                  : {})
+                  : {}),
               },
             },
             { $sort: { createdAt: -1 } },
