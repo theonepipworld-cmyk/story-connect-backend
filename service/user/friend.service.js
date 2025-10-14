@@ -269,6 +269,7 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
     }
 };
 
+
 exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
     try {
         const skip = (page - 1) * limit;

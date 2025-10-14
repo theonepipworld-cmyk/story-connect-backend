@@ -20,6 +20,8 @@ const notificationRoutes = require("./routes/v1/user/notification.routes.js")
 const connectDB = require("./config/db.js")
 const fileUpload = require("express-fileupload")
 const cors = require("cors")
+const {languageMiddleware} =require("./middlewares/requestValidations/user/lang.middleware.js")
+
 require('./config/db');
 
 var app = express();
@@ -28,6 +30,8 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+app.use(languageMiddleware)
 // app.use(fileUpload());
 app.get('/api/v1/test', (req, res) => {
   console.log("Server is running successfully")

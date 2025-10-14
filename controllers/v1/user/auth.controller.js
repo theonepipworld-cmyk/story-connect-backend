@@ -20,47 +20,57 @@ exports.login = async (req, res) => {
       result.token
     ));
   } catch (error) {
-    return res.status(error.statusCode || 500).json(errorResponse(error.message || resMessages.generalError.somethingWentWrong));
+    const lang = getLang(req);
+    return res.status(error.statusCode || 500).json(errorResponse(
+      getMessage(lang, 'error', error.message) || getMessage(lang, 'generalError', 'somethingWentWrong')
+    ));
   }
 };
 
 exports.signup = async (req, res) => {
   try {
+    const lang = getLang(req);
     const result = await authService.signup(req.body);
-    return res
-      .status(200)
-      .json(successResponse(resMessages.success.registrationSuccessful, result.token));
+    return res.status(200).json(successResponse(
+      getMessage(lang, 'success', 'registrationSuccessful'),
+      result.token
+    ));
   } catch (error) {
-    const status = error.statusCode || 500;
-    return res
-      .status(status)
-      .json(errorResponse(error.message || resMessages.generalError.somethingWentWrong));
+    const lang = getLang(req);
+    return res.status(error.statusCode || 500).json(errorResponse(
+      getMessage(lang, 'error', error.message) || getMessage(lang, 'generalError', 'somethingWentWrong')
+    ));
   }
 };
 
 
 exports.forgotPassword = async (req, res) => {
   try {
+    const lang = getLang(req);
     const result = await authService.forgotPassword(req.body);
-    return res.status(200).json(successResponse(result.message));
+    return res.status(200).json(successResponse(getMessage(lang, 'success', result.message)));
   } catch (error) {
-    return res.status(error.statusCode || 500).json(
-      errorResponse(error.message || resMessages.generalError.somethingWentWrong)
-    );
+    const lang = getLang(req);
+    return res.status(error.statusCode || 500).json(errorResponse(
+      getMessage(lang, 'error', error.message) || getMessage(lang, 'generalError', 'somethingWentWrong')
+    ));
   }
 };
 
 
 exports.resetPassword = async (req, res) => {
   try {
+    const lang = getLang(req);
     const result = await authService.resetPassword(req.body);
-    return res.status(200).json(successResponse(result.message));
+    return res.status(200).json(successResponse(getMessage(lang, 'success', result.message)));
   } catch (error) {
-    return res.status(error.statusCode || 500).json(
-      errorResponse(error.message || resMessages.generalError.somethingWentWrong)
-    );
+    const lang = getLang(req);
+    return res.status(error.statusCode || 500).json(errorResponse(
+      getMessage(lang, 'error', error.message) || getMessage(lang, 'generalError', 'somethingWentWrong')
+    ));
   }
 };
+
 
 exports.renderPasswordSubmitPage = (req, res) => {
   try {
@@ -76,12 +86,13 @@ exports.renderPasswordSubmitPage = (req, res) => {
 };
 
 
-// GOOGLE SIGNUP / LOGIN
+
 exports.googleAuth = async (req, res) => {
   try {
+    const lang = getLang(req);
     const { token } = req.body;
     if (!token) {
-      return res.status(400).json(errorResponse(resMessages.validation.missingFields));
+      return res.status(400).json(errorResponse(getMessage(lang, 'validation', 'missingFields')));
     }
 
     const ticket = await client.verifyIdToken({
@@ -95,25 +106,23 @@ exports.googleAuth = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      user = new User({
-        email,
-        name,
-        googleId,
-      });
+      user = new User({ email, name, googleId });
       await user.save();
     }
 
     const jwtToken = await getJWT(email, user._id, user.role);
 
-    return res.status(200).json(successResponse(resMessages.success.loginSuccessful, {
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'loginSuccessful'), {
       token: jwtToken,
       user: { email, name, picture }
     }));
 
   } catch (error) {
-    return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
+    const lang = getLang(req);
+    return res.status(500).json(errorResponse(getMessage(lang, 'generalError', 'somethingWentWrong'), error.message));
   }
 };
+
 
 exports.savedDeviceToken = async (req, res) => {
   try {

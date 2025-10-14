@@ -1,21 +1,22 @@
-const postService = require("../../../service/user/post.service.js")
+const postService = require("../../../service/user/post.service.js");
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
-const resMessages = require("../../../constants/resMessages.constants.js");
+const { getMessage } = require("../../../constants/locales/index.js");
 const { uploadFileToS3 } = require('../../../utils/s3.util.js');
 
-// Create Post
+
+const getLang = (req) => req.lang || 'en';
+
+
 exports.createPost = async (req, res) => {
   try {
+    const lang = getLang(req);
     req.body.userId = req.user.id;
-    
-    
+
     let mediaUrls = [];
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map(file => uploadFileToS3(file, "posts"));
-      const uploadResults = await Promise.all(uploadPromises);
-      mediaUrls = uploadResults.map(result => result.Location);
-    };
-
+      const uploadResults = await Promise.all(req.files.map(file => uploadFileToS3(file, "posts")));
+      mediaUrls = uploadResults.map(r => r.Location);
+    }
 
     let cleanHashtags = [];
     if (req.body.hashTags && Array.isArray(req.body.hashTags)) {
@@ -24,134 +25,148 @@ exports.createPost = async (req, res) => {
         .filter((tag, index, self) => tag && self.indexOf(tag) === index);
     }
 
-    const postData = {
-      ...req.body,
-      mediaUrls,
-      hashtags: cleanHashtags,
-    };
-
+    const postData = { ...req.body, mediaUrls, hashtags: cleanHashtags };
     const post = await postService.createPost(postData, cleanHashtags);
-    return res.status(200).json(successResponse(resMessages.success.createSuccessful, post));
+
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'createSuccessful'), post));
   } catch (error) {
-    console.log(error, "error")
-    res.status(500).json({ success: false, message: error.message });
+    const lang = getLang(req);
+    res.status(500).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
 };
 
-// Get All Posts
+
 exports.getUserFeedPosts = async (req, res) => {
   try {
+    const lang = getLang(req);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, req.user?.id);
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts, pagination));
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), posts, pagination));
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const lang = getLang(req);
+    res.status(500).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
 };
 
-// Get Single Post
+
 exports.getPostById = async (req, res) => {
   try {
-    const userId = req.user.id
+    const lang = getLang(req);
+    const userId = req.user.id;
     const { post } = await postService.getPostById(req.params.id, userId);
+
     if (!post)
-      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, post));
+      return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
+
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), post));
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const lang = getLang(req);
+    res.status(500).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
 };
 
-// Update Post
+
 exports.updatePost = async (req, res) => {
   try {
+    const lang = getLang(req);
     const userId = req.user.id;
     const post = await postService.updatePost(req.params.id, req.body, userId);
-    if (!post) {
-      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound))
-    }
-    return res.status(200).json(successResponse(resMessages.success.updateSuccessful, post))
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-}
 
-// Delete Post
-exports.deletePost = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const post = await postService.deletePost(req.params.id, userId);
     if (!post) {
-      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
+      return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
     }
-    return res.status(200).json(successResponse(resMessages.success.deleteSuccessful, post));
+
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), post));
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message })
+    const lang = getLang(req);
+    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
 };
+
+
+exports.deletePost = async (req, res) => {
+  try {
+    const lang = getLang(req);
+    const userId = req.user.id;
+    const post = await postService.deletePost(req.params.id, userId);
+
+    if (!post) {
+      return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
+    }
+
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), post));
+  } catch (error) {
+    const lang = getLang(req);
+    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
+  }
+};
+
 
 exports.getPostsOfProfile = async (req, res) => {
   try {
+    const lang = getLang(req);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const type = req.query.type
-    const userId = req.user.id
-    const { posts, pagination } = await postService.getProfilePost(req.params.id, page, limit, userId, type)
+    const type = req.query.type;
+    const userId = req.user.id;
+    const { posts, pagination } = await postService.getProfilePost(req.params.id, page, limit, userId, type);
+
     if (!posts) {
-      return res.status(400).json(errorResponse(resMessages.notFound.postNotFound));
+      return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
     }
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, posts, pagination));
-  }
-  catch (error) {
-    res.status(400).json({ success: false, message: error.message })
+
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), posts, pagination));
+  } catch (error) {
+    const lang = getLang(req);
+    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
 };
 
 
 exports.getTrendingTags = async (req, res) => {
   try {
-    const trendingTags = await postService.getTrendingTagsService()
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, trendingTags));
+    const lang = getLang(req);
+    const trendingTags = await postService.getTrendingTagsService();
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), trendingTags));
+  } catch (error) {
+    const lang = getLang(req);
+    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
-  catch (error) {
-    res.status(400).json({ success: false, message: error.message })
-  }
-}
+};
+
 
 exports.getAllPost = async (req, res) => {
   try {
-   
+    const lang = getLang(req);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-     const { search } = req.query || ""
-      let textSearch = search;
-      let hashtagSearch = null;
-
+    const search = req.query.search || "";
+    let textSearch = search;
+    let hashtagSearch = null;
 
     if (search && search.startsWith("#")) {
       hashtagSearch = search.replace("#", "").trim();
       textSearch = null;
     }
-    const { data, pagination } = await postService.getAllPostService(textSearch, page, limit, req.user?.id ,hashtagSearch)
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data, pagination));
-  }
-  catch (error) {
-    res.status(400).json({ success: false, message: error.message })
+
+    const { data, pagination } = await postService.getAllPostService(textSearch, page, limit, req.user?.id, hashtagSearch);
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));
+  } catch (error) {
+    const lang = getLang(req);
+    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
 };
 
-
+// Get Highlighted Posts
 exports.getHighlightedPosts = async (req, res) => {
   try {
-    const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await postService.getHighlightedPostsService(req.user?.id)
-    const data = {
-      storyOfTheMonthPosts,
-      videoOfTheMonthPosts
-    }
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessfully, data));
+    const lang = getLang(req);
+    const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await postService.getHighlightedPostsService(req.user?.id);
+    const data = { storyOfTheMonthPosts, videoOfTheMonthPosts };
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data));
+  } catch (error) {
+    const lang = getLang(req);
+    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
   }
-  catch (error) {
-    res.status(400).json({ success: false, message: error.message })
-  }
-}
+};

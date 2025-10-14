@@ -1,42 +1,56 @@
 const mongoose = require('mongoose');
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const resMessages = require("../../../constants/resMessages.constants.js");
-const{blockUserService ,unblockUserService ,getBlockedUserService} = require("../../../service/user/blocked.service.js")
+const { blockUserService, unblockUserService, getBlockedUserService } = require("../../../service/user/blocked.service.js")
+const { getMessage } = require("../../../constants/locales/index.js");
 
-
+const getLang = (req) => req.lang || 'en';
 exports.blockedUser = async (req, res) => {
     try {
-        const blocked = await blockUserService(req.user.id, req.params.id)
+        const lang = getLang(req);
+        const blocked = await blockUserService(req.user.id, req.params.id);
         return res.status(200).json(
-            successResponse(resMessages.success.blockedSuccessfully, blocked));
+            successResponse(getMessage(lang, 'success', 'blockedSuccessfully'), blocked)
+        );
+    } catch (err) {
+        const lang = getLang(req);
+        return res.status(err.statusCode || 400).json(
+            errorResponse(getMessage(lang, 'error', err.message) || err.message)
+        );
     }
-    catch (err) {
-        return res.status(400).json(errorResponse(err.message));
-    }
-}
+};
+
 
 exports.UnblockUser = async (req, res) => {
     try {
-        const unblocked = await unblockUserService(req.user.id, req.params.id)
+        const lang = getLang(req);
+        const unblocked = await unblockUserService(req.user.id, req.params.id);
         return res.status(200).json(
-            successResponse(resMessages.success.unBlockSuccessfully, unblocked));
-    }
-    catch (err) {
-        return res.status(400).json(errorResponse(err.message));
+            successResponse(getMessage(lang, 'success', 'unBlockSuccessfully'), unblocked)
+        );
+    } catch (err) {
+        const lang = getLang(req);
+        return res.status(err.statusCode || 400).json(
+            errorResponse(getMessage(lang, 'error', err.message) || err.message)
+        );
     }
 };
 
 exports.getBlockUsers = async (req, res) => {
     try {
-        const search = req.query.search || ""
+        const lang = getLang(req);
+        const search = req.query.search || "";
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const { data, pagination } = await getBlockedUserService( page, limit, req.user.id)
+        const { data, pagination } = await getBlockedUserService(page, limit, req.user.id);
         return res.status(200).json(
-            successResponse(resMessages.success.fetchSuccessfully, data, pagination));
+            successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination)
+        );
+    } catch (err) {
+        const lang = getLang(req);
+        return res.status(err.statusCode || 400).json(
+            errorResponse(getMessage(lang, 'error', err.message) || err.message)
+        );
     }
-    catch (err) {
-        return res.status(400).json(errorResponse(err.message));
-    }
-}
+};
 
