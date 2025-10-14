@@ -1,5 +1,6 @@
 
 let io;
+const onlineUsers = new Map();
 
 function initIo(server) {
   const { Server } = require("socket.io");
@@ -13,11 +14,12 @@ function initIo(server) {
 
       try {
         if (data?.userId) {
+          onlineUsers.delete(data.userId.toString());
           await User.update(
-            { device_token: null },
+            { isOnline: false, device_token: null },
             { where: { id: data.userId } }
           );
-          console.log(`Device token cleared for user ${data.userId}`);
+          console.log(`🚪 Cleared token & offline for user ${data.userId}`);
         }
       } catch (error) {
         console.error("Error clearing device token:", error);
@@ -28,6 +30,7 @@ function initIo(server) {
       console.log("online event received:", data);
       try {
         if (data?.userId) {
+          onlineUsers.set(data.userId.toString(), socket.id);
           await User.update(
             { isOnline: true },
             { where: { id: data.userId } }
@@ -43,6 +46,7 @@ function initIo(server) {
       console.log("offline event received:", data);
       try {
         if (data?.userId) {
+          onlineUsers.delete(data.userId.toString());
           await User.update(
             { isOnline: false },
             { where: { id: data.userId } }
@@ -57,6 +61,15 @@ function initIo(server) {
 
 
     socket.on("disconnect", () => {
+      for (const [userId, sockId] of onlineUsers.entries()) {
+        if (sockId === socket.id) {
+          onlineUsers.delete(userId);
+          User.update({ isOnline: false }, { where: { id: userId } })
+            .then(() => console.log(`User ${userId} disconnected`))
+            .catch((err) => console.error(" Error updating disconnect:", err));
+          break;
+        }
+      }
       console.log("Socket disconnected:", socket.id);
     });
   });

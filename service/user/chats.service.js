@@ -12,7 +12,10 @@ const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const { getIo } = require("../../socket");
 const enums = require("../../constants/enum.constants.js")
 const pushNotification = require("../../utils/pushNotification.js")
+const { getOnlineUsers } = require("../socket");
 
+
+const onlineUsers = getOnlineUsers();
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
     try {
@@ -20,15 +23,22 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             throw createError(resMessages.validation.missingFields);
         }
 
+
         const sender = await isUserExist(senderId);
         const receiver = await isUserExist(receiverId);
         if (!sender) throw createError(404, resMessages.validation.invalidSender);
         if (!receiver) throw createError(404, resMessages.validation.invalidReceiver);
 
+
         if (senderId.toString() === receiverId.toString()) throw createError(404, resMessages.validation.cannotMessageYourself);
 
         const isBlocked = await Block.findOne({ blocker: receiverId, blocked: senderId });
         if (isBlocked) throw createError(404, resMessages.validation.userBlocked);
+
+
+        const isReceiverOnline = onlineUsers.has(receiverId.toString());
+        const messageStatus = isReceiverOnline ? enums.messages_Status.DELIVERED : enums.messages_Status.SENT;
+
 
         let conversation = await Conversation.findOne({ participants: { $all: [senderId, receiverId] } });
         if (!conversation) {
@@ -51,7 +61,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 sender: senderId,
                 text: messageText,
                 type: "text",
-                status: "sent"
+                status: messageStatus
             });
             const savedTextMessage = await textMessage.save();
             messages.push(savedTextMessage);
@@ -86,7 +96,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 sender: senderId,
                 text: uploadedFile.Location,
                 type: fileType,
-                status: "sent"
+                status: messageStatus
             });
             const savedFileMessage = await fileMessage.save();
             messages.push(savedFileMessage);
@@ -237,11 +247,12 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     _id: "$otherParticipant._id",
                                     username: "$otherParticipant.username",
                                     avatarUrl: "$otherParticipant.avatarUrl",
-                                    isOnline: { $ifNull: ["$otherParticipant.isOnline", false] }, 
+                                    isOnline: { $ifNull: ["$otherParticipant.isOnline", false] },
                                 },
                                 lastMessage: "$lastMessageInfo.text",
                                 lastMessageId: "$lastMessageInfo._id",
                                 lastMessageAt: "$lastMessageInfo.createdAt",
+                                lastMessageStatus: "$lastMessageInfo.status",
                                 unseenCount: { $ifNull: ["$unseenCountForUser", 0] },
                                 updatedAt: 1,
                             },
@@ -275,7 +286,7 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         if (!userId || !conversationId || !lastMessageId) {
             throw createError(404, resMessages.validation.missingFields);
         }
-        
+
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(404, resMessages.notFound.userNotFound);
@@ -306,8 +317,6 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             .skip(skip)
             .limit(limit)
             .populate("sender", "username avatarUrl currentCountry");
-
-
 
 
 
@@ -350,7 +359,6 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             throw createError(403, resMessages.notFound.userNotFound);
         }
 
-        console.log(receiverId)
         const conversation = await isConversationExist(conversationId)
         if (!conversation.participants.some(p => p.toString() === receiverId)) {
             throw createError(403, resMessages.notFound.receiverNotPart);
@@ -373,6 +381,7 @@ exports.seenMessageService = async (conversationId, receiverId) => {
         });
         await conversation.save();
         const io = getIo();
+
         io.emit("messages_seen", {
             conversationId,
             seenBy: receiverId,
