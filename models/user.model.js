@@ -108,6 +108,10 @@ const userSchema = new Schema({
     enum: ['en', 'fr', 'es', 'cr'],
     default: 'en'
   },
+  isOnline: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true
 });
