@@ -321,7 +321,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
     }
 }
 
-exports.getSuggestionFriendsService = async (page = 1, limit = 20, search, userId) => {
+exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userId) => {
     try {
         if (!userId) throw createError(400, resMessages.notFound.userNotFound);
 
@@ -378,25 +378,34 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 20, search, userI
             ...communityUserIds.map(id => id.toString())
         ]);
 
+        if (suggestionIds.size < limit) {
+            const excludedIds = [...allFriendIds, ...blockedIds, ...Array.from(suggestionIds)];
+            const additionalUsers = await User.find({
+                _id: { $nin: excludedIds },
+                ...(search ? { username: { $regex: search, $options: "i" } } : {})
+            })
+                .limit(limit - suggestionIds.size)
+                .select("_id");
+            additionalUsers.forEach(u => suggestionIds.add(u._id.toString()));
+        }
 
+       
         let idsArray = [...suggestionIds];
         for (let i = idsArray.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [idsArray[i], idsArray[j]] = [idsArray[j], idsArray[i]];
         }
 
+        
         const total = idsArray.length;
         const totalPages = Math.ceil(total / limit);
         const skip = (page - 1) * limit;
         const paginatedSuggestions = idsArray.slice(skip, skip + limit);
 
-
         const suggestions = await User.find(
             {
                 _id: { $in: paginatedSuggestions },
-                ...(search
-                    ? { username: { $regex: search, $options: "i" } }
-                    : {})
+                ...(search ? { username: { $regex: search, $options: "i" } } : {})
             },
             "username email avatarUrl currentCountry bio profession"
         );
