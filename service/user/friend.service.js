@@ -334,9 +334,19 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         allFriendIds.push(user._id.toString());
 
 
-        const pending = await Friend.find({ requester: userId, status: enums.friend_Request_status.PENDING })
-            .distinct("recipient");
-        const allPendingFriendIds = new Set(pending.map(id => id.toString()));
+        const pendingRequests = await Friend.find({
+            status: enums.friend_Request_status.PENDING,
+            $or: [
+                { requester: user._id },
+                { recipient: user._id }
+            ]
+        });
+        
+        const pendingUserIds = new Set(
+            pendingRequests.map(req =>
+                req.requester.toString() === user._id.toString() ? req.recipient.toString() : req.requester.toString()
+            )
+        );
 
 
         const blockedUsers = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
@@ -410,7 +420,7 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         const finalSuggestions = suggestions.map(u => ({
             ...u.toObject(),
             isThisUserFriend: allFriendIds.includes(u._id.toString()),
-            isreqPending: allPendingFriendIds.has(u._id.toString()),
+            isreqPending: pendingUserIds.has(u._id.toString()),
             mutualFriendsCount: fofCountMap[u._id.toString()] || 0
         }));
 
