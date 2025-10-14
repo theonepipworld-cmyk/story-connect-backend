@@ -12,7 +12,7 @@ const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const { getIo } = require("../../socket");
 const enums = require("../../constants/enum.constants.js")
 const pushNotification = require("../../utils/pushNotification.js")
-const { getOnlineUsers } = require("../../socket");
+const { getOnlineUsers } =require("../../socket.js")
 
 
 
@@ -22,6 +22,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
             throw createError(resMessages.validation.missingFields);
         }
+        
         const onlineUsers = getOnlineUsers();
 
 

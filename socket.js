@@ -55,7 +55,7 @@ function initIo(server) {
       } catch (error) {
         console.error("Error clearing updating online status:", error);
       }
-    })
+    });
 
 
 
@@ -81,4 +81,8 @@ function getIo() {
   return io;
 }
 
-module.exports = { initIo, getIo };
+function getOnlineUsers() {
+  return onlineUsers;
+}
+
+module.exports = { initIo, getIo ,getOnlineUsers };
