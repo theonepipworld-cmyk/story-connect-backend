@@ -371,12 +371,11 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             userId: { $nin: [...allFriendIds, ...blockedIds] }
         }).distinct("userId");
 
-
-        let suggestionIds = new Set([
+        let suggestionIds = [...new Set([
             ...fofIds,
             ...sameLocationIds.map(id => id.toString()),
             ...communityUserIds.map(id => id.toString())
-        ]);
+        ])];
 
         if (suggestionIds.size < limit) {
             const excludedIds = [...allFriendIds, ...blockedIds, ...Array.from(suggestionIds)];
@@ -389,19 +388,17 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             additionalUsers.forEach(u => suggestionIds.add(u._id.toString()));
         }
 
-       
-        let idsArray = [...suggestionIds];
-        for (let i = idsArray.length - 1; i > 0; i--) {
+
+        for (let i = suggestionIds.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [idsArray[i], idsArray[j]] = [idsArray[j], idsArray[i]];
+            [suggestionIds[i], suggestionIds[j]] = [suggestionIds[j], suggestionIds[i]];
         }
 
-        
-        const total = idsArray.length;
+
+        const total = suggestionIds.length;
         const totalPages = Math.ceil(total / limit);
         const skip = (page - 1) * limit;
-        const paginatedSuggestions = idsArray.slice(skip, skip + limit);
-
+        const paginatedSuggestions = suggestionIds.slice(skip, skip + limit);
         const suggestions = await User.find(
             {
                 _id: { $in: paginatedSuggestions },
