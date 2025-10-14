@@ -8,7 +8,6 @@ function initIo(server) {
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
-
     socket.on("logout", async (data) => {
       console.log("Logout event received:", data);
 
@@ -27,7 +26,7 @@ function initIo(server) {
     });
 
     socket.on("online", async (data) => {
-      console.log("online event received:", data);
+      console.log("online event received:", data.userId._id);
       try {
         if (data?.userId) {
           onlineUsers.set(data.userId.toString(), socket.id);
