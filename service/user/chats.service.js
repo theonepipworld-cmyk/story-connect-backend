@@ -12,7 +12,7 @@ const { deleteFileFromS3 } = require("../../utils/s3.util.js")
 const { getIo } = require("../../socket");
 const enums = require("../../constants/enum.constants.js")
 const pushNotification = require("../../utils/pushNotification.js")
-const { getOnlineUsers } =require("../../socket.js")
+const { getOnlineUsers } = require("../../socket.js")
 
 
 
@@ -22,7 +22,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
             throw createError(resMessages.validation.missingFields);
         }
-        
+
         const onlineUsers = getOnlineUsers();
 
 
@@ -70,8 +70,14 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
             const io = getIo();
             io.emit("newMessage", savedTextMessage);
+            conversation.lastMessage = {
+                _id: savedTextMessage._id,
+                text: savedTextMessage.text,
+                type: savedTextMessage.type,
+                status: savedTextMessage.status,
+                sender: savedTextMessage.sender
+            };
 
-            conversation.lastMessage = savedTextMessage._id;
 
             let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
             if (unseenEntry) unseenEntry.count += 1;
@@ -106,7 +112,14 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const io = getIo();
             io.emit("newMessage", savedFileMessage);
 
-            conversation.lastMessage = savedFileMessage._id;
+            conversation.lastMessage = {
+                _id: savedFileMessage._id,
+                text: savedFileMessage.text,
+                type: savedFileMessage.type,
+                status: savedFileMessage.status,
+                sender: savedFileMessage.sender
+            };
+
 
             let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
             if (unseenEntry) unseenEntry.count += 1;
