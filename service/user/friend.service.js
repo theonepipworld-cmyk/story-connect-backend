@@ -83,14 +83,27 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             });
 
 
-            // if (recipient.device_token) {
-            //     // await pushNotification.androidPushNotification(
-            //     //     recipient.device_token,
-            //     //     `${user.username} ${resMessages.notifications.sendFriendReq}`,
-            //     //     "friend_request",
-            //     //     { senderId: userId.toString(), type: "friend_request" }
-            //     // );
-            // }
+            if (recipient.device_token) {
+                try {
+                    await pushNotification.androidPushNotification(
+                        recipient.device_token,
+                        `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                        "friend_request",
+                        { senderId: userId.toString(), type: "friend_request" }
+                    );
+                } catch (error) {
+                    console.error(`Failed to send friend request push to user ${recipient._id}:`, error.message);
+                    if (error.code === 'messaging/invalid-argument' ||
+                        error.code === 'messaging/registration-token-not-registered') {
+                        await User.update(
+                            { device_token: null },
+                            { where: { id: recipient._id } }
+                        );
+                        console.log(`Cleared invalid device token for user ${recipient._id}`);
+                    }
+                }
+            }
+
         }
         return {
             result,
@@ -335,12 +348,12 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         const user = await isUserExist(userId);
         if (!user) throw createError(400, 'userNotFound', 'notFound');
 
-     
+
         const allFriends = await getAllFriends(user._id);
         const allFriendIds = allFriends.map(f => f._id.toString());
         allFriendIds.push(user._id.toString());
 
-     
+
         const pendingRequests = await Friend.find({
             status: enums.friend_Request_status.PENDING,
             $or: [{ requester: user._id }, { recipient: user._id }]
@@ -351,13 +364,13 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             )
         );
 
-       
+
         const blockedUsers = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
         const blockedIds = blockedUsers.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         );
 
-       
+
         const fof = await Friend.find({
             $or: [
                 { requester: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED },
@@ -371,27 +384,27 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             return acc;
         }, {});
 
-        
+
         const sameLocationIds = await User.find(
             { "currentCountry.code": user.currentCountry?.code, _id: { $nin: [...allFriendIds, ...blockedIds] } },
             "_id"
         ).distinct("_id");
 
-        
+
         const communityIds = await CommunityMember.find({ userId: user._id }).distinct("communityId");
         const communityUserIds = await CommunityMember.find({
             communityId: { $in: communityIds },
             userId: { $nin: [...allFriendIds, ...blockedIds] }
         }).distinct("userId");
 
-     
+
         let suggestionIds = new Set([
             ...fofIds,
             ...sameLocationIds.map(id => id.toString()),
             ...communityUserIds.map(id => id.toString())
         ]);
 
-  
+
         if (suggestionIds.size < limit) {
             const excludedIds = new Set([...allFriendIds, ...blockedIds, ...suggestionIds]);
             const additionalUsers = await User.find({
@@ -404,22 +417,22 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             additionalUsers.forEach(u => suggestionIds.add(u._id.toString()));
         }
 
-    
+
         suggestionIds = Array.from(suggestionIds);
 
-  
+
         for (let i = suggestionIds.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [suggestionIds[i], suggestionIds[j]] = [suggestionIds[j], suggestionIds[i]];
         }
 
- 
+
         const total = suggestionIds.length;
         const totalPages = Math.ceil(total / limit);
         const skip = (page - 1) * limit;
         const paginatedSuggestions = suggestionIds.slice(skip, skip + limit);
 
-    
+
         const suggestions = await User.find(
             { _id: { $in: paginatedSuggestions } },
             "username email avatarUrl currentCountry bio profession"

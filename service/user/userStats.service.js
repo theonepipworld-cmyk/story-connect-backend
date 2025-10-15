@@ -7,6 +7,7 @@ const resMessages = require("../../constants/resMessages.constants.js");
 const Block = require("../../models/block.model.js");
 const { getIo } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
+const User = require("../../models/user.model.js")
 const enums = require("../../constants/enum.constants.js")
 const pushNotification = require("../../utils/pushNotification.js")
 
@@ -14,17 +15,17 @@ const pushNotification = require("../../utils/pushNotification.js")
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
         if (!userId || !username) {
-          throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const user = await isUserExist(userId);
         if (!user) {
-             throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const post = await isPostExist(postId);
         if (!post) {
-            throw createError(400, 'postNotFound','notFound');
+            throw createError(400, 'postNotFound', 'notFound');
         }
 
         const blocked = await Block.findOne({
@@ -36,16 +37,16 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
 
         if (blocked) {
-            throw createError(403, 'userNotLikedorView','validation');
+            throw createError(403, 'userNotLikedorView', 'validation');
         }
 
         if (type === userActivityStats.userStats.CommentLikes) {
-            if (!commentId) throw createError(400,'commentNotFound', 'notFound');
+            if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId);
         }
 
         if (type === userActivityStats.userStats.CommentReplyLike) {
-            if (!parentCommentId || !commentId) throw createError(400, 'commentNotFound','notFound');
+            if (!parentCommentId || !commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId, true);
         }
 
@@ -66,14 +67,28 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
-                // if (postOwner && postOwner.device_token) {
-                //     await pushNotification.androidPushNotification(
-                //         postOwner.device_token,
-                //         `${username} ${resMessages.notifications.likedPost}`,
-                //         "like",
-                //         { postId: postId.toString(), senderId: userId.toString() }
-                //     );
-                // }
+                if (postOwner && postOwner.device_token) {
+                    try {
+                        await pushNotification.androidPushNotification(
+                            postOwner.device_token,
+                            `${username} ${resMessages.notifications.likedPost}`,
+                            "like",
+                            { postId: postId.toString(), senderId: userId.toString() }
+                        );
+                    } catch (error) {
+                        console.error(`Failed to send post like push to user ${postOwner._id}:`, error.message);
+
+                        // Optional: Clear invalid token
+                        if (error.code === 'messaging/invalid-argument' ||
+                            error.code === 'messaging/registration-token-not-registered') {
+                            await User.update(
+                                { device_token: null },
+                                { where: { id: postOwner._id } }
+                            );
+                            console.log(`Cleared invalid device token for user ${postOwner._id}`);
+                        }
+                    }
+                }
                 await Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -99,14 +114,32 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             if (comment && comment.userId.toString() !== userId.toString()) {
 
                 const commentOwner = comment.userId;
-                // if (commentOwner.device_token) {
-                //     await pushNotification.androidPushNotification(
-                //         commentOwner.device_token,
-                //         `${username} ${resMessages.notifications.comment}`,
-                //         "comment",
-                //         { postId: postId.toString(), commentId: commentId.toString(), senderId: userId.toString(), parentCommentId: parentCommentId ? parentCommentId.toString() : null }
-                //     );
-                // }
+                if (commentOwner && commentOwner.device_token) {
+                    try {
+                        await pushNotification.androidPushNotification(
+                            commentOwner.device_token,
+                            `${username} ${resMessages.notifications.comment}`,
+                            "comment",
+                            {
+                                postId: postId.toString(),
+                                commentId: commentId.toString(),
+                                senderId: userId.toString(),
+                                parentCommentId: parentCommentId ? parentCommentId.toString() : null
+                            }
+                        );
+                    } catch (error) {
+                        console.error(`Failed to send comment push to user ${commentOwner._id}:`, error.message);       
+                        if (error.code === 'messaging/invalid-argument' ||
+                            error.code === 'messaging/registration-token-not-registered') {
+                            await User.update(
+                                { device_token: null },
+                                { where: { id: commentOwner._id } }
+                            );
+                            console.log(`Cleared invalid device token for user ${commentOwner._id}`);
+                        }
+                    }
+                }
+
                 await Notification.create({
                     user: comment.userId,
                     sender: userId,
@@ -143,7 +176,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
     } catch (error) {
         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -153,7 +186,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) {
-            throw createError(400, 'postNotFound','notFound');
+            throw createError(400, 'postNotFound', 'notFound');
         }
 
         const blocked = await Block.find({
@@ -172,7 +205,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
         }
 
         if (!stats) {
-            throw new Error(400,'noUserStatsFound','customError');
+            throw new Error(400, 'noUserStatsFound', 'customError');
         }
 
         let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
@@ -181,7 +214,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
 
         return resultArr;
     } catch (error) {
-       if (error.statusCode) throw error;
-      throw createError(500, 'serverError','error');
-           }
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
 };

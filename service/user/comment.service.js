@@ -2,21 +2,25 @@ const User = require('../../models/user.model');
 const mongoose = require('mongoose');
 const { uploadFileToS3 } = require('../../utils/s3.util');
 const { DEFAULT_AVATAR_URL } = require('../../constants/variables.constants');
-const resMessages = require("../../constants/resMessages.constants.js");
+const { errorResponse, successResponse } = require('../../utils/responseHandler.util');
+const resMessages = require("../../constants/resMessages.constants.js")
 const Comment = require('../../models/Comments.model');
-const { isPostExist, createError, isUserExist } = require("../../helpers/dbHelpers.js");
+const { isPostExist, createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const UserStats = require("../../models/userActivityStats.model");
 const Block = require("../../models/block.model.js");
 const pushNotification = require("../../utils/pushNotification.js");
 
 
-// ADD COMMENT
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) {
+            throw createError(400, 'userNotFound', 'notFound');
+        }
 
         const post = await isPostExist(postId);
-        if (!post) throw createError(400, 'postNotFound', 'notFound');
+        if (!post) {
+            throw createError(400, 'postNotFound', 'notFound');
+        }
 
         const blocked = await Block.findOne({
             $or: [
@@ -24,177 +28,446 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 { blocker: userId, blocked: post.userId }
             ]
         });
-        if (blocked) throw createError(403, 'userBlocked', 'validation');
+
+        if (blocked) {
+            throw createError(403, 'userBlocked', 'validation');
+        }
 
         const comment = await Comment.create({
-            userId,
-            postId,
+            userId: userId,
+            postId: postId,
             parentCommentId: parentCommentId || null,
             content: commentString
         });
-        if (!comment) throw createError(400, 'commentNotFound', 'notFound');
 
-        if (parentCommentId) {
-            await Comment.findByIdAndUpdate(parentCommentId, { $inc: { replyCount: 1 } });
+        if (!comment) {
+            throw createError(400, 'commentNotFound', 'notFound');
         }
 
+        if (parentCommentId) {
+            await Comment.findByIdAndUpdate(
+                parentCommentId,
+                { $inc: { replyCount: 1 } }
+            );
+        }
         if (post.userId.toString() !== userId.toString()) {
             const postOwner = await User.findById(post.userId);
-            if (postOwner?.device_token) {
-                const notificationMessage = parentCommentId
-                    ? `${userId} replied to your comment.`
-                    : `${userId} commented on your post.`;
-                // await pushNotification.androidPushNotification(postOwner.device_token, notificationMessage, "comment", {
-                //     postId: postId.toString(),
-                //     commentId: comment._id.toString(),
-                //     senderId: userId.toString(),
-                //     parentCommentId: parentCommentId ? parentCommentId.toString() : null
-                // });
+            try {
+                await pushNotification.androidPushNotification(
+                    postOwner.device_token,
+                    notificationMessage,
+                    "comment",
+                    {
+                        postId: postId.toString(),
+                        commentId: comment._id.toString(),
+                        senderId: userId.toString(),
+                        parentCommentId: parentCommentId ? parentCommentId.toString() : null
+                    }
+                );
+            } catch (error) {
+                console.error(`Failed to send push to user ${postOwner._id}:`, error.message);
+
+              
+                if (error.code === 'messaging/invalid-argument' ||
+                    error.code === 'messaging/registration-token-not-registered') {
+                    await User.update(
+                        { device_token: null },
+                        { where: { id: postOwner._id } }
+                    );
+                    console.log(`Cleared invalid device token for user ${postOwner._id}`);
+                }
             }
         }
 
         return comment;
     } catch (error) {
         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 
-// UPDATE COMMENT
+//update comment by whom uploaded this
 exports.updateCommentService = async (postId, commentId, parentCommentId, content, userId) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
-        const postExists = await isPostExist(postId);
-        if (!postExists) throw createError(400, 'postNotFound', 'notFound');
-
-        const comment = await Comment.findById(commentId);
-        if (!comment) throw createError(400, 'commentNotFound', 'notFound');
-
-        if (comment.userId.toString() !== userId.toString()) {
-            throw createError(403, 'NotAuthorized', 'customError');
+        const isPostIdExist = await isPostExist(postId);
+        if (!isPostIdExist) {
+            throw createError(400, 'postNotFound', 'notFound');
         }
-
-        const filter = { _id: commentId, postId, userId };
+        if (!userId) {
+            throw createError(400, 'userNotFound', 'notFound');
+        }
+        const comment = await Comment.findById(commentId);
+        if (!comment) {
+            throw createError(400, 'commentNotFound', 'notFound');
+        }
+        if (comment.userId.toString() !== userId.toString()) {
+            throw new Error(400, 'NotAuthorized', 'customError');
+        }
+        const filter = {
+            _id: commentId,
+            postId: postId,
+            userId: userId
+        };
         if (parentCommentId) {
             if (!comment.parentCommentId || comment.parentCommentId.toString() !== parentCommentId.toString()) {
-                throw createError(400, 'commentIdNotMatch', 'customError');
+                throw new Error(400, 'commentIdNotMatchr', 'customError');
             }
             filter.parentCommentId = parentCommentId;
         } else {
             if (comment.parentCommentId) {
-                throw createError(400, 'parentCommentIdInvalid', 'customError');
+                throw new Error(400, 'parentCommentIdInvalid', 'customError');
             }
             filter.parentCommentId = { $in: [null] };
         }
-
-        const updatedComment = await Comment.findOneAndUpdate(filter, { content, isEdited: true }, { new: true });
-        if (!updatedComment) throw createError(400, 'commentNotFound', 'notFound');
-
+        const updatedComment = await Comment.findOneAndUpdate(
+            filter,
+            { content, isEdited: true },
+            { new: true }
+        );
+        if (!updatedComment) {
+            throw createError(400, 'commentNotFound', 'notFound');
+        }
         return updatedComment;
     } catch (error) {
         if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 };
-
-
-// DELETE COMMENT
+//delete comment by user who upload the commenta and also ownerUser of the profile
 exports.deleteCommentService = async (postId, commentId, parentCommentId, userId) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
-        const postExists = await isPostExist(postId);
-        if (!postExists) throw createError(400, 'postNotFound', 'notFound');
+        const isPostIdExist = await isPostExist(postId);
+        if (!isPostIdExist) {
+            throw createError(400, 'postNotFound', 'notFound');
+        }
+        if (!userId) {
+            throw createError(400, 'userNotFound', 'notFound');
+        }
+        const comment = await Comment.findById(commentId)
+            .populate("userId", "_id")
+            .populate("postId", "userId");
 
-        const comment = await Comment.findById(commentId).populate("userId", "_id").populate("postId", "userId");
-        if (!comment) throw createError(400,'commentNotFound', 'notFound');
-
+        if (!comment) {
+            throw createError(400, 'commentNotFound', 'notFound');
+        }
         const isCommentOwner = comment.userId._id.toString() === userId.toString();
         const isPostOwner = comment.postId.userId.toString() === userId.toString();
-        if (!isCommentOwner && !isPostOwner) throw createError(403, 'NotAuthorized', 'customError');
 
-        const filter = { _id: commentId, postId };
-        if (parentCommentId) filter.parentCommentId = parentCommentId;
-
+        if (!isCommentOwner && !isPostOwner) {
+            throw new Error(400, 'NotAuthorized', 'customError');
+        }
+        const filter = { _id: commentId, postId: postId };
+        if (parentCommentId) {
+            filter.parentCommentId = parentCommentId;
+        }
         const deleteResult = await Comment.deleteOne(filter);
-        if (deleteResult.deletedCount === 0) throw createError(400, 'commentNotDeleted', 'customError');
+        if (deleteResult.deletedCount === 0) {
+            throw new Error(400, 'commentNotDeleted', 'customError');
+        }
+
+        //delete that comment from userstats
 
         await UserStats.updateOne(
             { "commentLikes.commentId": commentId },
-            { $pull: { commentLikes: { commentId } } }
+            { $pull: { commentLikes: { commentId: commentId } } }
         );
-
-        if (parentCommentId) await Comment.findByIdAndUpdate(parentCommentId, { $inc: { replyCount: -1 } });
-
+        if (parentCommentId) {
+            await Comment.findByIdAndUpdate(
+                parentCommentId,
+                { $inc: { replyCount: -1 } }
+            );
+        }
         return { success: true, message: resMessages.success.deleteSuccessful };
+
     } catch (error) {
         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 };
 
-
-// GET TOP-LEVEL COMMENTS
 exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
-        const user = await isUserExist(userId);
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) {
+            throw createError(400, 'userNotFound', 'notFound');
+        }
 
-        const postExists = await isPostExist(postId);
-        if (!postExists) throw createError(400,'postNotFound', 'notFound');
+        const user = await isUserExist(userId);
+        if (!user) {
+            throw createError(400, 'userNotFound', 'notFound');
+        }
+
+        const isPostIdExist = await isPostExist(postId);
+        if (!isPostIdExist) {
+            throw createError(400, 'postNotFound', 'notFound');
+        }
 
         const offset = (page - 1) * limit;
-        const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
-        const blockedUserIds = blocked.map(b => b.blocker.toString() === userId.toString() ? b.blocked : b.blocker);
+        const blocked = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        });
+
+        const blockedUserIds = blocked.map(b =>
+            b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+        );
 
         const topLevelComments = await Comment.aggregate([
-            { $match: { postId: new mongoose.Types.ObjectId(postId), parentCommentId: null, userId: { $nin: blockedUserIds } } },
-            { $sort: { createdAt: -1 } },
-            { $skip: offset },
-            { $limit: limit },
-            { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userInfo" } },
-            { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } }
+            {
+                $match: {
+                    postId: new mongoose.Types.ObjectId(postId),
+                    parentCommentId: null,
+                    userId: { $nin: blockedUserIds }
+                }
+            },
+            {
+                $facet: {
+                    data: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: offset },
+                        { $limit: limit },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+                        {
+                            $lookup: {
+                                from: "userstats",
+                                let: {
+                                    commentIdStr: { $toString: "$_id" },
+                                    userIdStr: user._id.toString()
+                                },
+                                pipeline: [
+                                    { $match: { postId: new mongoose.Types.ObjectId(postId) } },
+                                    { $unwind: { path: "$commentLikes", preserveNullAndEmptyArrays: true } },
+                                    {
+                                        $match: {
+                                            $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] }
+                                        }
+                                    },
+                                    {
+                                        $project: {
+                                            _id: 0,
+                                            totalLikes: { $ifNull: ["$commentLikes.totalLikes", 0] },
+                                            userIds: { $ifNull: ["$commentLikes.userIds", []] }
+                                        }
+                                    }
+                                ],
+                                as: "likesInfo"
+                            }
+                        },
+                        {
+                            $addFields: {
+                                isCommentLikedByMe: {
+                                    $anyElementTrue: {
+                                        $map: {
+                                            input: { $ifNull: ["$likesInfo", []] },
+                                            as: "like",
+                                            in: {
+                                                $anyElementTrue: {
+                                                    $map: {
+                                                        input: { $ifNull: ["$$like.userIds", []] },
+                                                        as: "uid",
+                                                        in: { $eq: ["$$uid", user._id.toString()] }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                content: 1,
+                                createdAt: 1,
+                                username: "$userInfo.username",
+                                profilePicture: "$userInfo.avatarUrl",
+                                currentCountry: {
+                                    $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }]
+                                },
+                                replyCount: 1,
+                                totalLikes: {
+                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
+                                },
+                                isCommentLikedByMe: 1
+                            }
+                        }
+                    ],
+                    totalCount: [{ $count: "count" }]
+                }
+            }
         ]);
 
-        const total = await Comment.countDocuments({ postId, parentCommentId: null, userId: { $nin: blockedUserIds } });
+        if (!topLevelComments) {
+            throw new Error(400, 'notFound', 'customError');
+        }
 
-        return { data: topLevelComments, pagination: { total, totalPages: Math.ceil(total / limit), currentPage: page, limit } };
+        const data = topLevelComments[0].data;
+        const total = topLevelComments[0].totalCount[0]?.count || 0;
+
+        return {
+            data,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: parseInt(page),
+                limit: parseInt(limit)
+            }
+        };
     } catch (error) {
         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 
-// GET REPLY COMMENTS
+
+
 exports.getReplyCommentService = async (postId, page, limit, parentCommentId, userId) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
-        const user = await isUserExist(userId);
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) {
+            throw createError(400, 'userNotFound', 'notFound');
+        }
 
-        const postExists = await isPostExist(postId);
-        if (!postExists) throw createError(400, 'postNotFound', 'notFound');
+        const user = await isUserExist(userId);
+        if (!user) {
+            throw createError(400, 'userNotFound', 'notFound');
+        }
+
+        const isPostIdExist = await isPostExist(postId);
+        if (!isPostIdExist) {
+            throw createError(400, 'postNotFound', 'notFound');
+        }
 
         const offset = (page - 1) * limit;
-        const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
-        const blockedUserIds = blocked.map(b => b.blocker.toString() === userId.toString() ? b.blocked : b.blocker);
+
+        const blocked = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        });
+
+        const blockedUserIds = blocked.map(b =>
+            b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+        );
 
         const replyComments = await Comment.aggregate([
-            { $match: { postId: new mongoose.Types.ObjectId(postId), parentCommentId: new mongoose.Types.ObjectId(parentCommentId), userId: { $nin: blockedUserIds } } },
-            { $sort: { createdAt: -1 } },
-            { $skip: offset },
-            { $limit: limit },
-            { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userInfo" } },
-            { $unwind: "$userInfo" }
+            {
+                $match: {
+                    postId: new mongoose.Types.ObjectId(postId),
+                    parentCommentId: new mongoose.Types.ObjectId(parentCommentId),
+                    userId: { $nin: blockedUserIds }
+                }
+            },
+            {
+                $facet: {
+                    data: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: offset },
+                        { $limit: limit },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: "$userInfo" },
+                        {
+                            $lookup: {
+                                from: "userstats",
+                                let: { commentIdStr: { $toString: "$_id" } },
+                                pipeline: [
+                                    { $match: { postId: new mongoose.Types.ObjectId(postId) } },
+                                    { $unwind: "$commentLikes" },
+                                    {
+                                        $match: {
+                                            $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] }
+                                        }
+                                    },
+                                    {
+                                        $project: {
+                                            _id: 0,
+                                            totalLikes: "$commentLikes.totalLikes",
+                                            userIds: "$commentLikes.userIds"
+                                        }
+                                    }
+                                ],
+                                as: "likesInfo"
+                            }
+                        },
+                        {
+                            $addFields: {
+                                isCommentLikedByMe: {
+                                    $anyElementTrue: {
+                                        $map: {
+                                            input: { $ifNull: ["$likesInfo", []] },
+                                            as: "like",
+                                            in: {
+                                                $anyElementTrue: {
+                                                    $map: {
+                                                        input: { $ifNull: ["$$like.userIds", []] },
+                                                        as: "uid",
+                                                        in: { $eq: ["$$uid", user._id.toString()] }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                content: 1,
+                                createdAt: 1,
+                                username: "$userInfo.username",
+                                profilePicture: "$userInfo.avatarUrl",
+                                currentCountry: "$userInfo.currentCountry",
+                                totalLikes: {
+                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
+                                },
+                                replyCount: 1,
+                                isCommentLikedByMe: 1,
+                                parentCommentId: parentCommentId
+                            }
+                        }
+                    ],
+                    totalCount: [{ $count: "count" }]
+                }
+            }
         ]);
 
-        const total = await Comment.countDocuments({ postId, parentCommentId, userId: { $nin: blockedUserIds } });
+        if (!replyComments) {
+            throw new Error(400, 'notFound', 'customError');
+        }
 
-        return { data: replyComments, pagination: { total, totalPages: Math.ceil(total / limit), currentPage: page, limit } };
+        const data = replyComments[0].data;
+        const total = replyComments[0].totalCount[0]?.count || 0;
+
+        return {
+            data,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: parseInt(page),
+                limit: parseInt(limit)
+            }
+        };
     } catch (error) {
         if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
+
     }
 };
+
+
+
+
+

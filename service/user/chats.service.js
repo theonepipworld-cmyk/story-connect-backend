@@ -18,7 +18,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
             throw createError(400, 'missingFields', 'validation');
         }
-
         const onlineUsers = getOnlineUsers();
 
         const sender = await isUserExist(senderId);
@@ -36,7 +35,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
 
-           
+
 
         let conversation = await Conversation.findOne({ participants: { $all: [senderId, receiverId] } });
         if (!conversation) {
@@ -49,7 +48,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
             await conversation.save();
         }
-      
+
 
         const messages = [];
 
@@ -84,12 +83,31 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             if (unseenEntry) unseenEntry.count += 1;
             else conversation.unseenCount.push({ userId: receiverId, count: 1 });
 
-            // if (receiver.device_token) {
-            //     await pushNotification.androidPushNotification(receiver.device_token, messageText, "message", {
-            //         conversationId: conversation._id.toString(),
-            //         senderId: senderId.toString()
-            //     });
-            // }
+            console.log('Sending FCM to token:', receiver.device_token);
+
+            if (receiver.device_token) {
+                try {
+                    await pushNotification.androidPushNotification(
+                        receiver.device_token,
+                        messageText,
+                        "message",
+                        {
+                            conversationId: conversation._id.toString(),
+                            senderId: senderId.toString()
+                        }
+                    );
+                } catch (error) {
+                    console.error(`Failed to send push to user ${receiver._id}:`, error.message);
+                    if (error.code === 'messaging/invalid-argument' ||
+                        error.code === 'messaging/registration-token-not-registered') {
+                        await User.update(
+                            { device_token: null },
+                            { where: { id: receiver._id } }
+                        );
+                        console.log(`Cleared invalid device token for user ${receiver._id}`);
+                    }
+                }
+            }
         }
 
         // FILES
@@ -122,26 +140,39 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
             if (unseenEntry) unseenEntry.count += 1;
             else conversation.unseenCount.push({ userId: receiverId, count: 1 });
-              console.log("conversation-------------",conversation)
 
-            // if (receiver.device_token) {
-            //     await pushNotification.androidPushNotification(receiver.device_token, `📎 Sent a ${fileType}`, "message", {
-            //         conversationId: conversation._id.toString(),
-            //         senderId: senderId.toString(),
-            //         fileType
-            //     });
-            // }
+            if (receiver.device_token) {
+                try {
+                    await pushNotification.androidPushNotification(receiver.device_token, `Sent a ${fileType}`, "message", {
+                        conversationId: conversation._id.toString(),
+                        senderId: senderId.toString(),
+                        fileType
+                    });
+                }
+                catch (error) {
+                    console.error(`Failed to send push to user ${receiver._id}:`, error.message);
+                    if (error.code === 'messaging/invalid-argument' ||
+                        error.code === 'messaging/registration-token-not-registered') {
+                        await User.update(
+                            { device_token: null },
+                            { where: { id: receiver._id } }
+                        );
+                        console.log(`Cleared invalid device token for user ${receiver._id}`);
+                    }
+                
+            }
         }
+    }
 
         conversation.updatedAt = new Date();
 
-        await conversation.save();
-        return messages;
-    } catch (error) {
-        console.log(error)
-        if (error.statusCode) throw error;
-        throw createError(500, 'serverError', 'error');
-    }
+    await conversation.save();
+    return messages;
+} catch (error) {
+    console.log(error)
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
+}
 };
 
 
@@ -268,7 +299,7 @@ exports.loadMoreMessagesService = async (
         }
 
         //const participants = conversation.participants.map(p => p.toString());
-       // const receiverId = participants.find(p => p !== userId);
+        // const receiverId = participants.find(p => p !== userId);
         //const onlineUsers = getOnlineUsers();
 
         const totalMessages = await Message.countDocuments({ conversationId });
@@ -302,11 +333,11 @@ exports.loadMoreMessagesService = async (
             { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
         );
 
-       // const onlineUsersSet = new Set(onlineUsers); 
+        // const onlineUsersSet = new Set(onlineUsers); 
         //const receiverOnline = onlineUsersSet.has(receiverId); 
 
         return {
-           //receiverOnline,
+            //receiverOnline,
             data: messages.reverse(),
             pagination: {
                 total: totalMessages,
