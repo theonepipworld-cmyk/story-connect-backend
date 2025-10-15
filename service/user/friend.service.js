@@ -333,68 +333,65 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         if (!userId) throw createError(400, 'userNotFound', 'notFound');
 
         const user = await isUserExist(userId);
-        if (!user) throw createError(400, 'userNotFound', 'notFound')
+        if (!user) throw createError(400, 'userNotFound', 'notFound');
 
-
+     
         const allFriends = await getAllFriends(user._id);
         const allFriendIds = allFriends.map(f => f._id.toString());
         allFriendIds.push(user._id.toString());
 
-
+     
         const pendingRequests = await Friend.find({
             status: enums.friend_Request_status.PENDING,
-            $or: [
-                { requester: user._id },
-                { recipient: user._id }
-            ]
+            $or: [{ requester: user._id }, { recipient: user._id }]
         });
-
         const pendingUserIds = new Set(
             pendingRequests.map(req =>
                 req.requester.toString() === user._id.toString() ? req.recipient.toString() : req.requester.toString()
             )
         );
 
-
+       
         const blockedUsers = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
         const blockedIds = blockedUsers.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         );
 
-
+       
         const fof = await Friend.find({
             $or: [
                 { requester: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED },
                 { recipient: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED }
             ]
         }).distinct("requester recipient");
-
         const fofIds = fof.map(id => id.toString()).filter(id => !allFriendIds.includes(id) && !blockedIds.includes(id));
+
         const fofCountMap = fofIds.reduce((acc, id) => {
             acc[id] = (acc[id] || 0) + 1;
             return acc;
         }, {});
 
-
+        
         const sameLocationIds = await User.find(
             { "currentCountry.code": user.currentCountry?.code, _id: { $nin: [...allFriendIds, ...blockedIds] } },
             "_id"
         ).distinct("_id");
 
-
+        
         const communityIds = await CommunityMember.find({ userId: user._id }).distinct("communityId");
         const communityUserIds = await CommunityMember.find({
             communityId: { $in: communityIds },
             userId: { $nin: [...allFriendIds, ...blockedIds] }
         }).distinct("userId");
 
+     
         let suggestionIds = new Set([
             ...fofIds,
             ...sameLocationIds.map(id => id.toString()),
             ...communityUserIds.map(id => id.toString())
         ]);
 
-       
+  
         if (suggestionIds.size < limit) {
             const excludedIds = new Set([...allFriendIds, ...blockedIds, ...suggestionIds]);
             const additionalUsers = await User.find({
@@ -407,26 +404,35 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             additionalUsers.forEach(u => suggestionIds.add(u._id.toString()));
         }
 
-      
-        suggestionIds = Array.from(suggestionIds); 
+    
+        suggestionIds = Array.from(suggestionIds);
+
+  
         for (let i = suggestionIds.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [suggestionIds[i], suggestionIds[j]] = [suggestionIds[j], suggestionIds[i]];
         }
 
+ 
         const total = suggestionIds.length;
         const totalPages = Math.ceil(total / limit);
         const skip = (page - 1) * limit;
         const paginatedSuggestions = suggestionIds.slice(skip, skip + limit);
 
-        
+    
         const suggestions = await User.find(
-            {
-                _id: { $in: paginatedSuggestions },
-                ...(search ? { username: { $regex: search, $options: "i" } } : {})
-            },
+            { _id: { $in: paginatedSuggestions } },
             "username email avatarUrl currentCountry bio profession"
         );
+
+
+        const finalSuggestions = suggestions.map(u => ({
+            ...u.toObject(),
+            isThisUserFriend: allFriendIds.includes(u._id.toString()),
+            isreqPending: pendingUserIds.has(u._id.toString()),
+            mutualFriendsCount: fofCountMap[u._id.toString()] || 0
+        }));
+
         return {
             suggestions: finalSuggestions,
             pagination: { total, totalPages, currentPage: parseInt(page), limit: parseInt(limit) }
@@ -437,6 +443,7 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         throw createError(500, 'serverError', 'error');
     }
 };
+
 
 
 exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
