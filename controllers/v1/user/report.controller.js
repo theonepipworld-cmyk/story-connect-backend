@@ -13,9 +13,12 @@ exports.reportUser = async (req, res) => {
     const reportUser = await reportUserService(reportUserId, description, category, severity, req.files, req.user.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'reportSuccessfully'), reportUser));
   } catch (err) {
-    const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+       const lang = getLang(req);
+          const statusCode = err.statusCode || err.status || 500;
+          const category = err.category || 'error';
+          const finalMessage = getMessage(lang, category, err.message) || err.message;
+          return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 
@@ -25,7 +28,10 @@ exports.getReportCategories = async (req, res) => {
     const categories = await getReportCategoryService();
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), categories));
   } catch (err) {
-    const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+      const lang = getLang(req);
+         const statusCode = err.statusCode || err.status || 500;
+         const category = err.category || 'error';
+         const finalMessage = getMessage(lang, category, err.message) || err.message;
+         return res.status(statusCode).json(errorResponse(finalMessage));
   }
 };

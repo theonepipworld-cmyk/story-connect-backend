@@ -14,17 +14,17 @@ const pushNotification = require("../../utils/pushNotification.js")
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
         if (!userId || !username) {
-            throw createError(400, resMessages.notFound.userNotFound);
+          throw createError(400, 'userNotFound', 'notFound');
         }
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, resMessages.notFound.userNotFound);
+             throw createError(400, 'userNotFound', 'notFound');
         }
 
         const post = await isPostExist(postId);
         if (!post) {
-            throw createError(400, resMessages.notFound.postNotFound);
+            throw createError(400, 'postNotFound','notFound');
         }
 
         const blocked = await Block.findOne({
@@ -36,16 +36,16 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
 
         if (blocked) {
-            throw createError(403, resMessages.validation.userNotLikedorView);
+            throw createError(403, 'userNotLikedorView','validation');
         }
 
         if (type === userActivityStats.userStats.CommentLikes) {
-            if (!commentId) throw createError(400, resMessages.notFound.commentNotFound);
+            if (!commentId) throw createError(400,'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId);
         }
 
         if (type === userActivityStats.userStats.CommentReplyLike) {
-            if (!parentCommentId || !commentId) throw createError(400, resMessages.notFound.commentNotFound);
+            if (!parentCommentId || !commentId) throw createError(400, 'commentNotFound','notFound');
             await validateComment(postId, commentId, parentCommentId, true);
         }
 
@@ -142,7 +142,8 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
 
     } catch (error) {
-        throw new Error(error.message);
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError','error');
     }
 };
 
@@ -152,7 +153,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) {
-            throw createError(400, resMessages.notFound.postNotFound);
+            throw createError(400, 'postNotFound','notFound');
         }
 
         const blocked = await Block.find({
@@ -171,7 +172,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
         }
 
         if (!stats) {
-            throw new Error(resMessages.customError.noUserStatsFound);
+            throw new Error(400,'noUserStatsFound','customError');
         }
 
         let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
@@ -180,6 +181,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
 
         return resultArr;
     } catch (error) {
-        throw new Error(error.message);
-    }
+       if (error.statusCode) throw error;
+      throw createError(500, 'serverError','error');
+           }
 };

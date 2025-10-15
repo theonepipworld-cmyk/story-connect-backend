@@ -30,9 +30,12 @@ exports.createPost = async (req, res) => {
 
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'createSuccessful'), post));
   } catch (error) {
-    const lang = getLang(req);
-    res.status(500).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+     const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+      }
 };
 
 
@@ -44,9 +47,12 @@ exports.getUserFeedPosts = async (req, res) => {
     const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, req.user?.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), posts, pagination));
   } catch (error) {
-    const lang = getLang(req);
-    res.status(500).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+     const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 
@@ -61,9 +67,12 @@ exports.getPostById = async (req, res) => {
 
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), post));
   } catch (error) {
-    const lang = getLang(req);
-    res.status(500).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+       const lang = getLang(req);
+          const statusCode = err.statusCode || err.status || 500;
+          const category = err.category || 'error';
+          const finalMessage = getMessage(lang, category, err.message) || err.message;
+          return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 
@@ -79,9 +88,12 @@ exports.updatePost = async (req, res) => {
 
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), post));
   } catch (error) {
-    const lang = getLang(req);
-    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+     const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 
@@ -97,9 +109,12 @@ exports.deletePost = async (req, res) => {
 
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), post));
   } catch (error) {
-    const lang = getLang(req);
-    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+       const lang = getLang(req);
+          const statusCode = err.statusCode || err.status || 500;
+          const category = err.category || 'error';
+          const finalMessage = getMessage(lang, category, err.message) || err.message;
+          return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 
@@ -119,8 +134,11 @@ exports.getPostsOfProfile = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), posts, pagination));
   } catch (error) {
     const lang = getLang(req);
-    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+       const statusCode = err.statusCode || err.status || 500;
+       const category = err.category || 'error';
+       const finalMessage = getMessage(lang, category, err.message) || err.message;
+       return res.status(statusCode).json(errorResponse(finalMessage));
+      }
 };
 
 
@@ -130,9 +148,12 @@ exports.getTrendingTags = async (req, res) => {
     const trendingTags = await postService.getTrendingTagsService();
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), trendingTags));
   } catch (error) {
-    const lang = getLang(req);
-    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+       const lang = getLang(req);
+          const statusCode = err.statusCode || err.status || 500;
+          const category = err.category || 'error';
+          const finalMessage = getMessage(lang, category, err.message) || err.message;
+          return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 
@@ -153,9 +174,12 @@ exports.getAllPost = async (req, res) => {
     const { data, pagination } = await postService.getAllPostService(textSearch, page, limit, req.user?.id, hashtagSearch);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));
   } catch (error) {
-    const lang = getLang(req);
-    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+      const lang = getLang(req);
+         const statusCode = err.statusCode || err.status || 500;
+         const category = err.category || 'error';
+         const finalMessage = getMessage(lang, category, err.message) || err.message;
+         return res.status(statusCode).json(errorResponse(finalMessage));
+        }
 };
 
 // Get Highlighted Posts
@@ -167,6 +191,9 @@ exports.getHighlightedPosts = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data));
   } catch (error) {
     const lang = getLang(req);
-    res.status(400).json(errorResponse(getMessage(lang, 'error', error.message)));
-  }
+       const statusCode = err.statusCode || err.status || 500;
+       const category = err.category || 'error';
+       const finalMessage = getMessage(lang, category, err.message) || err.message;
+       return res.status(statusCode).json(errorResponse(finalMessage));
+      }
 };

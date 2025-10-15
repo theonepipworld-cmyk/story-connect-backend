@@ -1,136 +1,116 @@
 const crypto = require('crypto');
 const User = require('../../models/user.model.js');
-const { hashPassword, comparePassword, getJWT } = require("../../utils/commonFunctions.util.js")
-const { checkFieldExists } = require("../../helpers/dbHelpers.js")
+const { hashPassword, comparePassword, getJWT } = require("../../utils/commonFunctions.util.js");
+const { checkFieldExists, createError } = require("../../helpers/dbHelpers.js");
 const resMessages = require('../../constants/resMessages.constants.js');
 const { sendEmail } = require('../../utils/email.util.js');
-const { RESET_PASS_LINK } = require("../../constants/variables.constants.js")
-
+const { RESET_PASS_LINK } = require("../../constants/variables.constants.js");
 
 exports.signup = async (data) => {
-  const { email, password, username, phone, dateOfBirth ,device_token} = data;
+  try {
+    const { email, password, username, phone, dateOfBirth, device_token } = data;
 
-  const [emailExist, usernameExist] = await Promise.all([
-    checkFieldExists('email', email),
-    checkFieldExists('username', username),
-  ]);
+    const [emailExist, usernameExist] = await Promise.all([
+      checkFieldExists('email', email),
+      checkFieldExists('username', username),
+    ]);
 
-  if (emailExist) {
-    const err = new Error(resMessages.validation.emailAlreadyExist);
-    err.statusCode = 400;
-    throw err;
+    if (emailExist) throw createError(400, 'emailAlreadyExist', 'validation');
+    if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
+
+    const hashedPassword = await hashPassword(password);
+    const newUserData = {
+      email,
+      username,
+      phone,
+      dateOfBirth,
+      passwordHash: hashedPassword,
+      lastSeen: new Date(),
+    };
+
+    if (device_token) newUserData.device_token = device_token;
+
+    const newUser = new User(newUserData);
+    await newUser.save();
+
+    const token = await getJWT(email, newUser._id, newUser.role, newUser.username);
+
+    return { token };
+  } catch (error) {
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError','error');
   }
-
-  const hashedPassword = await hashPassword(password);
-  const newUserData = {
-    email,
-    username,
-    phone,
-    dateOfBirth,
-    passwordHash: hashedPassword,
-    lastSeen: new Date(),
-  };
-
-  if (device_token) {
-    newUserData.device_token = device_token;
-  }
-
-  const newUser = new User(newUserData);
-  await newUser.save();
-  const token = await getJWT(email, newUser._id, newUser.role, newUser.username);
-
-  return { token };
 };
 
-
 exports.login = async ({ email, password, device_token }) => {
-  const user = await checkFieldExists('email', email);
-  if (!user) {
-    const err = new Error(resMessages.notFound.emailNotFound);
-    err.statusCode = 400;
-    throw err;
+  try {
+    const user = await checkFieldExists('email', email);
+    if (!user) throw createError(404, 'emailNotFound', 'notFound');
+
+    if (user.passwordHash == null) throw createError(400, 'registrationIncomplete', 'validation');
+
+    const correctPassword = await comparePassword(user.passwordHash, password);
+    if (!correctPassword) throw createError(400, 'incorrectPassword', 'validation');
+
+    const token = await getJWT(email, user._id, user.role, user.username);
+    if (!token) throw createError(500, 'somethingWentWrong', 'error');
+
+    if (device_token) await User.updateOne({ _id: user._id }, { device_token });
+
+    return { token };
+  } catch (error) {
+    if (error.statusCode) throw error;
+     throw createError(500, 'serverError','error');
   }
-
-  if (user.passwordHash == null) {
-    const err = new Error(resMessages.validation.registrationIncomplete);
-    err.statusCode = 400;
-    throw err;
-  }
-
-  const correctPassword = await comparePassword(user.passwordHash, password);
-  if (!correctPassword) {
-    const err = new Error(resMessages.validation.incorrectPassword);
-    err.statusCode = 400;
-    throw err;
-  }
-  const token = await getJWT(email, user._id, user.role, user.username);
-
-  if (!token) {
-    const err = new Error(resMessages.generalError.somethingWentWrong);
-    err.statusCode = 400;
-    throw err;
-  }
-
-  if (device_token) {
-    await User.updateOne({ _id: user._id }, { device_token });
-  }
-
-
-  return { token };
 };
 
 exports.forgotPassword = async ({ email }) => {
-  const user = await checkFieldExists('email', email, true);
-  console.log(user)
-  if (!user) {
-    const err = new Error(resMessages.notFound.emailNotFound);
-    err.statusCode = 404;
-    throw err;
+  try {
+    const user = await checkFieldExists('email', email, true);
+    if (!user) throw createError(404, 'emailNotFound', 'notFound');
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; // 15 min
+    await user.save();
+
+    const resetLink = `${RESET_PASS_LINK}/${resetToken}`;
+
+    await sendEmail({
+      to: email,
+      subject: 'Password Reset Request',
+      template: 'reset-password',
+      context: { resetLink }
+    });
+
+    return { message: 'Reset link sent to email.' };
+  } catch (error) {
+    if (error.statusCode) throw error;
+     throw createError(500, 'serverError','error');
   }
-
-  // Generate token & hash it
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-
-  // Save with expiry
-  user.resetPasswordToken = hashedToken;
-  user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; // 15 min
-  await user.save();
-
-  // Create link
-  const resetLink = `${RESET_PASS_LINK}/${resetToken}`;
-
-  // Send email
-  await sendEmail({
-    to: email,
-    subject: 'Password Reset Request',
-    template: 'reset-password',
-    context: { resetLink }
-  });
-
-  return { message: 'Reset link sent to email.' };
 };
-
 
 exports.resetPassword = async ({ token, newPassword }) => {
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  try {
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-  const user = await User.findOne({
-    resetPasswordToken: hashedToken,
-    resetPasswordExpires: { $gt: Date.now() }
-  });
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
 
-  if (!user) {
-    const err = new Error(resMessages.validation.invalidOrExpiredToken);
-    err.statusCode = 400;
-    throw err;
+    if (!user) throw createError(400, 'invalidOrExpiredToken', 'validation');
+
+    user.passwordHash = await hashPassword(newPassword);
+    user.resetPasswordToken = "";
+    user.resetPasswordExpires = "";
+    await user.save();
+
+    return { message: 'Password reset successful.' };
+  } catch (error) {
+    if (error.statusCode) throw error;
+     throw createError(500, 'serverError','error');
   }
-
-  user.passwordHash = await hashPassword(newPassword);
-  user.resetPasswordToken = "";
-  user.resetPasswordExpires = "";
-  await user.save();
-
-  return { message: 'Password reset successful.' };
 };
-

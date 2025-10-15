@@ -19,9 +19,12 @@ exports.addComment = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'createSuccessful'), newComment)
         );
     } catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-    }
+          const lang = getLang(req);
+             const statusCode = err.statusCode || err.status || 500;
+             const category = err.category || 'error';
+             const finalMessage = getMessage(lang, category, err.message) || err.message;
+             return res.status(statusCode).json(errorResponse(finalMessage));
+            }
 };
 
 
@@ -37,9 +40,12 @@ exports.updateComment = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'updateSuccessful'), updatedComment)
         );
     } catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-    }
+           const lang = getLang(req);
+              const statusCode = err.statusCode || err.status || 500;
+              const category = err.category || 'error';
+              const finalMessage = getMessage(lang, category, err.message) || err.message;
+              return res.status(statusCode).json(errorResponse(finalMessage));
+           }
 };
 
 // Delete Comment
@@ -54,9 +60,12 @@ exports.deleteComment = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'deleteSuccessful'), result)
         );
     } catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-    }
+       const lang = getLang(req);
+          const statusCode = err.statusCode || err.status || 500;
+          const category = err.category || 'error';
+          const finalMessage = getMessage(lang, category, err.message) || err.message;
+          return res.status(statusCode).json(errorResponse(finalMessage));
+          }
 };
 
 // Get Top-Level Comments
@@ -73,9 +82,12 @@ exports.getTopLevelComment = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'getSuccessful'), data, pagination)
         );
     } catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-    }
+         const lang = getLang(req);
+            const statusCode = err.statusCode || err.status || 500;
+            const category = err.category || 'error';
+            const finalMessage = getMessage(lang, category, err.message) || err.message;
+            return res.status(statusCode).json(errorResponse(finalMessage));
+            }
 };
 
 // Get Reply Comments
@@ -93,7 +105,10 @@ exports.getReplyComments = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'getSuccessful'), data, pagination)
         );
     } catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-    }
+     const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+           }
 };

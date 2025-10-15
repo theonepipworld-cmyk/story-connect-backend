@@ -18,11 +18,11 @@ exports.createPost = async (data, cleanHashTags) => {
   try {
     if (data.postType === "community") {
       if (!data.communityId) {
-        throw createError(400, resMessages.notFound.communityNotFound);
+       throw createError(400, 'communityNotFound', 'notFound');
       }
       const communityExists = await isCommunityExist(data.communityId);
       if (!communityExists) {
-        throw createError(400, resMessages.notFound.communityNotFound);
+         throw createError(400, 'communityNotFound', 'notFound');
       }
     }
     const post = new Post(data);
@@ -44,18 +44,18 @@ exports.createPost = async (data, cleanHashTags) => {
 
     return await post.save();
   } catch (error) {
-    throw error;
+       if (error.statusCode) throw error;
+      throw createError(500, 'serverError','error');
   }
 };
 
 // Get user feed Posts
 exports.getUserFeedPostsService = async (page, limit, userId) => {
   try {
-    if (!userId) throw createError(400, resMessages.notFound.userNotFound);
+    if (!userId) throw createError(400, 'userNotFound', 'notFound');
 
     const user = await isUserExist(userId);
-    if (!user) throw createError(400, resMessages.notFound.userNotFound);
-
+    if (!user) throw createError(400, 'userNotFound', 'notFound');
     const allFriends = await getAllFriends(user._id);
     const allFriendIds = allFriends.map(f => f._id.toString());
 
@@ -295,7 +295,8 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
       },
     };
   } catch (error) {
-    throw error;
+      if (error.statusCode) throw error;
+         throw createError(500, 'serverError','error');
   }
 };
 
@@ -305,11 +306,11 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
 exports.getPostById = async (id, userId) => {
   try {
     if (!userId) {
-      throw createError(400, resMessages.notFound.userNotFound);
+      throw createError(400, 'userNotFound', 'notFound');
     }
     const user = await isUserExist(userId)
     if (!user) {
-      throw createError(400, resMessages.notFound.userNotFound);
+      throw createError(400, 'userNotFound', 'notFound');
     }
     const post = await isPostExist(id);
     const isBlocked = await Block.findOne({
@@ -318,7 +319,7 @@ exports.getPostById = async (id, userId) => {
         { blocker: userId, blocked: post.userId }
       ]
     });
-    if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
+    if (isBlocked) throw createError(403,'userBlocked','validation');
 
     const result = await Post.aggregate(
       postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "", user, [])
@@ -328,7 +329,8 @@ exports.getPostById = async (id, userId) => {
       post: data
     }
   } catch (error) {
-    throw error;
+       if (error.statusCode) throw error;
+       throw createError(500, 'serverError','error');
   }
 };
 
@@ -336,11 +338,11 @@ exports.getPostById = async (id, userId) => {
 exports.updatePost = async (id, updateData, userId) => {
   try {
     if (!userId) {
-      throw createError(400, resMessages.notFound.userNotFound);
+       throw createError(400, 'userNotFound', 'notFound');
     }
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) {
-      throw createError(400, resMessages.notFound.postNotFound);
+      throw createError(400, 'postNotFound','notFound');
     }
     if (isPostIdExist.userId.toString() != userId.toString()) {
       throw new Error(resMessages.customError.NotAuthorized);
@@ -368,19 +370,20 @@ exports.updatePost = async (id, updateData, userId) => {
         )
       ),
       ...removeTags.map(async tag => {
-        const updated = await Hashtag.findOneAndUpdate(
+        const updated = await HashTag.findOneAndUpdate(
           { tag },
           { $inc: { usageCount: -1 }, $pull: { posts: post._id } },
           { new: true }
         );
-        if (updated?.usageCount <= 0) await Hashtag.deleteOne({ tag });
+        if (updated?.usageCount <= 0) await HashTag.deleteOne({ tag });
       })
     ]);
 
     return post;
   }
   catch (error) {
-    throw error;
+         if (error.statusCode) throw error;
+        throw createError(500, 'serverError','error');
   }
 };
 
@@ -388,14 +391,14 @@ exports.updatePost = async (id, updateData, userId) => {
 exports.deletePost = async (id, userId) => {
   try {
     if (!userId) {
-      throw createError(400, resMessages.notFound.userNotFound);
+             throw createError(400, 'userNotFound', 'notFound');
     }
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) {
-      throw createError(400, resMessages.notFound.postNotFound);
+           throw createError(400, 'postNotFound', 'notFound');
     }
     if (isPostIdExist.userId.toString() != userId.toString()) {
-      throw new Error(resMessages.customError.NotAuthorized);
+      throw new Error(400,'NotAuthorized','customError');
     }
     const post = await Post.findById(id);
     if (!post) return null;
@@ -419,7 +422,8 @@ exports.deletePost = async (id, userId) => {
   }
 
   catch (error) {
-    throw error;
+        if (error.statusCode) throw error;
+       throw createError(500, 'serverError','error');
   }
 
 };
@@ -427,11 +431,11 @@ exports.deletePost = async (id, userId) => {
 exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
   try {
     if (!userId) {
-      throw createError(400, resMessages.notFound.userNotFound);
+      throw createError(400, 'userNotFound', 'notFound');
     }
     const user = await isUserExist(userId);
     if (!user) {
-      throw createError(400, resMessages.notFound.userNotFound);
+     throw createError(400, 'userNotFound', 'notFound');
     }
     const isBlocked = await Block.findOne({
       $or: [
@@ -439,7 +443,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
         { blocker: userId, blocked: id }
       ]
     });
-    if (isBlocked) throw createError(403, resMessages.validation.userBlocked);
+    if (isBlocked) throw createError(403,'userBlocked','validation' );
 
  
 
@@ -588,7 +592,8 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     };
 
   } catch (error) {
-    throw error;
+       if (error.statusCode) throw error;
+         throw createError(500, 'serverError','error');
   }
 };
 
@@ -601,26 +606,27 @@ exports.getTrendingTagsService = async () => {
       .limit(4);
 
     if (!result || result.length === 0) {
-      throw createError(400, resMessages.notFound.noTrendingTags);
+      throw createError(400, 'noTrendingTags','notFound');
     }
     console.log(result)
 
     return result;
   } catch (error) {
-    throw error;
+       if (error.statusCode) throw error;
+        throw createError(500, 'serverError','error');
   }
 };
 
 exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
     if (!userId) {
-      throw createError(400, resMessages.notFound.userNotFound);
+       throw createError(400, 'userNotFound', 'notFound');
     }
     console.log(userId)
 
     const user = await isUserExist(userId);
     if (!user) {
-      throw createError(400, resMessages.notFound.userNotFound);
+      throw createError(400, 'userNotFound', 'notFound');
     }
 
     const allFriends = await getAllFriends(user._id);
@@ -853,7 +859,8 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
       },
     };
   } catch (error) {
-    throw error;
+      if (error.statusCode) throw error;
+         throw createError(500, 'serverError','error');
   }
 };
 
@@ -861,12 +868,12 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 exports.getHighlightedPostsService = async (userId) => {
   try {
     if (!userId) {
-      throw createError(400, resMessages.notFound.userNotFound);
+     throw createError(400, 'userNotFound', 'notFound');
     }
 
     const user = await isUserExist(userId)
     if (!user) {
-      throw createError(400, resMessages.notFound.userNotFound);
+     throw createError(400, 'userNotFound', 'notFound');
     }
     let matchStage = {
       $or: [
@@ -979,7 +986,8 @@ exports.getHighlightedPostsService = async (userId) => {
 
   }
   catch (error) {
-    throw error;
+        if (error.statusCode) throw error;
+         throw createError(500, 'serverError','error');
   }
 }
 

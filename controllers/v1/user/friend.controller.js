@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
-const { getMessage } = require("../../../constants/locales/index.js"); 
+const { getMessage } = require("../../../constants/locales/index.js");
 const {
     sendFriendReqService,
     respondFriendReqService,
@@ -21,10 +21,14 @@ exports.sendFriendReq = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'sendReqSuccessfully'), isRequested));
     }
     catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+       const lang = getLang(req);
+          const statusCode = err.statusCode || err.status || 500;
+          const category = err.category || 'error';
+          const finalMessage = getMessage(lang, category, err.message) || err.message;
+          return res.status(statusCode).json(errorResponse(finalMessage));
     }
-};
+}
+
 
 exports.respondFriendReq = async (req, res) => {
     try {
@@ -40,7 +44,10 @@ exports.respondFriendReq = async (req, res) => {
         );
     } catch (err) {
         const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+           const statusCode = err.statusCode || err.status || 500;
+           const category = err.category || 'error';
+           const finalMessage = getMessage(lang, category, err.message) || err.message;
+           return res.status(statusCode).json(errorResponse(finalMessage));
     }
 };
 
@@ -51,8 +58,11 @@ exports.getAllPendingReq = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), pendingReq));
     }
     catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+       const lang = getLang(req);
+          const statusCode = err.statusCode || err.status || 500;
+          const category = err.category || 'error';
+          const finalMessage = getMessage(lang, category, err.message) || err.message;
+          return res.status(statusCode).json(errorResponse(finalMessage));
     }
 };
 
@@ -65,8 +75,11 @@ exports.getAllUserFriends = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), allFriends, pagination));
     }
     catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+      const lang = getLang(req);
+         const statusCode = err.statusCode || err.status || 500;
+         const category = err.category || 'error';
+         const finalMessage = getMessage(lang, category, err.message) || err.message;
+         return res.status(statusCode).json(errorResponse(finalMessage));
     }
 };
 
@@ -77,8 +90,11 @@ exports.getAllMutualFriends = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), mutualFriends, pagination));
     }
     catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+     const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
     }
 };
 
@@ -93,7 +109,10 @@ exports.getSuggestionFriends = async (req, res) => {
     }
     catch (err) {
         const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+           const statusCode = err.statusCode || err.status || 500;
+           const category = err.category || 'error';
+           const finalMessage = getMessage(lang, category, err.message) || err.message;
+           return res.status(statusCode).json(errorResponse(finalMessage));
     }
 };
 
@@ -105,6 +124,9 @@ exports.unfriendReq = async (req, res) => {
     }
     catch (err) {
         const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+           const statusCode = err.statusCode || err.status || 500;
+           const category = err.category || 'error';
+           const finalMessage = getMessage(lang, category, err.message) || err.message;
+           return res.status(statusCode).json(errorResponse(finalMessage));
     }
 };

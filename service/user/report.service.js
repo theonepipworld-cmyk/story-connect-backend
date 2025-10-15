@@ -11,11 +11,11 @@ const ReportCategory = require("../../models/reportCategories.js")
 exports.reportUserService = async (reportUserId, description, category, severity, file, userId) => {
     try {
         if (!userId) {
-            throw createError(400, resMessages.notFound.userNotFound);
+            throw createError(400, 'userNotFound', 'notFound');
         }
         const reporter = await isUserExist(userId);
         if (!reporter) {
-            throw createError(400, resMessages.notFound.userNotFound);
+           throw createError(400, 'userNotFound', 'notFound');
         }
 
         let additionalEvidence = "";
@@ -45,8 +45,9 @@ exports.reportUserService = async (reportUserId, description, category, severity
         return newReport;
 
     } catch (error) {
-        throw new Error(error.message);
-    }
+        if (error.statusCode) throw error;
+              throw createError(500, 'serverError','error');
+          }
 };
 
 
@@ -61,6 +62,7 @@ exports.getReportCategoryService = async () => {
 
         return result;
     } catch (error) {
-        throw new Error(error.message);
+         if (error.statusCode) throw error;
+       throw createError(500, 'serverError','error');
     }
 };

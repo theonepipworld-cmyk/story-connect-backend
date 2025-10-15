@@ -128,9 +128,10 @@ exports.validateComment = async (postId, commentId, parentCommentId, isReply = f
   }
 }
 
-exports.createError = (status, message) => {
-  const err = new Error(message);
+exports.createError = (status, message, category = 'error') => {
+  const err = new Error(message); 
   err.statusCode = status;
+  err.category = category;        
   return err;
 };
 

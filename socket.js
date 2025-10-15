@@ -8,22 +8,6 @@ function initIo(server) {
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
-    socket.on("logout", async (data) => {
-      console.log("Logout event received:", data);
-
-      try {
-        if (data?.userId) {
-          onlineUsers.delete(data.userId.toString());
-          await User.update(
-            { isOnline: false, device_token: null },
-            { where: { id: data.userId } }
-          );
-          console.log(`🚪 Cleared token & offline for user ${data.userId}`);
-        }
-      } catch (error) {
-        console.error("Error clearing device token:", error);
-      }
-    });
 
     socket.on("online", async (data) => {
       console.log("online event received:", data.userId._id);
@@ -57,6 +41,22 @@ function initIo(server) {
       }
     });
 
+    socket.on("logout", async (data) => {
+      console.log("Logout event received:", data);
+      try {
+        if (data?.userId) {
+          onlineUsers.delete(data.userId.toString());
+          await User.update(
+            { isOnline: false, device_token: null },
+            { where: { id: data.userId } }
+          );
+          console.log(` Cleared token & offline for user ${data.userId}`);
+        }
+      } catch (error) {
+        console.error("Error clearing device token:", error);
+      }
+    });
+
 
 
     socket.on("disconnect", () => {
@@ -85,4 +85,4 @@ function getOnlineUsers() {
   return onlineUsers;
 }
 
-module.exports = { initIo, getIo ,getOnlineUsers };
+module.exports = { initIo, getIo, getOnlineUsers };

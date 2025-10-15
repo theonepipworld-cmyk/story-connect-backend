@@ -15,12 +15,12 @@ const Notification = require("../../models/notification.model.js");
 exports.getUserNotificationService = async (userId) => {
     try {
         if (!userId) {
-            throw createError(400, resMessages.notFound.userNotFound);
+        throw createError(400, 'userNotFound', 'notFound');
         }
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, resMessages.notFound.userNotFound);
+          throw createError(400, 'userNotFound', 'notFound');
         }
 
         const result = await Notification.find({
@@ -33,7 +33,8 @@ exports.getUserNotificationService = async (userId) => {
         return result;
     }
     catch (error) {
-        throw createError(500, error.message);
+           if (error.statusCode) throw error;
+         throw createError(500, 'serverError','error');
     }
 };
 
@@ -49,6 +50,7 @@ exports.makeAllUserNotificationReadService = async (userId) => {
 
     }
     catch (error) {
-        throw createError(500, error.message);
+        if (error.statusCode) throw error;
+      throw createError(500, 'serverError','error');
     }
 }

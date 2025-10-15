@@ -124,6 +124,10 @@ module.exports = {
          noPendingReq:"No pending Request",
          noFriends:"No friends",
          invalidConversation:"Invalid Conversation"
+    },
+    
+    error:{
+        serverError:"Something went wrong"
     }
 
 };

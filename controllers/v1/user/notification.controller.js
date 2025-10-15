@@ -13,9 +13,12 @@ exports.getUserNotifications = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), result));
     }
     catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-    }
+          const lang = getLang(req);
+             const statusCode = err.statusCode || err.status || 500;
+             const category = err.category || 'error';
+             const finalMessage = getMessage(lang, category, err.message) || err.message;
+             return res.status(statusCode).json(errorResponse(finalMessage));
+           }
 }
 
 exports.makeAllUserNotificationRead = async (req, res) => {
@@ -25,7 +28,10 @@ exports.makeAllUserNotificationRead = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'seenSuccessfully')));
     }
     catch (err) {
-        const lang = getLang(req);
-        return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
+          const lang = getLang(req);
+             const statusCode = err.statusCode || err.status || 500;
+             const category = err.category || 'error';
+             const finalMessage = getMessage(lang, category, err.message) || err.message;
+             return res.status(statusCode).json(errorResponse(finalMessage));
     }
 }

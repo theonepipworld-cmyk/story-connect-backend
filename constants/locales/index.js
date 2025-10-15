@@ -6,7 +6,10 @@ const ht = require('./ht.json');
 const languages = { en, fr, es, ht };
 
 function getMessage(lang = 'en', category, key) {
+
   const selectedLang = languages[lang] || languages['en'];
+  console.log("selectedLang---------------",selectedLang)
+  console.log(category)
   return (
     selectedLang?.[category]?.[key] ||
     languages['en']?.[category]?.[key] ||

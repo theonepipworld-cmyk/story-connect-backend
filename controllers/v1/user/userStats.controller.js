@@ -23,9 +23,12 @@ exports.addUserStats = async (req, res) => {
 
     return res.status(200).json(successResponse(message, addStats));
   } catch (err) {
-    const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+     const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 
@@ -36,7 +39,10 @@ exports.getAllLikeOrViewUser = async (req, res) => {
     const getAllLikedUser = await getAllLikedUserService(postId, type);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), getAllLikedUser));
   } catch (err) {
-    const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+      const lang = getLang(req);
+         const statusCode = err.statusCode || err.status || 500;
+         const category = err.category || 'error';
+         const finalMessage = getMessage(lang, category, err.message) || err.message;
+         return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };

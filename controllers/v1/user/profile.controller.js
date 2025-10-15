@@ -14,8 +14,11 @@ exports.getProfile = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), responseData));
   } catch (err) {
     const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+       const statusCode = err.statusCode || err.status || 500;
+       const category = err.category || 'error';
+       const finalMessage = getMessage(lang, category, err.message) || err.message;
+       return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 // Update profile
@@ -26,8 +29,11 @@ exports.updateProfile = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
   } catch (err) {
     const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+       const statusCode = err.statusCode || err.status || 500;
+       const category = err.category || 'error';
+       const finalMessage = getMessage(lang, category, err.message) || err.message;
+       return res.status(statusCode).json(errorResponse(finalMessage));
+        }
 };
 
 // Delete profile
@@ -37,9 +43,12 @@ exports.deleteProfile = async (req, res) => {
     const result = await profileService.deleteProfile(req.user.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), result));
   } catch (err) {
-    const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+   const lang = getLang(req);
+      const statusCode = err.statusCode || err.status || 500;
+      const category = err.category || 'error';
+      const finalMessage = getMessage(lang, category, err.message) || err.message;
+      return res.status(statusCode).json(errorResponse(finalMessage));
+     }
 };
 
 // Get another user's profile
@@ -53,9 +62,12 @@ exports.getOtherProfile = async (req, res) => {
     const data = { ...user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending };
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), data));
   } catch (err) {
-    const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+     const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };
 
 // Change language
@@ -66,7 +78,10 @@ exports.changeLanguage = async (req, res) => {
     const result = await profileService.changeLanguageService(req.user.id, newLang);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
   } catch (err) {
-    const lang = getLang(req);
-    return res.status(400).json(errorResponse(getMessage(lang, 'error', err.message)));
-  }
+      const lang = getLang(req);
+         const statusCode = err.statusCode || err.status || 500;
+         const category = err.category || 'error';
+         const finalMessage = getMessage(lang, category, err.message) || err.message;
+         return res.status(statusCode).json(errorResponse(finalMessage));
+       }
 };

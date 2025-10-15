@@ -32,7 +32,7 @@ exports.getProfile = async (userId) => {
 
 
     if (!user) {
-        throw new Error(resMessages.notFound.userNotFound);
+        throw createError(400, 'userNotFound', 'notFound');
     }
 
 
@@ -73,9 +73,7 @@ exports.updateProfile = async (userId, payload, files) => {
 
     if (payload.profession && payload.profession.toLowerCase() === 'other') {
         if (!payload.manualProfession) {
-            const err = new Error(`${resMessages.validation.professionName}`);
-            err.statusCode = 400;
-            throw err;
+                throw createError(404,'professionName','validation');
         }
         patch.manualProfession = (payload.manualProfession).trim();
     } else {
@@ -131,15 +129,11 @@ exports.updateProfile = async (userId, payload, files) => {
     ]);
 
     if (emailExist) {
-        const err = new Error(resMessages.validation.emailAlreadyExist);
-        err.statusCode = 400;
-        throw err;
+         throw createError(404,'emailAlreadyExist','validation');
     }
 
     if (usernameExist) {
-        const err = new Error(resMessages.validation.usernameAlreadyExist);
-        err.statusCode = 400;
-        throw err;
+           throw createError(404,'usernameAlreadyExist','validation');
     }
 
     if (payload.dateOfBirth) {
@@ -177,7 +171,8 @@ exports.updateProfile = async (userId, payload, files) => {
     ).lean();
 
     if (!updated) {
-        throw new Error(resMessages.notFound.userNotFound);
+        throw createError(404,resMessages.notFound.userNotFound);
+        
     }
 
     return { message: resMessages.success.updateSuccessful };
@@ -197,7 +192,7 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
     try {
 
         if (!otherUserId || !loginUserId) {
-            throw createError(400, resMessages.notFound.userNotFound);
+            throw createError(400, 'userNotFound', 'notFound');
         }
         let isBlocked = null;
         if (loginUserId) {
@@ -260,16 +255,9 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
 
     }
     catch (error) {
-        throw createError(500, error.message);
+        if (error.statusCode) throw error;
+             throw createError(500, 'serverError','error');
     }
 };
 
 
-exports.changeLanguageService = async (userId, lang) => {
-    try {
-
-    }
-    catch (error) {
-        throw createError(500, error.message);
-    }
-}

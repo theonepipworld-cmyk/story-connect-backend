@@ -13,11 +13,12 @@ exports.blockedUser = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'blockedSuccessfully'), blocked)
         );
     } catch (err) {
-        const lang = getLang(req);
-        return res.status(err.statusCode || 400).json(
-            errorResponse(getMessage(lang, 'error', err.message) || err.message)
-        );
-    }
+         const lang = getLang(req);
+            const statusCode = err.statusCode || err.status || 500;
+            const category = err.category || 'error';
+            const finalMessage = getMessage(lang, category, err.message) || err.message;
+            return res.status(statusCode).json(errorResponse(finalMessage));
+          }
 };
 
 
@@ -29,11 +30,12 @@ exports.UnblockUser = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'unBlockSuccessfully'), unblocked)
         );
     } catch (err) {
-        const lang = getLang(req);
-        return res.status(err.statusCode || 400).json(
-            errorResponse(getMessage(lang, 'error', err.message) || err.message)
-        );
-    }
+           const lang = getLang(req);
+              const statusCode = err.statusCode || err.status || 500;
+              const category = err.category || 'error';
+              const finalMessage = getMessage(lang, category, err.message) || err.message;
+              return res.status(statusCode).json(errorResponse(finalMessage));
+           }
 };
 
 exports.getBlockUsers = async (req, res) => {
@@ -48,9 +50,11 @@ exports.getBlockUsers = async (req, res) => {
         );
     } catch (err) {
         const lang = getLang(req);
-        return res.status(err.statusCode || 400).json(
-            errorResponse(getMessage(lang, 'error', err.message) || err.message)
-        );
-    }
-};
+           const statusCode = err.statusCode || err.status || 500;
+           const category = err.category || 'error';
+           const finalMessage = getMessage(lang, category, err.message) || err.message;
+           return res.status(statusCode).json(errorResponse(finalMessage));
+          }
+    };
+
 
