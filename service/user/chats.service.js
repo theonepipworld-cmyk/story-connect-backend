@@ -36,6 +36,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
 
+           
+
         let conversation = await Conversation.findOne({ participants: { $all: [senderId, receiverId] } });
         if (!conversation) {
             conversation = new Conversation({
@@ -47,6 +49,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
             await conversation.save();
         }
+      
 
         const messages = [];
 
@@ -65,6 +68,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const io = getIo();
             io.emit("newMessage", savedTextMessage);
 
+
+
             conversation.lastMessage = {
                 _id: savedTextMessage._id,
                 text: savedTextMessage.text,
@@ -73,16 +78,18 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 sender: savedTextMessage.sender
             };
 
+            console.log(conversation)
+
             let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
             if (unseenEntry) unseenEntry.count += 1;
             else conversation.unseenCount.push({ userId: receiverId, count: 1 });
 
-            if (receiver.device_token) {
-                await pushNotification.androidPushNotification(receiver.device_token, messageText, "message", {
-                    conversationId: conversation._id.toString(),
-                    senderId: senderId.toString()
-                });
-            }
+            // if (receiver.device_token) {
+            //     await pushNotification.androidPushNotification(receiver.device_token, messageText, "message", {
+            //         conversationId: conversation._id.toString(),
+            //         senderId: senderId.toString()
+            //     });
+            // }
         }
 
         // FILES
@@ -115,20 +122,23 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
             if (unseenEntry) unseenEntry.count += 1;
             else conversation.unseenCount.push({ userId: receiverId, count: 1 });
+              console.log("conversation-------------",conversation)
 
-            if (receiver.device_token) {
-                await pushNotification.androidPushNotification(receiver.device_token, `📎 Sent a ${fileType}`, "message", {
-                    conversationId: conversation._id.toString(),
-                    senderId: senderId.toString(),
-                    fileType
-                });
-            }
+            // if (receiver.device_token) {
+            //     await pushNotification.androidPushNotification(receiver.device_token, `📎 Sent a ${fileType}`, "message", {
+            //         conversationId: conversation._id.toString(),
+            //         senderId: senderId.toString(),
+            //         fileType
+            //     });
+            // }
         }
 
         conversation.updatedAt = new Date();
+
         await conversation.save();
         return messages;
     } catch (error) {
+        console.log(error)
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }

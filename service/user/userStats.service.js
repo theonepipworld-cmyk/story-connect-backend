@@ -66,14 +66,14 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
-                if (postOwner && postOwner.device_token) {
-                    await pushNotification.androidPushNotification(
-                        postOwner.device_token,
-                        `${username} ${resMessages.notifications.likedPost}`,
-                        "like",
-                        { postId: postId.toString(), senderId: userId.toString() }
-                    );
-                }
+                // if (postOwner && postOwner.device_token) {
+                //     await pushNotification.androidPushNotification(
+                //         postOwner.device_token,
+                //         `${username} ${resMessages.notifications.likedPost}`,
+                //         "like",
+                //         { postId: postId.toString(), senderId: userId.toString() }
+                //     );
+                // }
                 await Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -99,14 +99,14 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             if (comment && comment.userId.toString() !== userId.toString()) {
 
                 const commentOwner = comment.userId;
-                if (commentOwner.device_token) {
-                    await pushNotification.androidPushNotification(
-                        commentOwner.device_token,
-                        `${username} ${resMessages.notifications.comment}`,
-                        "comment",
-                        { postId: postId.toString(), commentId: commentId.toString(), senderId: userId.toString(), parentCommentId: parentCommentId ? parentCommentId.toString() : null }
-                    );
-                }
+                // if (commentOwner.device_token) {
+                //     await pushNotification.androidPushNotification(
+                //         commentOwner.device_token,
+                //         `${username} ${resMessages.notifications.comment}`,
+                //         "comment",
+                //         { postId: postId.toString(), commentId: commentId.toString(), senderId: userId.toString(), parentCommentId: parentCommentId ? parentCommentId.toString() : null }
+                //     );
+                // }
                 await Notification.create({
                     user: comment.userId,
                     sender: userId,

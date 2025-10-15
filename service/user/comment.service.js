@@ -44,12 +44,12 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 const notificationMessage = parentCommentId
                     ? `${userId} replied to your comment.`
                     : `${userId} commented on your post.`;
-                await pushNotification.androidPushNotification(postOwner.device_token, notificationMessage, "comment", {
-                    postId: postId.toString(),
-                    commentId: comment._id.toString(),
-                    senderId: userId.toString(),
-                    parentCommentId: parentCommentId ? parentCommentId.toString() : null
-                });
+                // await pushNotification.androidPushNotification(postOwner.device_token, notificationMessage, "comment", {
+                //     postId: postId.toString(),
+                //     commentId: comment._id.toString(),
+                //     senderId: userId.toString(),
+                //     parentCommentId: parentCommentId ? parentCommentId.toString() : null
+                // });
             }
         }
 

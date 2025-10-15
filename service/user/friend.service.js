@@ -83,14 +83,14 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             });
 
 
-            if (recipient.device_token) {
-                await pushNotification.androidPushNotification(
-                    recipient.device_token,
-                    `${user.username} ${resMessages.notifications.sendFriendReq}`,
-                    "friend_request",
-                    { senderId: userId.toString(), type: "friend_request" }
-                );
-            }
+            // if (recipient.device_token) {
+            //     // await pushNotification.androidPushNotification(
+            //     //     recipient.device_token,
+            //     //     `${user.username} ${resMessages.notifications.sendFriendReq}`,
+            //     //     "friend_request",
+            //     //     { senderId: userId.toString(), type: "friend_request" }
+            //     // );
+            // }
         }
         return {
             result,
