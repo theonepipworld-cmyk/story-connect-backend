@@ -15,12 +15,12 @@ const Notification = require("../../models/notification.model.js");
 exports.getUserNotificationService = async (userId) => {
     try {
         if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const user = await isUserExist(userId);
         if (!user) {
-          throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const result = await Notification.find({
@@ -33,8 +33,8 @@ exports.getUserNotificationService = async (userId) => {
         return result;
     }
     catch (error) {
-           if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -42,7 +42,7 @@ exports.getUserNotificationService = async (userId) => {
 
 exports.makeAllUserNotificationReadService = async (userId) => {
     try {
-       const result =  await Notification.updateMany(
+        const result = await Notification.updateMany(
             { user: userId, isRead: false },
             { $set: { isRead: true } }
         );
@@ -51,6 +51,29 @@ exports.makeAllUserNotificationReadService = async (userId) => {
     }
     catch (error) {
         if (error.statusCode) throw error;
-      throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 }
+
+exports.changeStatusPushNotificationService = async (userId, isPushNotification) => {
+    try {
+        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (typeof isPushNotification !== 'boolean') throw createError(400, 'InvalidPushNotification', 'validation');
+
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { isPushNotification },
+            { new: true, select: 'isPushNotification username email' }
+        );
+
+        if (!user)  throw createError(400, 'userNotFound', 'notFound');
+
+        return {
+            message: `Push notification ${isPushNotification ? 'enabled' : 'disabled'} successfully.`,
+            user
+        };
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'Server error', { error: error.message });
+    }
+};

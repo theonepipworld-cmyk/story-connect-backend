@@ -49,7 +49,6 @@ exports.blockUserService = async (userId, blockUserId) => {
 exports.unblockUserService = async (userId, unblockUserId) => {
   try {
     if (!userId || !unblockUserId) throw createError(400, 'missingFields', 'validation');
-
     const user = await isUserExist(userId);
     if (!user) throw createError(404, 'userNotFound', 'notFound');
 
@@ -57,6 +56,7 @@ exports.unblockUserService = async (userId, unblockUserId) => {
     if (!isBlocked) throw createError(400, 'userNotBlocked', 'notFound');
 
     const result = await Block.deleteOne({ blocker: userId, blocked: unblockUserId });
+    console.log("result------------------",result)
     return result;
   } catch (error) {
     if (error.statusCode) throw error;
@@ -96,6 +96,7 @@ exports.getBlockedUserService = async (page, limit, userId) => {
                 blocker: 1,
                 createdAt: 1,
                 updatedAt: 1,
+                "blockedUser._id":1,
                 "blockedUser.email": 1,
                 "blockedUser.avatarUrl": 1,
                 "blockedUser.username": 1,
