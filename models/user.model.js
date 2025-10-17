@@ -112,6 +112,11 @@ const userSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  isPushNotification:{
+    type:Boolean,
+    default:true
+  },
+  
 }, {
   timestamps: true
 });

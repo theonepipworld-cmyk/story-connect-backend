@@ -119,7 +119,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         await pushNotification.androidPushNotification(
                             commentOwner.device_token,
                             `${username} ${resMessages.notifications.comment}`,
-                            "comment",
+                            "commentLike",
                             {
                                 postId: postId.toString(),
                                 commentId: commentId.toString(),

@@ -88,7 +88,9 @@ module.exports = {
         idIsSame: "User cannot respond to their own friend request.",
         ownerCantRemove: "owner can not remove himself",
         invalidMessageId: " last message id is invalid",
-        duplicateCommunityName: "Community with this name already exists"
+        duplicateCommunityName: "Community with this name already exists",
+        AlreadyExist:"Community name already exists",
+        CategoryRequired:"Category name is required"
 
     },
     auth: {

@@ -21,18 +21,18 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
     try {
         // Validate userId
         if (!userId) {
-            throw createError(400, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(404, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         // Check for duplicate community name
         const existingCommunity = await Community.findOne({ name: communityDetails.name });
         if (existingCommunity) {
-            throw createError(400, 'Community name already exists', 'validation');
+            throw createError(400, 'AlreadyExist', 'validation');
         }
 
         // Upload community image if provided
@@ -46,12 +46,12 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
         let manualCategoryName = undefined;
         const communityCategory = await CommunityCategory.findById(communityDetails.category);
         if (!communityCategory) {
-            throw createError(404, 'Community category not found', 'notFound');
+            throw createError(404, 'communityCategoryNotFound', 'notFound');
         }
 
         if (communityCategory.name === "Others") {
             if (!communityDetails.categoryName) {
-                throw createError(400, 'Category name is required', 'validation');
+                throw createError(400, 'CategoryRequired', 'validation');
             }
             manualCategoryName = communityDetails.categoryName;
         }
@@ -80,7 +80,7 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
 
     } catch (error) {
         if (error.statusCode) throw error;
-       throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -89,18 +89,18 @@ exports.joinCommunityService = async (userId, data) => {
     try {
         const { communityId } = data
         if (!userId) {
-             throw createError(400, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
         const user = await isUserExist(userId);
         if (!user) {
-          throw createError(400, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
         const isAlreadyMember = await CommunityMember.findOne({
             userId: user._id,
             communityId: communityId,
         })
         if (isAlreadyMember) {
-            throw createError(400, 'alreadyCommunityMember','validation');
+            throw createError(400, 'alreadyCommunityMember', 'validation');
         }
 
         const community = await isCommunityExist(communityId);
@@ -111,7 +111,7 @@ exports.joinCommunityService = async (userId, data) => {
             ]
         });
 
-        if (blocked) throw createError(403,'userBlocked', 'validation');
+        if (blocked) throw createError(403, 'userBlocked', 'validation');
         const joined = await CommunityMember.create({
             userId: user._id,
             communityId: communityId,
@@ -125,20 +125,20 @@ exports.joinCommunityService = async (userId, data) => {
         return joined;
     }
     catch (error) {
-     if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 exports.userCommunityService = async (userId, search = "", page = 1, limit = 10) => {
 
     if (!userId) {
-         throw createError(400, 'User not found', 'notFound');
+        throw createError(400, 'userNotFound', 'notFound');
     }
     try {
         const user = await isUserExist(userId);
         if (!user) {
-        throw createError(400, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const allUserCommunities = await CommunityMember.find({
@@ -246,8 +246,8 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
         };
 
     } catch (error) {
-         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -257,19 +257,19 @@ exports.categoryService = async () => {
         const result = await CommunityCategory.find();
         return result;
     } catch (error) {
-        throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => {
     if (!userId) {
-        throw createError(400, 'User not found', 'notFound');
+        throw createError(400, 'userNotFound', 'notFound');
     }
 
     try {
         const user = await isUserExist(userId);
         if (!user) {
-          throw createError(400, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const offset = (page - 1) * limit;
@@ -396,8 +396,8 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
             }
         };
     } catch (error) {
-         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -405,12 +405,12 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
 
 exports.getCommunityDetailService = async (communityId, userId) => {
     if (!userId) {
-        throw createError(400, 'User not found', 'notFound');
+        throw createError(400, 'userNotFound', 'notFound');
     }
     try {
         const user = await isUserExist(userId);
         if (!user) {
-           throw createError(400, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
         const community = await isCommunityExist(communityId)
         const communityUserId = community.userId
@@ -422,7 +422,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
         })
 
         if (blocked) {
-            throw new Error(404,'userBlocked','validation');
+            throw new Error(404, 'userBlocked', 'validation');
         }
         const result = await Community.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(communityId) } },
@@ -495,14 +495,14 @@ exports.getCommunityDetailService = async (communityId, userId) => {
 
         return result[0] || null;
     } catch (error) {
-         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 exports.getCommunityMemberService = async (communityId, userId, page = 1, limit = 10) => {
     try {
-        if (!userId)  throw createError(400, 'User not found', 'notFound');
+        if (!userId) throw createError(400, 'userNotFound', 'notFound');
 
         userId = new mongoose.Types.ObjectId(userId);
         communityId = new mongoose.Types.ObjectId(communityId);
@@ -584,8 +584,8 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         };
 
     } catch (error) {
-         if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -593,13 +593,13 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
 
 exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
     if (!userId) {
-           throw createError(400, 'userNotFound','notFound');
+        throw createError(400, 'userNotFound', 'notFound');
     }
     try {
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound','notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
         const community = await isCommunityExist(communityId);
         const blocked = await Block.findOne({
@@ -608,7 +608,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-        if (blocked) throw createError(403,'userBlocked', 'validation');
+        if (blocked) throw createError(403, 'userBlocked', 'validation');
 
 
         const allFriends = await getAllFriends(user._id);
@@ -757,8 +757,8 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
         };
     }
     catch (error) {
-       if (error.statusCode) throw error;
-       throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -789,18 +789,18 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
 
 exports.removeCommunityMemberService = async (data, userId) => {
     if (!userId) {
-          throw createError(400, 'userNotFound','notFound');
+        throw createError(400, 'userNotFound', 'notFound');
     }
 
     try {
         const user = await isUserExist(userId);
         if (!user) {
-              throw createError(400, 'userNotFound','notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const community = await Community.findById(data.communityId)
         if (!community) {
-            throw createError(404,'communityNotFound', 'notFound');
+            throw createError(404, 'communityNotFound', 'notFound');
         }
 
         const isMemberExist = await CommunityMember.findOne({
@@ -809,14 +809,14 @@ exports.removeCommunityMemberService = async (data, userId) => {
         })
 
         if (!isMemberExist) {
-            throw createError(400, 'memberNotFound','notFound');
+            throw createError(400, 'memberNotFound', 'notFound');
         }
 
         if (community.userId.toString() !== userId.toString()) {
-            throw createError(403, 'NotAuthorizedRemove','customError');
+            throw createError(403, 'NotAuthorizedRemove', 'customError');
         }
         if (community.userId.toString() === data.userId.toString()) {
-            throw createError(400, 'ownerNotRemove','customError');
+            throw createError(400, 'ownerNotRemove', 'customError');
         }
 
         const result = await CommunityMember.findOneAndDelete({
@@ -831,29 +831,29 @@ exports.removeCommunityMemberService = async (data, userId) => {
         }
         return result;
     } catch (error) {
-       if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 
 exports.removeCommunityService = async (communityId, userId) => {
     if (!userId) {
-      throw createError(400, 'User not found', 'notFound');
+        throw createError(400, 'userNotFound', 'notFound');
     }
     try {
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'User not found', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const community = await Community.findById(communityId)
         if (!community) {
-            throw createError(404, 'communityNotFound','notFound');
+            throw createError(404, 'communityNotFound', 'notFound');
         }
 
         if (community.userId.toString() !== userId.toString()) {
-            throw createError(403,'NotAuthorized', 'customError');
+            throw createError(403, 'NotAuthorized', 'customError');
         }
 
         const result = await Community.findByIdAndDelete(community._id)
@@ -873,20 +873,20 @@ exports.removeCommunityService = async (communityId, userId) => {
         return result;
 
     } catch (error) {
-       if (error.statusCode) throw error;
-       throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 exports.updateCommunityService = async (communityId, userId, data, file) => {
     try {
-        if (!userId) throw createError(400, 'User not found', 'notFound');
+        if (!userId) throw createError(400, 'userNotFound', 'notFound');
         const user = await isUserExist(userId);
-        if (!user) throw createError(400, 'User not found', 'notFound');
+        if (!user) throw createError(400, 'userNotFound', 'notFound');
 
         const community = await Community.findById(communityId)
         if (community.userId.toString() !== userId.toString()) {
-            throw createError(403, 'NotAuthorized','customError');
+            throw createError(403, 'NotAuthorized', 'customError');
         }
 
         if (file) {
@@ -909,8 +909,8 @@ exports.updateCommunityService = async (communityId, userId, data, file) => {
         );
         return updatedCommunity;
     } catch (error) {
-     if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -944,19 +944,19 @@ exports.listAllCommunityService = async (userId) => {
 
         return result;
     } catch (error) {
-      if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1, limit = 10) => {
     try {
         if (!userId) {
-           throw createError(400, 'User not found', 'notFound');
+        throw createError(400, 'userNotFound', 'notFound');
         }
 
         if (!categoryId) {
-            throw createError(400, 'communityCategoryNotFound','notFound');
+            throw createError(400, 'communityCategoryNotFound', 'notFound');
         }
 
         const offset = (page - 1) * limit;
@@ -1070,22 +1070,22 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
         };
 
     } catch (error) {
-       if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
 
 exports.leaveCommunityService = async (communityId, userId) => {
     if (!userId) {
-          throw createError(400, 'User not found', 'notFound');
+     throw createError(400, 'userNotFound', 'notFound');
     }
 
     try {
         const user = await isUserExist(userId);
         console.log(communityId)
         if (!user) {
-             throw createError(400, 'User not found', 'notFound');
+        throw createError(400, 'userNotFound', 'notFound');
         }
 
         communityId = new mongoose.Types.ObjectId(communityId);
@@ -1097,12 +1097,12 @@ exports.leaveCommunityService = async (communityId, userId) => {
         });
 
         if (!membership) {
-            throw createError(400,'communityNotFound','notFound');
+            throw createError(400, 'communityNotFound', 'notFound');
         }
 
 
         if (membership.role === "admin") {
-            throw createError(400,'ownerCantRemove', 'validation');
+            throw createError(400, 'ownerCantRemove', 'validation');
         }
 
 
@@ -1114,8 +1114,8 @@ exports.leaveCommunityService = async (communityId, userId) => {
         return result;
 
     } catch (error) {
-       if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 

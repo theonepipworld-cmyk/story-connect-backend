@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
-const { getMessage } = require("../../../constants/locales/index.js"); 
+const { getMessage } = require("../../../constants/locales/index.js");
 const { getUserNotificationService, makeAllUserNotificationReadService } = require("../../../service/user/notification.service.js");
 
 
@@ -13,12 +13,12 @@ exports.getUserNotifications = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), result));
     }
     catch (err) {
-          const lang = getLang(req);
-             const statusCode = err.statusCode || err.status || 500;
-             const category = err.category || 'error';
-             const finalMessage = getMessage(lang, category, err.message) || err.message;
-             return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 }
 
 exports.makeAllUserNotificationRead = async (req, res) => {
@@ -28,10 +28,25 @@ exports.makeAllUserNotificationRead = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'seenSuccessfully')));
     }
     catch (err) {
-          const lang = getLang(req);
-             const statusCode = err.statusCode || err.status || 500;
-             const category = err.category || 'error';
-             const finalMessage = getMessage(lang, category, err.message) || err.message;
-             return res.status(statusCode).json(errorResponse(finalMessage));
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+}
+
+exports.changeStatusPushNotification = async (req, res) => {
+    try {
+         const lang = getLang(req);
+         const isPushNotification = req.body.isPushNotification
+         
+    }
+    catch (err) {
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
     }
 }
