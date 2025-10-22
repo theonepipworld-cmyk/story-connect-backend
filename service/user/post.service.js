@@ -18,11 +18,11 @@ exports.createPost = async (data, cleanHashTags) => {
   try {
     if (data.postType === "community") {
       if (!data.communityId) {
-       throw createError(400, 'communityNotFound', 'notFound');
+        throw createError(400, 'communityNotFound', 'notFound');
       }
       const communityExists = await isCommunityExist(data.communityId);
       if (!communityExists) {
-         throw createError(400, 'communityNotFound', 'notFound');
+        throw createError(400, 'communityNotFound', 'notFound');
       }
     }
     const post = new Post(data);
@@ -44,8 +44,8 @@ exports.createPost = async (data, cleanHashTags) => {
 
     return await post.save();
   } catch (error) {
-       if (error.statusCode) throw error;
-      throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 };
 
@@ -295,8 +295,8 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
       },
     };
   } catch (error) {
-      if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 };
 
@@ -305,44 +305,167 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
 //get Single Post
 exports.getPostById = async (id, userId) => {
   try {
+    console.log(id, userId);
+
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
-    const user = await isUserExist(userId)
+
+    const user = await isUserExist(userId);
     if (!user) {
       throw createError(400, 'userNotFound', 'notFound');
     }
+
     const post = await isPostExist(id);
+    if (!post) {
+      throw createError(404, 'postNotFound', 'notFound');
+    }
+
     const isBlocked = await Block.findOne({
       $or: [
         { blocker: post.userId, blocked: userId },
-        { blocker: userId, blocked: post.userId }
-      ]
+        { blocker: userId, blocked: post.userId },
+      ],
     });
-    if (isBlocked) throw createError(403,'userBlocked','validation');
+    if (isBlocked) throw createError(403, 'userBlocked', 'validation');
 
-    const result = await Post.aggregate(
-      postAggregationPipeline({ _id: new mongoose.Types.ObjectId(id) }, 1, 1, "", user, [])
-    );
-    const data = result[0].data;
+   
+    const result = await Post.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id) } },
+
+    
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
+    
+      {
+        $lookup: {
+          from: "communities",
+          localField: "communityId",
+          foreignField: "_id",
+          as: "community",
+        },
+      },
+      { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
+
+   
+      {
+        $lookup: {
+          from: "communitycategories",
+          localField: "community.category",
+          foreignField: "_id",
+          as: "communityCategory",
+        },
+      },
+      { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
+
+   
+      {
+        $lookup: {
+          from: "userstats",
+          localField: "_id",
+          foreignField: "postId",
+          as: "stats",
+        },
+      },
+      {
+        $addFields: {
+          totalLikes: {
+            $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] },
+          },
+          totalViews: {
+            $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] },
+          },
+          isPostLikedByMe: {
+            $let: {
+              vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
+              in: {
+                $anyElementTrue: {
+                  $map: {
+                    input: { $ifNull: ["$$statsDoc.likes", []] },
+                    as: "like",
+                    in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+
+   
+      {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "postId",
+          as: "comments",
+        },
+      },
+      { $addFields: { totalComments: { $size: "$comments" } } },
+
+    
+      {
+        $project: {
+          _id: 1,
+          postHeading: 1,
+          postDescription: 1,
+          mediaUrls: 1,
+          hashtags: 1,
+          communityId: 1,
+          type: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          "user._id": 1,
+          "user.username": 1,
+          "user.avatarUrl": 1,
+          "user.email": 1,
+          "user.currentCountry": 1,
+          "community._id": 1,
+          "community.name": 1,
+          "communityCategory.name": 1,
+          totalLikes: 1,
+          totalViews: 1,
+          totalComments: 1,
+          isPostLikedByMe: 1,
+        },
+      },
+      {
+        $facet: {
+          data: [{ $limit: 1 }],
+        },
+      },
+    ]);
+
+    const data = result[0]?.data?.[0];
+    if (!data) throw createError(404, 'postNotFound', 'notFound');
+
     return {
-      post: data
-    }
+      post: data,
+    };
   } catch (error) {
-       if (error.statusCode) throw error;
-       throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 };
+
 
 // Update Post
 exports.updatePost = async (id, updateData, userId) => {
   try {
     if (!userId) {
-       throw createError(400, 'userNotFound', 'notFound');
+      throw createError(400, 'userNotFound', 'notFound');
     }
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) {
-      throw createError(400, 'postNotFound','notFound');
+      throw createError(400, 'postNotFound', 'notFound');
     }
     if (isPostIdExist.userId.toString() != userId.toString()) {
       throw new Error(resMessages.customError.NotAuthorized);
@@ -382,8 +505,8 @@ exports.updatePost = async (id, updateData, userId) => {
     return post;
   }
   catch (error) {
-         if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 };
 
@@ -391,14 +514,14 @@ exports.updatePost = async (id, updateData, userId) => {
 exports.deletePost = async (id, userId) => {
   try {
     if (!userId) {
-             throw createError(400, 'userNotFound', 'notFound');
+      throw createError(400, 'userNotFound', 'notFound');
     }
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) {
-           throw createError(400, 'postNotFound', 'notFound');
+      throw createError(400, 'postNotFound', 'notFound');
     }
     if (isPostIdExist.userId.toString() != userId.toString()) {
-      throw new Error(400,'NotAuthorized','customError');
+      throw new Error(400, 'NotAuthorized', 'customError');
     }
     const post = await Post.findById(id);
     if (!post) return null;
@@ -422,8 +545,8 @@ exports.deletePost = async (id, userId) => {
   }
 
   catch (error) {
-        if (error.statusCode) throw error;
-       throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 
 };
@@ -435,7 +558,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     }
     const user = await isUserExist(userId);
     if (!user) {
-     throw createError(400, 'userNotFound', 'notFound');
+      throw createError(400, 'userNotFound', 'notFound');
     }
     const isBlocked = await Block.findOne({
       $or: [
@@ -443,9 +566,9 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
         { blocker: userId, blocked: id }
       ]
     });
-    if (isBlocked) throw createError(403,'userBlocked','validation' );
+    if (isBlocked) throw createError(403, 'userBlocked', 'validation');
 
- 
+
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
 
@@ -592,8 +715,8 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     };
 
   } catch (error) {
-       if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 };
 
@@ -606,21 +729,21 @@ exports.getTrendingTagsService = async () => {
       .limit(4);
 
     if (!result || result.length === 0) {
-      throw createError(400, 'noTrendingTags','notFound');
+      throw createError(400, 'noTrendingTags', 'notFound');
     }
     console.log(result)
 
     return result;
   } catch (error) {
-       if (error.statusCode) throw error;
-        throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 };
 
 exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
     if (!userId) {
-       throw createError(400, 'userNotFound', 'notFound');
+      throw createError(400, 'userNotFound', 'notFound');
     }
     console.log(userId)
 
@@ -859,8 +982,8 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
       },
     };
   } catch (error) {
-      if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 };
 
@@ -868,12 +991,12 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 exports.getHighlightedPostsService = async (userId) => {
   try {
     if (!userId) {
-     throw createError(400, 'userNotFound', 'notFound');
+      throw createError(400, 'userNotFound', 'notFound');
     }
 
     const user = await isUserExist(userId)
     if (!user) {
-     throw createError(400, 'userNotFound', 'notFound');
+      throw createError(400, 'userNotFound', 'notFound');
     }
     let matchStage = {
       $or: [
@@ -986,8 +1109,8 @@ exports.getHighlightedPostsService = async (userId) => {
 
   }
   catch (error) {
-        if (error.statusCode) throw error;
-         throw createError(500, 'serverError','error');
+    if (error.statusCode) throw error;
+    throw createError(500, 'serverError', 'error');
   }
 }
 

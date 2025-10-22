@@ -20,7 +20,7 @@ router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), pos
 router.get("/trending-hashtags", isAuthenticated, authorizeRoles('user', 'admin'), postController.getTrendingTags);
 router.put("/:id", isAuthenticated, authorizeRoles('user'), updatePostValidator, postController.updatePost);
 router.delete("/:id", isAuthenticated, authorizeRoles('user'), postController.deletePost);
-//router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
+router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
 router.get("/", isAuthenticated, authorizeRoles('user', 'admin'), postController.getAllPost);
 router.get("/highlightedPost",isAuthenticated, authorizeRoles('user', 'admin'),postController.getHighlightedPosts)
 

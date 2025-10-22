@@ -60,13 +60,13 @@ exports.getPostById = async (req, res) => {
   try {
     const lang = getLang(req);
     const userId = req.user.id;
-    const { post } = await postService.getPostById(req.params.id, userId);
 
+    console.log(userId)
+    const { post } = await postService.getPostById(req.params.id, userId);
     if (!post)
       return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
-
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), post));
-  } catch (error) {
+  } catch (err) {
        const lang = getLang(req);
           const statusCode = err.statusCode || err.status || 500;
           const category = err.category || 'error';
