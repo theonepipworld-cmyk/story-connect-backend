@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
-const { getMessage } = require("../../../constants/locales/index.js"); 
+const { getMessage } = require("../../../constants/locales/index.js");
 const {
   createCommunityService,
   joinCommunityService,
@@ -27,12 +27,14 @@ exports.createCommunity = async (req, res) => {
     const createdCommunity = await createCommunityService(req.body, req.user.id, req.file);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'createSuccessful'), createdCommunity));
   } catch (err) {
-      const lang = getLang(req);
-         const statusCode = err.statusCode || err.status || 500;
-         const category = err.category || 'error';
-         const finalMessage = getMessage(lang, category, err.message) || err.message;
-         return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(
+      errorResponse(finalMessage, err.data, err.loggedError)
+    );
+  }
 };
 
 exports.joinCommunity = async (req, res) => {
@@ -41,12 +43,12 @@ exports.joinCommunity = async (req, res) => {
     await joinCommunityService(req.user.id, req.body);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'joinSuccessfully')));
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.userCommunity = async (req, res) => {
@@ -58,12 +60,12 @@ exports.userCommunity = async (req, res) => {
     const { communities, pagination } = await userCommunityService(req.user.id, search, page, limit);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), communities, pagination));
   } catch (err) {
-       const lang = getLang(req);
-          const statusCode = err.statusCode || err.status || 500;
-          const category = err.category || 'error';
-          const finalMessage = getMessage(lang, category, err.message) || err.message;
-          return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.categoryList = async (req, res) => {
@@ -72,12 +74,12 @@ exports.categoryList = async (req, res) => {
     const communityCategory = await categoryService();
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), communityCategory));
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.allCommunitiesList = async (req, res) => {
@@ -89,12 +91,12 @@ exports.allCommunitiesList = async (req, res) => {
     const { communities, pagination } = await allCommunitiesService(req.user.id, search, page, limit);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), communities, pagination));
   } catch (err) {
-        const lang = getLang(req);
-           const statusCode = err.statusCode || err.status || 500;
-           const category = err.category || 'error';
-           const finalMessage = getMessage(lang, category, err.message) || err.message;
-           return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.getCommunitydetails = async (req, res) => {
@@ -104,11 +106,11 @@ exports.getCommunitydetails = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), communityDetails));
   } catch (err) {
     const lang = getLang(req);
-       const statusCode = err.statusCode || err.status || 500;
-       const category = err.category || 'error';
-       const finalMessage = getMessage(lang, category, err.message) || err.message;
-       return res.status(statusCode).json(errorResponse(finalMessage));
-      }
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.getCommunityMembers = async (req, res) => {
@@ -119,12 +121,12 @@ exports.getCommunityMembers = async (req, res) => {
     const { data, pagination } = await getCommunityMemberService(req.params.id, req.user.id, page, limit);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-      }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.getCommunitiesPost = async (req, res) => {
@@ -135,12 +137,12 @@ exports.getCommunitiesPost = async (req, res) => {
     const { communityPost, pagination } = await getCommunityPostsService(req.params.id, page, limit, req.user.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), communityPost, pagination));
   } catch (err) {
-       const lang = getLang(req);
-          const statusCode = err.statusCode || err.status || 500;
-          const category = err.category || 'error';
-          const finalMessage = getMessage(lang, category, err.message) || err.message;
-          return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.removeCommunityMember = async (req, res) => {
@@ -150,11 +152,11 @@ exports.removeCommunityMember = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), removeMembers));
   } catch (err) {
     const lang = getLang(req);
-       const statusCode = err.statusCode || err.status || 500;
-       const category = err.category || 'error';
-       const finalMessage = getMessage(lang, category, err.message) || err.message;
-       return res.status(statusCode).json(errorResponse(finalMessage));
-      }
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.leaveCommunity = async (req, res) => {
@@ -163,12 +165,12 @@ exports.leaveCommunity = async (req, res) => {
     const leaveMember = await leaveCommunityService(req.params.communityId, req.user.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'leaveMember'), leaveMember));
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-     }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.removeCommunity = async (req, res) => {
@@ -177,12 +179,12 @@ exports.removeCommunity = async (req, res) => {
     const remove = await removeCommunityService(req.params.id, req.user.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), remove));
   } catch (err) {
-       const lang = getLang(req);
-          const statusCode = err.statusCode || err.status || 500;
-          const category = err.category || 'error';
-          const finalMessage = getMessage(lang, category, err.message) || err.message;
-          return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.updateCommunityDetails = async (req, res) => {
@@ -191,12 +193,12 @@ exports.updateCommunityDetails = async (req, res) => {
     const update = await updateCommunityService(req.params.id, req.user.id, req.body, req.file);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), update));
   } catch (err) {
-        const lang = getLang(req);
-           const statusCode = err.statusCode || err.status || 500;
-           const category = err.category || 'error';
-           const finalMessage = getMessage(lang, category, err.message) || err.message;
-           return res.status(statusCode).json(errorResponse(finalMessage));
-        }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.getCommunitiesIdList = async (req, res) => {
@@ -205,12 +207,12 @@ exports.getCommunitiesIdList = async (req, res) => {
     const allCommunities = await listAllCommunityService(req.user.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), allCommunities));
   } catch (err) {
-      const lang = getLang(req);
-         const statusCode = err.statusCode || err.status || 500;
-         const category = err.category || 'error';
-         const finalMessage = getMessage(lang, category, err.message) || err.message;
-         return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 exports.getCommunitiesByCategories = async (req, res) => {
@@ -221,10 +223,10 @@ exports.getCommunitiesByCategories = async (req, res) => {
     const { communities, pagination } = await getCommunitiesByCategoriesService(req.user.id, req.params.categoryId, page, limit);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), communities, pagination));
   } catch (err) {
-       const lang = getLang(req);
-          const statusCode = err.statusCode || err.status || 500;
-          const category = err.category || 'error';
-          const finalMessage = getMessage(lang, category, err.message) || err.message;
-          return res.status(statusCode).json(errorResponse(finalMessage));
-        }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };

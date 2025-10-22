@@ -81,7 +81,15 @@
     "invalidReceiver": "ID moun ki resevwa a pa valab",
     "cannotReportSelf": "Ou pa ka rapòte tèt ou",
     "invalidType": "Tip pa valab",
-    "idIsSame": "Itilizatè pa ka reponn pwòp demann zanmi li"
+    "idIsSame": "Itilizatè pa ka reponn pwòp demann zanmi li",
+    "validation": "Nevažeći status izvještaja.",
+    "ownerCantRemove": "Vlasnik se ne može ukloniti.",
+    "invalidMessageId": "ID posljednje poruke nije važeći.",
+    "duplicateCommunityName": "Zajednica s ovim imenom već postoji.",
+    "AlreadyExist": "Zajednica s ovim imenom već postoji.",
+    "CategoryRequired": "Naziv kategorije je obavezan.",
+    "InvalidPushNotification": "Nevažeći status push obavijesti.",
+    "reportIdRequired": "ID izvještaja je obavezan."
   },
   "auth": {
     "unauthorizedAccess": "Aksè san otorizasyon",

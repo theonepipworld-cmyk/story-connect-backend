@@ -128,14 +128,17 @@ exports.validateComment = async (postId, commentId, parentCommentId, isReply = f
   }
 }
 
-exports.createError = (status, message, category = 'error') => {
-  const err = new Error(message); 
+exports.createError = (status, message, category = 'error', data = null) => {
+  const err = new Error(message);
   err.statusCode = status;
-  err.category = category;        
+  err.category = category;
+  if (data) {
+    err.data = data; 
+  }
   return err;
 };
 
-exports.postAggregationPipeline =  (
+exports.postAggregationPipeline = (
   match = {},
   page = 1,
   limit = 10,
@@ -143,7 +146,7 @@ exports.postAggregationPipeline =  (
   blockedUserIds,
   allFriendIds,
   allCommunityIds,
-  allIds ,
+  allIds,
   hashtagSearch = "",
   search = "",
 ) => {
@@ -151,8 +154,8 @@ exports.postAggregationPipeline =  (
 
   search = search || "";
   hashtagSearch = hashtagSearch || "";
-  
-  if(allCommunityIds.length >0){
+
+  if (allCommunityIds.length > 0) {
     allIds = allCommunityIds
   }
 

@@ -32,7 +32,10 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
         // Check for duplicate community name
         const existingCommunity = await Community.findOne({ name: communityDetails.name });
         if (existingCommunity) {
-            throw createError(400, 'AlreadyExist', 'validation');
+            throw createError(400, 'AlreadyExist', 'validation', {
+                communityId: existingCommunity._id,
+                communityName: existingCommunity.name
+            });
         }
 
         // Upload community image if provided
@@ -952,7 +955,7 @@ exports.listAllCommunityService = async (userId) => {
 exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1, limit = 10) => {
     try {
         if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         if (!categoryId) {
@@ -1078,14 +1081,14 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
 
 exports.leaveCommunityService = async (communityId, userId) => {
     if (!userId) {
-     throw createError(400, 'userNotFound', 'notFound');
+        throw createError(400, 'userNotFound', 'notFound');
     }
 
     try {
         const user = await isUserExist(userId);
         console.log(communityId)
         if (!user) {
-        throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         communityId = new mongoose.Types.ObjectId(communityId);

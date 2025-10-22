@@ -81,20 +81,27 @@
     "invalidReceiver": "receiverId is invalid",
     "cannotReportSelf": "you can report yourself",
     "invalidType": "Inavlid type",
-    "idIsSame": "User cannot respond to their own friend request."
+    "idIsSame": "User cannot respond to their own friend request.",
+    "validation": "invalid status of report",
+    "ownerCantRemove": "owner can not remove himself",
+    "invalidMessageId": " last message id is invalid",
+    "duplicateCommunityName": "Community with this name already exists",
+    "AlreadyExist": "Community name already exists",
+    "CategoryRequired": "Category name is required",
+    "InvalidPushNotification": "Invalid push notification status",
+    "invalidType": "invalid type",
+    "reportIdRequired": "report ID is required"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access",
     "invalidToken": "Invalid token"
   },
-
-   "error": {
-        "internalError": "Internal server error",
-        "processingError": "Error while processing request",
-        "limitExccessedError": "You can upload up to 5 media files only.",
-        "serverError": "Something went wrong"
+  "error": {
+    "internalError": "Internal server error",
+    "processingError": "Error while processing request",
+    "limitExccessedError": "You can upload up to 5 media files only.",
+    "serverError": "Something went wrong"
   },
-  
   "generalError": {
     "somethingWentWrong": "Something went wrong. Please try again later.",
     "idMissMatch": "Id miss-matched.",

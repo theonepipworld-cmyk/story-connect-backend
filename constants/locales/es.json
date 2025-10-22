@@ -81,7 +81,15 @@
     "invalidReceiver": "ID del receptor inválido",
     "cannotReportSelf": "No puedes reportarte a ti mismo",
     "invalidType": "Tipo inválido",
-    "idIsSame": "El usuario no puede responder a su propia solicitud de amistad"
+    "idIsSame": "El usuario no puede responder a su propia solicitud de amistad",
+    "validation": "Estado del informe no válido.",
+    "ownerCantRemove": "El propietario no puede eliminarse a sí mismo.",
+    "invalidMessageId": "El ID del último mensaje no es válido.",
+    "duplicateCommunityName": "Ya existe una comunidad con este nombre.",
+    "AlreadyExist": "Ya existe una comunidad con este nombre.",
+    "CategoryRequired": "El nombre de la categoría es obligatorio.",
+    "InvalidPushNotification": "Estado de notificación push no válido.",
+    "reportIdRequired": "Se requiere el ID del informe."
   },
   "auth": {
     "unauthorizedAccess": "Acceso no autorizado",

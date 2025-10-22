@@ -81,7 +81,15 @@
     "invalidReceiver": "Identifiant du destinataire invalide",
     "cannotReportSelf": "Vous ne pouvez pas vous signaler",
     "invalidType": "Type invalide",
-    "idIsSame": "L'utilisateur ne peut pas répondre à sa propre demande d'ami"
+    "idIsSame": "L'utilisateur ne peut pas répondre à sa propre demande d'ami",
+    "validation": "Statut du rapport invalide.",
+    "ownerCantRemove": "Le propriétaire ne peut pas se supprimer lui-même.",
+    "invalidMessageId": "L'identifiant du dernier message est invalide.",
+    "duplicateCommunityName": "Une communauté portant ce nom existe déjà.",
+    "AlreadyExist": "Une communauté portant ce nom existe déjà.",
+    "CategoryRequired": "Le nom de la catégorie est requis.",
+    "InvalidPushNotification": "Statut de notification push invalide.",
+    "reportIdRequired": "L'identifiant du rapport est requis."
   },
   "auth": {
     "unauthorizedAccess": "Accès non autorisé",
