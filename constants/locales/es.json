@@ -87,10 +87,11 @@
     "unauthorizedAccess": "Acceso no autorizado",
     "invalidToken": "Token inválido"
   },
-  "serverError": {
+  "error": {
     "internalError": "Error interno del servidor",
     "processingError": "Error al procesar la solicitud",
-    "limitExccessedError": "Solo puedes subir hasta 5 archivos multimedia"
+    "limitExccessedError": "Solo puedes subir hasta 5 archivos multimedia",
+    "serverError": "Algo salió mal"
   },
   "generalError": {
     "somethingWentWrong": "Algo salió mal. Por favor, intenta nuevamente más tarde",

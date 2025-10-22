@@ -100,11 +100,12 @@ module.exports = {
         unauthorizedAccess: "Unauthorized access",
         invalidToken: "Invalid token",
     },
+    
     error: {
         internalError: "Internal server error",
         processingError: "Error while processing request",
         limitExccessedError: "You can upload up to 5 media files only.",
-        serverError: "Something went wrong",
+        serverError:"Something went wrong",
         
     },
     generalError: {

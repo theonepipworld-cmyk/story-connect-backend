@@ -990,7 +990,6 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
 exports.getHighlightedPostsService = async (userId) => {
   try {
-    console.log("usrid---------------------",userId)
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
@@ -1100,8 +1099,6 @@ exports.getHighlightedPostsService = async (userId) => {
     ];
 
     const result = await Post.aggregate(pipeline);
-
-    console.log("result--------------------",result)
     const posts = result[0]?.paginatedPosts || [];
 
     const storyOfTheMonthPosts = posts.filter(post => post.storyOfTheMonth);

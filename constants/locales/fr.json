@@ -87,10 +87,11 @@
     "unauthorizedAccess": "Accès non autorisé",
     "invalidToken": "Jeton invalide"
   },
-  "serverError": {
+  "error": {
     "internalError": "Erreur interne du serveur",
     "processingError": "Erreur lors du traitement de la requête",
-    "limitExccessedError": "Vous pouvez télécharger jusqu'à 5 fichiers multimédias seulement"
+    "limitExccessedError": "Vous pouvez télécharger jusqu'à 5 fichiers multimédias seulement",
+    "serverError": "Une erreur est survenue"
   },
   "generalError": {
     "somethingWentWrong": "Une erreur est survenue. Veuillez réessayer plus tard",

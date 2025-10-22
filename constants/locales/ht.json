@@ -87,10 +87,11 @@
     "unauthorizedAccess": "Aksè san otorizasyon",
     "invalidToken": "Token pa valab"
   },
-  "serverError": {
+  "error": {
     "internalError": "Erè entèn sèvè a",
-    "processingError": "Erè pandan ap trete demann lan",
-    "limitExccessedError": "Ou ka telechaje sèlman jiska 5 fichye medya"
+    "processingError": "Erè pandan y ap trete demann lan",
+    "limitExccessedError": "Ou ka telechaje sèlman jiska 5 fichye medya",
+    "serverError": "Yon erè rive"
   },
   "generalError": {
     "somethingWentWrong": "Yon bagay pa mache. Tanpri eseye ankò pita",

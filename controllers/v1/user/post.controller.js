@@ -184,8 +184,6 @@ exports.getAllPost = async (req, res) => {
 exports.getHighlightedPosts = async(req, res) => {
   try {
     const lang = getLang(req);
-    console.log("lang-----------",lang)
-    console.log("req.user.id-------------",req.user.id)
     const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await postService.getHighlightedPostsService(req.user?.id);
     const data = { storyOfTheMonthPosts, videoOfTheMonthPosts };
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data));

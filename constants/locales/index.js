@@ -9,7 +9,9 @@ function getMessage(lang = 'en', category, key) {
 
   const selectedLang = languages[lang] || languages['en'];
  // console.log("selectedLang---------------",selectedLang)
-  //console.log(category)
+  console.log(category)
+  console.log(key)
+  console.log(selectedLang)
   return (
     selectedLang?.[category]?.[key] ||
     languages['en']?.[category]?.[key] ||
