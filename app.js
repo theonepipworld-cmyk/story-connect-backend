@@ -22,6 +22,10 @@ const fileUpload = require("express-fileupload")
 const cors = require("cors")
 const {languageMiddleware} =require("./middlewares/requestValidations/user/lang.middleware.js")
 
+//admin routes
+
+const adminPostRoutes = require("./routes/v1/admin/post.routes.js")
+
 require('./config/db');
 
 var app = express();
@@ -56,6 +60,10 @@ app.use("/api/v1/user/block", blockRoutes)
 app.use("/api/v1/user/chat", chatRoutes)
 app.use("/api/v1/user/report", reportRoutes)
 app.use("/api/v1/user/notification", notificationRoutes)
+
+
+//adminRoutes
+app.use('api/v1/admin/post',adminPostRoutes)
 
 
 

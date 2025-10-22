@@ -22,10 +22,20 @@ const typePost = {
   VIDEO:"video"
 }
 
+const reportStatus ={
+  PENDING:"pending",
+  UNDERREVIEW:"under-review",
+  RESOLVED:"resolved",
+  ONHOLD:"on-hold",
+  DISMISSED:"dismissed"
+}
+
+
 module.exports = {
   friend_Request_status,
   notification_Types,
   typePost,
-  messages_Status
+  messages_Status,
+  reportStatus
 };
 

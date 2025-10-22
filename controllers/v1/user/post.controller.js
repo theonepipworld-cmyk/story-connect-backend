@@ -60,8 +60,6 @@ exports.getPostById = async (req, res) => {
   try {
     const lang = getLang(req);
     const userId = req.user.id;
-
-    console.log(userId)
     const { post } = await postService.getPostById(req.params.id, userId);
     if (!post)
       return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
@@ -183,13 +181,15 @@ exports.getAllPost = async (req, res) => {
 };
 
 // Get Highlighted Posts
-exports.getHighlightedPosts = async (req, res) => {
+exports.getHighlightedPosts = async(req, res) => {
   try {
     const lang = getLang(req);
+    console.log("lang-----------",lang)
+    console.log("req.user.id-------------",req.user.id)
     const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await postService.getHighlightedPostsService(req.user?.id);
     const data = { storyOfTheMonthPosts, videoOfTheMonthPosts };
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data));
-  } catch (error) {
+  } catch (err) {
     const lang = getLang(req);
        const statusCode = err.statusCode || err.status || 500;
        const category = err.category || 'error';

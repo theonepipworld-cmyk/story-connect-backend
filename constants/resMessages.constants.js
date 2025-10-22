@@ -91,7 +91,9 @@ module.exports = {
         duplicateCommunityName: "Community with this name already exists",
         AlreadyExist:"Community name already exists",
         CategoryRequired:"Category name is required",
-        InvalidPushNotification :"Invalid push notification status"
+        InvalidPushNotification :"Invalid push notification status",
+        invalidType:"invalid type",
+        reportIdRequired:"report ID is required"
 
     },
     auth: {
@@ -102,7 +104,8 @@ module.exports = {
         internalError: "Internal server error",
         processingError: "Error while processing request",
         limitExccessedError: "You can upload up to 5 media files only.",
-        serverError: "Something went wrong"
+        serverError: "Something went wrong",
+        
     },
     generalError: {
         somethingWentWrong: "Something went wrong. Please try again later.",
