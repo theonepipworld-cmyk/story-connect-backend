@@ -1,6 +1,7 @@
 
 let io;
 const onlineUsers = new Map();
+const { incrementHourlyActiveUser, decrementHourlyActiveUser } = require("./helpers/dbHelpers")
 
 function initIo(server) {
   const { Server } = require("socket.io");
@@ -18,6 +19,7 @@ function initIo(server) {
             { isOnline: true },
             { where: { id: data.userId } }
           );
+          await incrementHourlyActiveUser();
           console.log(`online status updated for user ${data.userId}`);
         }
       } catch (error) {
@@ -34,6 +36,7 @@ function initIo(server) {
             { isOnline: false },
             { where: { id: data.userId } }
           );
+            await decrementHourlyActiveUser();
           console.log(`offline status updated for user ${data.userId}`);
         }
       } catch (error) {
@@ -50,6 +53,7 @@ function initIo(server) {
             { isOnline: false, device_token: null },
             { where: { id: data.userId } }
           );
+            await decrementHourlyActiveUser();
           console.log(` Cleared token & offline for user ${data.userId}`);
         }
       } catch (error) {
@@ -84,5 +88,13 @@ function getIo() {
 function getOnlineUsers() {
   return onlineUsers;
 }
+
+
+
+
+
+
+
+
 
 module.exports = { initIo, getIo, getOnlineUsers };

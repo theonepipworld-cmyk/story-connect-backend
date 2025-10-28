@@ -9,7 +9,6 @@ const { RESET_PASS_LINK } = require("../../constants/variables.constants.js");
 exports.signup = async (data) => {
   try {
     const { email, password, username, phone, dateOfBirth, device_token } = data;
-
     const [emailExist, usernameExist] = await Promise.all([
       checkFieldExists('email', email),
       checkFieldExists('username', username),
@@ -54,9 +53,7 @@ exports.login = async ({ email, password, device_token }) => {
 
     const token = await getJWT(email, user._id, user.role, user.username);
     if (!token) throw createError(500, 'somethingWentWrong', 'error');
-
     if (device_token) await User.updateOne({ _id: user._id }, { device_token });
-
     return { token };
   } catch (error) {
     if (error.statusCode) throw error;
@@ -95,7 +92,6 @@ exports.forgotPassword = async ({ email }) => {
 exports.resetPassword = async ({ token, newPassword }) => {
   try {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: Date.now() }

@@ -17,14 +17,16 @@ const blockRoutes = require("./routes/v1/user/block.routes.js")
 const chatRoutes = require("./routes/v1/user/chat.routes.js")
 const reportRoutes = require("./routes/v1/user/report.routes.js")
 const notificationRoutes = require("./routes/v1/user/notification.routes.js")
+const faqRoutes = require("./routes/v1/user/faq.routes.js");
 const connectDB = require("./config/db.js")
 const fileUpload = require("express-fileupload")
 const cors = require("cors")
 const {languageMiddleware} =require("./middlewares/requestValidations/user/lang.middleware.js")
 
 //admin routes
-
 const adminPostRoutes = require("./routes/v1/admin/post.routes.js")
+const dashboardRoutes = require("./routes/v1/admin/dashboard.routes.js")
+const adminReportRoutes = require("./routes/v1/admin/report.routes.js")
 
 require('./config/db');
 
@@ -56,14 +58,17 @@ app.use('/api/v1/user/countryList', countryListRoutes);
 app.use('/api/v1/user/professionalSymbol', professionalSymbolRoutes);
 app.use('/api/v1/user/community', communityRoutes);
 app.use('/api/v1/user/friend', friendRoutes);
-app.use("/api/v1/user/block", blockRoutes)
-app.use("/api/v1/user/chat", chatRoutes)
-app.use("/api/v1/user/report", reportRoutes)
-app.use("/api/v1/user/notification", notificationRoutes)
+app.use("/api/v1/user/block", blockRoutes);
+app.use("/api/v1/user/chat", chatRoutes);
+app.use("/api/v1/user/report", reportRoutes);
+app.use("/api/v1/user/notification", notificationRoutes);
+app.use('/api/v1/user/faq',faqRoutes);
 
 
 //adminRoutes
-app.use('api/v1/admin/post',adminPostRoutes)
+app.use('/api/v1/admin/post',adminPostRoutes);
+app.use('/api/v1/admin/dashboard',dashboardRoutes);
+app.use('/api/v1/admin/report',adminReportRoutes)
 
 
 
@@ -80,6 +85,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+require("./utils/resetDailyStats.js")
 
 const server = http.createServer(app);
 const io = initIo(server);

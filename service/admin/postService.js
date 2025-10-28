@@ -21,7 +21,6 @@ exports.addStoryAndVideoOfMonthService = async (postId, type) => {
         if (!post) {
             throw createError(404, 'postNotFound', 'notFound');
         }
-
         let updateFields = {};
         if (type === enums.typePost.IMAGE) {
             updateFields.storyOfTheMonth = true;

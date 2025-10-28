@@ -16,7 +16,11 @@ const reportSchema = new mongoose.Schema({
     default: "pending"
   },
   description: { type: String },
-  additionalEvidence: { type: String },
+  additionalEvidence: [
+    {
+      type: String,
+    },
+  ],
   createdAt: { type: Date, default: Date.now }
 });
 

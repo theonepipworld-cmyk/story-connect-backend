@@ -5,14 +5,14 @@ const { uploadFileToS3 } = require('../../../utils/s3.util.js');
 const { getMessage } = require("../../../constants/locales/index.js")
 const adminPostService = require("../../../service/admin/postService.js")
 
-
+const getLang = (req) => req.lang || 'en';
 exports.addStoryAndVideoOfMonth = async (req, res) => {
     try {
         const lang = getLang(req);
         const{postId,type} = req.body
         const result = await adminPostService.addStoryAndVideoOfMonthService(postId ,type);
         return res.status(200).json(successResponse(
-            getMessage(lang, 'success', 'loginSuccessful'),
+            getMessage(lang, 'success', 'addSuccessfully'),
             result.token
         ));
     }

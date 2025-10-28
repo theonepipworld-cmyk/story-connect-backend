@@ -9,6 +9,7 @@ const mongoose = require("mongoose")
 const Friend = require("../models/friends.model.js")
 const enums = require("../constants/enum.constants.js")
 const Conversation = require("../models/conversations.model.js")
+const DailyUserStats = require("../models/dailyUserStats.model.js")
 
 
 exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
@@ -133,7 +134,7 @@ exports.createError = (status, message, category = 'error', data = null) => {
   err.statusCode = status;
   err.category = category;
   if (data) {
-    err.data = data; 
+    err.data = data;
   }
   return err;
 };
@@ -391,6 +392,29 @@ exports.isConversationExist = async (id) => {
     throw error;
   }
 }
+
+exports.incrementHourlyActiveUser = async () => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const currentHour = now.getHours();
+
+  await DailyUserStats.updateOne(
+    { date: today },
+    { $inc: { [`hourlyCounts.${currentHour}`]: 1 } },
+    { upsert: true }
+  );
+};
+
+exports.decrementHourlyActiveUser = async () => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const currentHour = now.getHours();
+
+  await DailyUserStats.updateOne(
+    { date: today },
+    { $inc: { [`hourlyCounts.${currentHour}`]: -1 } }
+  );
+};
 
 
 

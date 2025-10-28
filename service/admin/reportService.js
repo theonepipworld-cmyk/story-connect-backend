@@ -12,14 +12,12 @@ const enums = require("../../constants/enum.constants.js")
 exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, search) => {
     try {
         const matchStage = {};
-
         if (status) matchStage.status = status;
         if (severity) matchStage.severity = severity;
         if (search) {
             matchStage.description = { $regex: search, $options: "i" };
         }
-
-
+        
         const totalReportsAgg = await Report.aggregate([
             { $match: matchStage }
         ]);
@@ -155,15 +153,13 @@ exports.updateReportStatusService = async (reportStatus, reportId) => {
             throw createError(404, 'reportNotFound', 'notFound');
         }
 
-        const validStatuses = [, "under-review", "resolved", "on-hold", "dismissed"];
+        const validStatuses = [enums.reportStatus.PENDING, enums.reportStatus.UNDERREVIEW, enums.reportStatus.RESOLVED, enums.reportStatus.ONHOLD, enums.reportStatus.DISMISSED];
         if (!validStatuses.includes(reportStatus)) {
             throw createError(400, 'invalidStatus', 'validation');
         }
-
     
         report.status = reportStatus;
         await report.save();
-
         return report; 
 
 

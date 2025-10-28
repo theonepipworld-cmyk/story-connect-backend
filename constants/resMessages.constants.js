@@ -48,7 +48,9 @@ module.exports = {
         noBlockUser: "no Block profiles found",
         userNotBlocked: "user is not blocked ",
         receiverNotPart: "receiver not part of conversationId.",
-        noNotifciationFound: " Notifications not found"
+        noNotifciationFound: " Notifications not found",
+        faqIdNotFound:"faq id is not found",
+        faqNotFound:"faq not found"
     },
     validation: {
         missingFields: "Missing required fields",
@@ -93,7 +95,10 @@ module.exports = {
         CategoryRequired:"Category name is required",
         InvalidPushNotification :"Invalid push notification status",
         invalidType:"invalid type",
-        reportIdRequired:"report ID is required"
+        reportIdRequired:"report ID is required",
+        faqAlreadyExists:"faq already exit.",
+        missingFaqFields:"either title or content is missing",
+        invalidFaqStatus:"invalid faq status"
 
     },
     auth: {
@@ -112,7 +117,8 @@ module.exports = {
         somethingWentWrong: "Something went wrong. Please try again later.",
         idMissMatch: "Id miss-matched.",
         calledFunctionError: "Getting error from called Function",
-        uploading: "Error uploading file"
+        uploading: "Error uploading file",
+        processingError:"procession error"
 
     },
     customError: {

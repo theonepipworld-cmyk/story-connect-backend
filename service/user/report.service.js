@@ -5,30 +5,41 @@ const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommun
 const resMessages = require("../../constants/resMessages.constants.js")
 const { uploadFileToS3, deleteFileFromS3 } = require("../../utils/s3.util.js")
 const ReportCategory = require("../../models/reportCategories.js")
+const enums = require("../../constants/enum.constants.js")
 
 
 
-exports.reportUserService = async (reportUserId, description, category, severity, file, userId) => {
+exports.reportUserService = async (reportUserId, description, category, severity, files, userId) => {
     try {
         if (!userId) {
             throw createError(400, 'userNotFound', 'notFound');
         }
+
         const reporter = await isUserExist(userId);
         if (!reporter) {
-           throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
-        let additionalEvidence = "";
-        if (file) {
-            const uploadedDocument = await uploadFileToS3(
-                {
-                    buffer: file.buffer,
-                    mimetype: file.mimetype,
-                    originalname: file.originalname,
-                },
-                "user/report/evidence"
+        const existingReport = await Report.findOne({
+            reportedBy: userId,
+            reportedUser: reportUserId,
+            category,
+            status: { $in: [enums.reportStatus.PENDING, enums.reportStatus.UNDERREVIEW] }, 
+        });
+
+        if (existingReport) {
+            throw createError(400, "reportAlreadyExists", "validation");
+        };
+
+        
+        let additionalEvidence = [];
+
+
+        if (files && files.length > 0) {
+            const uploadResults = await Promise.all(
+                files.map((file) => uploadFileToS3(file, "user/report/evidence"))
             );
-            additionalEvidence = uploadedDocument?.Location || "";
+            additionalEvidence = uploadResults.map((r) => r.Location);
         }
 
         const reportData = {
@@ -37,17 +48,16 @@ exports.reportUserService = async (reportUserId, description, category, severity
             description,
             category,
             severity,
-            evidence: additionalEvidence,
+            additionalEvidence,
         };
 
         const newReport = await Report.create(reportData);
-
         return newReport;
 
     } catch (error) {
         if (error.statusCode) throw error;
-              throw createError(500, 'serverError','error');
-          }
+        throw createError(500, 'serverError', 'error');
+    }
 };
 
 
@@ -62,7 +72,7 @@ exports.getReportCategoryService = async () => {
 
         return result;
     } catch (error) {
-         if (error.statusCode) throw error;
-       throw createError(500, 'serverError','error');
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };

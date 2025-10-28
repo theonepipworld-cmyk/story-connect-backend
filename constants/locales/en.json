@@ -45,7 +45,8 @@
     "noBlockUser": "no Block profiles found",
     "userNotBlocked": "user is not blocked ",
     "receiverNotPart": "receiver not part of conversationId.",
-    "noNotifciationFound": " Notifications not found"
+    "noNotifciationFound": " Notifications not found",
+    "reportCategoryNotFound":"report category not found"
   },
   "validation": {
     "missingFields": "Missing required fields",
@@ -89,8 +90,9 @@
     "AlreadyExist": "Community name already exists",
     "CategoryRequired": "Category name is required",
     "InvalidPushNotification": "Invalid push notification status",
-    "invalidType": "invalid type",
-    "reportIdRequired": "report ID is required"
+    "reportIdRequired": "report ID is required",
+    "reportAlreadyExists":"report is already under pending request or under review",
+    "missingFaqFields":"missing faq fields"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access",
