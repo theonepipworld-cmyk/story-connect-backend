@@ -9,10 +9,29 @@ const getLang = (req) => req.lang || 'en';
 exports.addStoryAndVideoOfMonth = async (req, res) => {
     try {
         const lang = getLang(req);
-        const{postId,type} = req.body
-        const result = await adminPostService.addStoryAndVideoOfMonthService(postId ,type);
+        const { postId, type } = req.body
+        const result = await adminPostService.addStoryAndVideoOfMonthService(postId, type);
         return res.status(200).json(successResponse(
             getMessage(lang, 'success', 'addSuccessfully'),
+            result.token
+        ));
+    }
+    catch (err) {
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+}
+
+exports.removeStoryAndVideoOfMonth = async (req, res) => {
+    try {
+        const lang = getLang(req);
+        const {postId, type } = req.body
+        const result = await adminPostService.removeStoryAndVideoOfMonthService(postId, type);
+        return res.status(200).json(successResponse(
+            getMessage(lang, 'success', 'removeSuccessfully'),
             result.token
         ));
     }

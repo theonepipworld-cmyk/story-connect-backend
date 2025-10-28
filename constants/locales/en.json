@@ -20,7 +20,9 @@
     "reportSuccessfully": "report user successfully",
     "messageSent": "message sent successfully",
     "seenSuccessfully": "seen successfully",
-    "deviceTokenSaved": "Device token saved/updated successfully"
+    "deviceTokenSaved": "Device token saved/updated successfully",
+    "addSuccessfully":"add Successfully",
+    "removeSuccessfully":"remove Successfully"
   },
   "notifications": {
     "acceptedFriendReq": "accepted your friend request",
@@ -92,7 +94,8 @@
     "InvalidPushNotification": "Invalid push notification status",
     "reportIdRequired": "report ID is required",
     "reportAlreadyExists":"report is already under pending request or under review",
-    "missingFaqFields":"missing faq fields"
+    "missingFaqFields":"missing faq fields",
+    "invalidStatus":"report status is invalid"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access",

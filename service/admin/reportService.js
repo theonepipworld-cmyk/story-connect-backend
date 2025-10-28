@@ -9,6 +9,7 @@ const enums = require("../../constants/enum.constants.js")
 
 
 
+
 exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, search) => {
     try {
         const matchStage = {};
@@ -17,13 +18,15 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
         if (search) {
             matchStage.description = { $regex: search, $options: "i" };
         }
-        
+
         const totalReportsAgg = await Report.aggregate([
             { $match: matchStage }
         ]);
         const totalReports = totalReportsAgg.length;
 
-        const skip = pageNo - 1 * pageSize;
+
+
+        const skip = (pageNo - 1) * pageSize;
 
         const reports = await Report.aggregate([
             { $match: matchStage },
@@ -77,8 +80,12 @@ exports.getReportDetailsService = async (reportId) => {
             throw createError(400, 'reportIdRequired', 'validation');
         }
 
+        if (!mongoose.Types.ObjectId.isValid(reportId)) {
+            throw createError(400, 'invalidReportId', 'validation');
+        }
+
         const reportDetails = await Report.aggregate([
-            { $match: { _id: mongoose.Types.ObjectId(reportId) } },
+            { $match: { _id: new mongoose.Types.ObjectId(reportId) } },
 
             {
                 $lookup: {
@@ -88,8 +95,7 @@ exports.getReportDetailsService = async (reportId) => {
                     as: "reportedByDetails"
                 }
             },
-            { $unwind: "$reportedByDetails" },
-
+            { $unwind: { path: "$reportedByDetails", preserveNullAndEmptyArrays: true } },
 
             {
                 $lookup: {
@@ -99,8 +105,7 @@ exports.getReportDetailsService = async (reportId) => {
                     as: "reportedUserDetails"
                 }
             },
-            { $unwind: "$reportedUserDetails" },
-
+            { $unwind: { path: "$reportedUserDetails", preserveNullAndEmptyArrays: true } },
 
             {
                 $lookup: {
@@ -110,7 +115,7 @@ exports.getReportDetailsService = async (reportId) => {
                     as: "categoryDetails"
                 }
             },
-            { $unwind: "$categoryDetails" },
+            { $unwind: { path: "$categoryDetails", preserveNullAndEmptyArrays: true } },
 
             {
                 $project: {
@@ -120,9 +125,23 @@ exports.getReportDetailsService = async (reportId) => {
                     status: 1,
                     additionalEvidence: 1,
                     createdAt: 1,
-                    reportedBy: "$reportedByDetails",
-                    reportedUser: "$reportedUserDetails",
-                    category: "$categoryDetails"
+                    reportedBy: {
+                        _id: "$reportedByDetails._id",
+                        username: "$reportedByDetails.username",
+                        email: "$reportedByDetails.email",
+                        avatarUrl: "$reportedByDetails.avatarUrl"
+                    },
+                    reportedUser: {
+                        _id: "$reportedUserDetails._id",
+                        username: "$reportedUserDetails.username",
+                        email: "$reportedUserDetails.email",
+                        avatarUrl: "$reportedUserDetails.avatarUrl"
+                    },
+                    category: {
+                        _id: "$categoryDetails._id",
+                        name: "$categoryDetails.name",
+                        description: "$categoryDetails.description"
+                    }
                 }
             }
         ]);
@@ -135,9 +154,11 @@ exports.getReportDetailsService = async (reportId) => {
 
     } catch (error) {
         if (error.statusCode) throw error;
+        console.error("getReportDetailsService error:", error);
         throw createError(500, 'serverError', 'error');
     }
 };
+
 
 
 exports.updateReportStatusService = async (reportStatus, reportId) => {
@@ -157,10 +178,9 @@ exports.updateReportStatusService = async (reportStatus, reportId) => {
         if (!validStatuses.includes(reportStatus)) {
             throw createError(400, 'invalidStatus', 'validation');
         }
-    
         report.status = reportStatus;
         await report.save();
-        return report; 
+        return report;
 
 
     }

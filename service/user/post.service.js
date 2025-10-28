@@ -329,11 +329,11 @@ exports.getPostById = async (id, userId) => {
     });
     if (isBlocked) throw createError(403, 'userBlocked', 'validation');
 
-   
+
     const result = await Post.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
 
-    
+
       {
         $lookup: {
           from: "users",
@@ -344,7 +344,7 @@ exports.getPostById = async (id, userId) => {
       },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
 
-    
+
       {
         $lookup: {
           from: "communities",
@@ -355,7 +355,7 @@ exports.getPostById = async (id, userId) => {
       },
       { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
 
-   
+
       {
         $lookup: {
           from: "communitycategories",
@@ -366,7 +366,7 @@ exports.getPostById = async (id, userId) => {
       },
       { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
 
-   
+
       {
         $lookup: {
           from: "userstats",
@@ -400,7 +400,7 @@ exports.getPostById = async (id, userId) => {
         },
       },
 
-   
+
       {
         $lookup: {
           from: "comments",
@@ -411,7 +411,7 @@ exports.getPostById = async (id, userId) => {
       },
       { $addFields: { totalComments: { $size: "$comments" } } },
 
-    
+
       {
         $project: {
           _id: 1,
@@ -1005,6 +1005,26 @@ exports.getHighlightedPostsService = async (userId) => {
         { $and: [{ type: enums.typePost.VIDEO }, { videoOfTheMonth: true }] }
       ]
     };
+
+    if (user.role === "user") {
+      const blockedRelations = await Block.find({
+        $or: [{ blocker: userId }, { blocked: userId }]
+      }).lean();
+
+      const blockedUserIds = blockedRelations.map(b =>
+        b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
+      );
+
+      if (blockedUserIds.length > 0) {
+        matchStage = {
+          $and: [
+            matchStage,
+            { userId: { $nin: blockedUserIds.map(id => new mongoose.Types.ObjectId(id)) } }
+          ]
+        };
+      }
+    }
+
     const pipeline = [
       { $match: matchStage },
       {

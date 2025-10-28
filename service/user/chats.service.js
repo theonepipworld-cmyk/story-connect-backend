@@ -159,20 +159,20 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                         );
                         console.log(`Cleared invalid device token for user ${receiver._id}`);
                     }
-                
+
+                }
             }
         }
-    }
 
         conversation.updatedAt = new Date();
 
-    await conversation.save();
-    return messages;
-} catch (error) {
-    console.log(error)
-    if (error.statusCode) throw error;
-    throw createError(500, 'serverError', 'error');
-}
+        await conversation.save();
+        return messages;
+    } catch (error) {
+        console.log(error)
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
 };
 
 
@@ -185,6 +185,14 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const offset = (page - 1) * limit;
+        const blockedUsers = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        }).lean();
+
+
+        const blockedUserIds = blockedUsers.map(b =>
+            b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
+        );
 
         const conversations = await Conversation.aggregate([
             { $match: { participants: new mongoose.Types.ObjectId(userId) } },
@@ -228,6 +236,13 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
             },
             { $lookup: { from: "messages", localField: "lastMessage", foreignField: "_id", as: "lastMessageInfo" } },
             { $unwind: { path: "$lastMessageInfo", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    isBlocked: {
+                        $in: ["$otherParticipant._id", blockedUserIds.map(id => new mongoose.Types.ObjectId(id))]
+                    }
+                }
+            },
             { $sort: { updatedAt: -1 } },
             {
                 $facet: {
@@ -243,6 +258,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     avatarUrl: "$otherParticipant.avatarUrl",
                                     isOnline: { $ifNull: ["$otherParticipant.isOnline", false] },
                                 },
+                                isBlocked: 1,
                                 lastMessage: "$lastMessageInfo.text",
                                 lastMessageId: "$lastMessageInfo._id",
                                 lastMessageAt: "$lastMessageInfo.createdAt",

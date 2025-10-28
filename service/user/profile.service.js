@@ -139,7 +139,8 @@ exports.updateProfile = async (userId, payload, files) => {
     if (payload.dateOfBirth) {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (!dateRegex.test(payload.dateOfBirth)) {
-            throw new Error(resMessages.validation.invalidDateOfBirthFormat);
+             throw createError(404,'invalidDateOfBirthFormat','validation');
+           
         }
         patch.dateOfBirth = payload.dateOfBirth;
     }
@@ -171,7 +172,8 @@ exports.updateProfile = async (userId, payload, files) => {
     ).lean();
 
     if (!updated) {
-        throw createError(404,resMessages.notFound.userNotFound);
+        throw createError(404,'userNotFound','notFound');
+
         
     }
 
@@ -183,7 +185,7 @@ exports.deleteProfile = async (userId) => {
         $set: { status: 'deleted' }
     }, { new: true, select: 'status' });
     if (!deleted) {
-        throw new Error(resMessages.notFound.userNotFound);
+          throw createError(404,'userNotFound','notFound');
     }
     return { message: resMessages.success.deleteSuccessful };
 };
@@ -205,7 +207,8 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
         }
 
         if (isBlocked) {
-            throw new Error(resMessages.validation.userBlocked);
+               throw createError(404,'userBlocked','validation');
+           
         }
 
 
@@ -214,7 +217,7 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             .lean();
 
         if (!user) {
-            throw new Error(resMessages.notFound.userNotFound);
+           throw createError(400, 'userNotFound', 'notFound');
         }
         let mutualFriendsCount = 0;
         if (loginUserId && loginUserId.toString() !== user._id.toString()) {

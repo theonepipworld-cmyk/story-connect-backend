@@ -47,9 +47,9 @@ exports.getReportDetails = async (req, res) => {
 exports.updateReportStatus = async (req, res) => {
     try {
         const lang = getLang(req);
-        const status = req.body.status
-          const updateReportStatus = await adminReportServices.updateReportStatusService(status);
-        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), reportUserDetails));
+        const {status,reportId} = req.body
+          const updateReportStatus = await adminReportServices.updateReportStatusService(status,reportId);
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), updateReportStatus));
     }
     catch (err) {
         const lang = getLang(req);

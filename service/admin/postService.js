@@ -38,3 +38,29 @@ exports.addStoryAndVideoOfMonthService = async (postId, type) => {
         throw createError(500, 'serverError', 'error');
     }
 }
+
+exports.removeStoryAndVideoOfMonthService = async(postId, type) => {
+    try {
+        const post = await isPostExist(postId);
+        if (!post) {
+            throw createError(404, 'postNotFound', 'notFound');
+        }
+
+        let updateFields = {};
+
+        if (type === enums.typePost.IMAGE) {
+            updateFields.storyOfTheMonth = false;
+        } else if (type === enums.typePost.VIDEO) {
+            updateFields.videoOfTheMonth = false;
+        } else {
+            throw createError(400, 'invalidType', 'validation');
+        }
+
+        const result = await Post.findByIdAndUpdate(post._id, updateFields, { new: true });
+
+        return result;
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};

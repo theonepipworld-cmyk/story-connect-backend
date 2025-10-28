@@ -77,14 +77,11 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         );
                     } catch (error) {
                         console.error(`Failed to send post like push to user ${postOwner._id}:`, error.message);
-
+                        console.log(error)
                         // Optional: Clear invalid token
                         if (error.code === 'messaging/invalid-argument' ||
                             error.code === 'messaging/registration-token-not-registered') {
-                            await User.update(
-                                { device_token: null },
-                                { where: { id: postOwner._id } }
-                            );
+                            await User.findByIdAndUpdate(postOwner._id, { device_token: null });
                             console.log(`Cleared invalid device token for user ${postOwner._id}`);
                         }
                     }
@@ -128,13 +125,10 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                             }
                         );
                     } catch (error) {
-                        console.error(`Failed to send comment push to user ${commentOwner._id}:`, error.message);       
+                        console.error(`Failed to send comment push to user ${commentOwner._id}:`, error.message);
                         if (error.code === 'messaging/invalid-argument' ||
                             error.code === 'messaging/registration-token-not-registered') {
-                            await User.update(
-                                { device_token: null },
-                                { where: { id: commentOwner._id } }
-                            );
+                            await User.findByIdAndUpdate(commentOwner._id, { device_token: null });
                             console.log(`Cleared invalid device token for user ${commentOwner._id}`);
                         }
                     }
