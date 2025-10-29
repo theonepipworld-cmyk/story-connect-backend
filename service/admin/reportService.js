@@ -161,7 +161,7 @@ exports.getReportDetailsService = async (reportId) => {
 
 
 
-exports.updateReportStatusService = async (reportStatus, reportId) => {
+exports.updateReportStatusService = async (reportStatus, reportId, action) => {
     try {
         if (!reportId) {
             throw createError(400, 'reportIdRequired', 'validation');
@@ -177,6 +177,10 @@ exports.updateReportStatusService = async (reportStatus, reportId) => {
         const validStatuses = [enums.reportStatus.PENDING, enums.reportStatus.UNDERREVIEW, enums.reportStatus.RESOLVED, enums.reportStatus.ONHOLD, enums.reportStatus.DISMISSED];
         if (!validStatuses.includes(reportStatus)) {
             throw createError(400, 'invalidStatus', 'validation');
+        }
+        const validActions = [enums.userAccountState.NORMAL, enums.userAccountState.WARNING, enums.userAccountState.SUSPENDED];
+        if (action && !validActions.includes(action)) {
+            throw createError(400, 'invalidAction', 'validation');
         }
         report.status = reportStatus;
         await report.save();

@@ -112,11 +112,16 @@ const userSchema = new Schema({
     type: Boolean,
     default: false,
   },
-  isPushNotification:{
-    type:Boolean,
-    default:true
+  isPushNotification: {
+    type: Boolean,
+    default: true
   },
-  
+  accountState: {
+    type: String,
+    enum: ['normal', 'warning', 'suspended'],
+    default: 'normal'
+  },
+
 }, {
   timestamps: true
 });

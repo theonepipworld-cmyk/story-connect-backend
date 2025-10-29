@@ -30,12 +30,25 @@ const reportStatus ={
   DISMISSED:"dismissed"
 }
 
+const userAccountState ={
+  NORMAL:"normal",
+  WARNING:"warning",
+  SUSPENDED:"suspended"
+}
+
+const userRole ={
+  USER:"user",
+  ADMIN:"admin",
+}
+
 
 module.exports = {
   friend_Request_status,
   notification_Types,
   typePost,
   messages_Status,
-  reportStatus
+  reportStatus,
+  userAccountState,
+  userRole
 };
 

@@ -22,7 +22,8 @@
     "seenSuccessfully": "seen successfully",
     "deviceTokenSaved": "Device token saved/updated successfully",
     "addSuccessfully":"add Successfully",
-    "removeSuccessfully":"remove Successfully"
+    "removeSuccessfully":"remove Successfully",
+    "ResetLink":"Reset link sent to email."
   },
   "notifications": {
     "acceptedFriendReq": "accepted your friend request",
@@ -48,7 +49,8 @@
     "userNotBlocked": "user is not blocked ",
     "receiverNotPart": "receiver not part of conversationId.",
     "noNotifciationFound": " Notifications not found",
-    "reportCategoryNotFound":"report category not found"
+    "reportCategoryNotFound":"report category not found",
+    "faqNotFound":"FAQ not found"
   },
   "validation": {
     "missingFields": "Missing required fields",
@@ -95,7 +97,12 @@
     "reportIdRequired": "report ID is required",
     "reportAlreadyExists":"report is already under pending request or under review",
     "missingFaqFields":"missing faq fields",
-    "invalidStatus":"report status is invalid"
+    "invalidStatus":"report status is invalid",
+    "invalidAction":"action must be take or dismiss",
+    "accessDenied":"access denied for this user",
+    "faqAlreadyExists":"FAQ with this title already exists"
+    
+
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access",

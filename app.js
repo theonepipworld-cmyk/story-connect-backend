@@ -27,6 +27,8 @@ const {languageMiddleware} =require("./middlewares/requestValidations/user/lang.
 const adminPostRoutes = require("./routes/v1/admin/post.routes.js")
 const dashboardRoutes = require("./routes/v1/admin/dashboard.routes.js")
 const adminReportRoutes = require("./routes/v1/admin/report.routes.js")
+const adminSettingRoutes = require("./routes/v1/admin/setting.routes.js")
+const adminAuthRoutes = require("./routes/v1/admin/auth.routes.js")
 
 require('./config/db');
 
@@ -69,6 +71,8 @@ app.use('/api/v1/user/faq',faqRoutes);
 app.use('/api/v1/admin/post',adminPostRoutes);
 app.use('/api/v1/admin/dashboard',dashboardRoutes);
 app.use('/api/v1/admin/report',adminReportRoutes)
+app.use('/api/v1/admin/setting',adminSettingRoutes);
+app.use('/api/v1/admin/auth', adminAuthRoutes)
 
 
 

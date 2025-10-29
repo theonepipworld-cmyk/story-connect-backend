@@ -134,7 +134,6 @@ exports.joinCommunityService = async (userId, data) => {
 };
 
 exports.userCommunityService = async (userId, search = "", page = 1, limit = 10) => {
-
     if (!userId) {
         throw createError(400, 'userNotFound', 'notFound');
     }
@@ -328,9 +327,18 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
             {
                 $lookup: {
                     from: "communitymembers",
-                    let: { communityIdObj: "$_id" },
+                    let: { communityIdObj: "$_id", blockedIds: blockedUserIds.map(id => new mongoose.Types.ObjectId(id)) },
                     pipeline: [
-                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$communityId", "$$communityIdObj"] },
+                                        { $not: { $in: ["$userId", "$$blockedIds"] } } 
+                                    ]
+                                }
+                            }
+                        },
                         { $sort: { createdAt: -1 } },
                         { $limit: 3 },
                         {
@@ -353,7 +361,6 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                     as: "membersPreview"
                 }
             },
-
             {
                 $addFields: {
                     isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] }

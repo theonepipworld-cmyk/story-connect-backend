@@ -70,7 +70,7 @@ exports.forgotPassword = async ({ email }) => {
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
     user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; // 15 min
+    user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; 
     await user.save();
 
     const resetLink = `${RESET_PASS_LINK}/${resetToken}`;
@@ -82,7 +82,7 @@ exports.forgotPassword = async ({ email }) => {
       context: { resetLink }
     });
 
-    return { message: 'Reset link sent to email.' };
+    return { message: 'ResetLink' };
   } catch (error) {
     if (error.statusCode) throw error;
      throw createError(500, 'serverError','error');
