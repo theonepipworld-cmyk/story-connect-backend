@@ -397,7 +397,6 @@ exports.incrementHourlyActiveUser = async () => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const currentHour = now.getHours();
-
   await DailyUserStats.updateOne(
     { date: today },
     { $inc: { [`hourlyCounts.${currentHour}`]: 1 } },

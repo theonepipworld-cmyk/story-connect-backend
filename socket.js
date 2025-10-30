@@ -1,7 +1,7 @@
-
 let io;
 const onlineUsers = new Map();
-const { incrementHourlyActiveUser, decrementHourlyActiveUser } = require("./helpers/dbHelpers")
+const { incrementHourlyActiveUser, decrementHourlyActiveUser } = require("./helpers/dbHelpers");
+const User = require("./models/user.model");
 
 function initIo(server) {
   const { Server } = require("socket.io");
@@ -10,20 +10,18 @@ function initIo(server) {
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
 
+ 
     socket.on("online", async (data) => {
-      console.log("online event received:", data.userId._id);
+      console.log("online event received:", data.userId);
       try {
         if (data?.userId) {
           onlineUsers.set(data.userId.toString(), socket.id);
-          await User.update(
-            { isOnline: true },
-            { where: { id: data.userId } }
-          );
+          await User.findByIdAndUpdate(data.userId, { isOnline: true });
           await incrementHourlyActiveUser();
-          console.log(`online status updated for user ${data.userId}`);
+          console.log(` online status updated for user ${data.userId}`);
         }
       } catch (error) {
-        console.error("Error clearing updating online status:", error);
+        console.error(" Error updating online status:", error);
       }
     });
 
@@ -32,69 +30,59 @@ function initIo(server) {
       try {
         if (data?.userId) {
           onlineUsers.delete(data.userId.toString());
-          await User.update(
-            { isOnline: false },
-            { where: { id: data.userId } }
-          );
-            await decrementHourlyActiveUser();
-          console.log(`offline status updated for user ${data.userId}`);
+          await User.findByIdAndUpdate(data.userId, { isOnline: false });
+          await decrementHourlyActiveUser();
+          console.log(` offline status updated for user ${data.userId}`);
         }
       } catch (error) {
-        console.error("Error clearing updating online status:", error);
+        console.error(" Error updating offline status:", error);
       }
     });
+
 
     socket.on("logout", async (data) => {
       console.log("Logout event received:", data);
       try {
         if (data?.userId) {
           onlineUsers.delete(data.userId.toString());
-          await User.update(
-            { isOnline: false, device_token: null },
-            { where: { id: data.userId } }
-          );
-            await decrementHourlyActiveUser();
+          await User.findByIdAndUpdate(data.userId, { isOnline: false, device_token: null });
+          await decrementHourlyActiveUser();
           console.log(` Cleared token & offline for user ${data.userId}`);
         }
       } catch (error) {
-        console.error("Error clearing device token:", error);
+        console.error(" Error clearing device token:", error);
       }
     });
 
-
-
-    socket.on("disconnect", () => {
-      for (const [userId, sockId] of onlineUsers.entries()) {
-        if (sockId === socket.id) {
-          onlineUsers.delete(userId);
-          User.update({ isOnline: false }, { where: { id: userId } })
-            .then(() => console.log(`User ${userId} disconnected`))
-            .catch((err) => console.error(" Error updating disconnect:", err));
-          break;
+    socket.on("disconnect", async () => {
+      try {
+        for (const [userId, sockId] of onlineUsers.entries()) {
+          if (sockId === socket.id) {
+            onlineUsers.delete(userId);
+            await User.findByIdAndUpdate(userId, { isOnline: false });
+            console.log(` User ${userId} disconnected`);
+            break;
+          }
         }
+        console.log("Socket disconnected:", socket.id);
+      } catch (err) {
+        console.error(" Error updating disconnect:", err);
       }
-      console.log("Socket disconnected:", socket.id);
     });
   });
 
   return io;
 }
 
+// Get socket.io instance
 function getIo() {
   if (!io) throw new Error("Socket.io not initialized!");
   return io;
 }
 
+// Get all online users
 function getOnlineUsers() {
   return onlineUsers;
 }
-
-
-
-
-
-
-
-
 
 module.exports = { initIo, getIo, getOnlineUsers };

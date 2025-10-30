@@ -1,20 +1,34 @@
-const cron = require('node-cron');
-const DailyUserStats = require("../models/dailyUserStats.model")
+const cron = require("node-cron");
+const DailyUserStats = require("../models/dailyUserStats.model");
 
 const resetDailyStats = async () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const newDay = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+  try {
+    const today = new Date();
+    const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    await DailyUserStats.updateOne(
-        { date: newDay },
-        { $set: { hourlyCounts: Array(24).fill(0) } },
-        { upsert: true }
+    const result = await DailyUserStats.updateOne(
+      { date: currentDay },
+      { $set: { hourlyCounts: Array(24).fill(0) } }
     );
+
+    if (result.matchedCount === 0) {
+      console.log("No record found for today, creating new one...");
+      await DailyUserStats.create({
+        date: currentDay,
+        hourlyCounts: Array(24).fill(0),
+      });
+    }
+
+    console.log(" Daily stats reset for:", currentDay.toDateString());
+  } catch (err) {
+    console.error(" Error resetting daily stats:", err);
+  }
 };
 
-cron.schedule('0 0 * * *', async () => {
-    console.log("Cron job for reschedule reminder initialized.");
-    await resetDailyStats();
+
+cron.schedule("0 0 * * *", async () => {
+  console.log("Running daily stats reset cron...");
+  await resetDailyStats();
 });
+
 module.exports = resetDailyStats;
