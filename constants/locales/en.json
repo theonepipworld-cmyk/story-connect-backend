@@ -50,7 +50,9 @@
     "receiverNotPart": "receiver not part of conversationId.",
     "noNotifciationFound": " Notifications not found",
     "reportCategoryNotFound":"report category not found",
-    "faqNotFound":"FAQ not found"
+    "faqNotFound":"FAQ not found",
+    "reportedUserNotFound":"reported user not found",
+    "actionRequired":"action is required"
   },
   "validation": {
     "missingFields": "Missing required fields",
@@ -100,7 +102,8 @@
     "invalidStatus":"report status is invalid",
     "invalidAction":"action must be take or dismiss",
     "accessDenied":"access denied for this user",
-    "faqAlreadyExists":"FAQ with this title already exists"
+    "faqAlreadyExists":"FAQ with this title already exists",
+    "reasonRequiredForDismissal":"reason required for suspension"
     
 
   },

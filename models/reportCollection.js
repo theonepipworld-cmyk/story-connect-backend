@@ -21,6 +21,12 @@ const reportSchema = new mongoose.Schema({
       type: String,
     },
   ],
+  reportActionTaken:{
+    type:String
+  },
+  reason:{
+    type:String
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

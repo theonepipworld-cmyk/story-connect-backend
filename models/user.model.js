@@ -121,6 +121,10 @@ const userSchema = new Schema({
     enum: ['normal', 'warning', 'suspended'],
     default: 'normal'
   },
+  dateOfSuspend:{
+    type:Date
+  },
+  
 
 }, {
   timestamps: true

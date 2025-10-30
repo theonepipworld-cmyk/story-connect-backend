@@ -44,12 +44,28 @@ exports.getReportDetails = async (req, res) => {
 };
 
 
+exports.reportAction = async (req, res) => {
+    try {
+        const lang = getLang(req);
+        const { reportId, action, reason } = req.body
+        const updateReportStatus = await adminReportServices.reportActionService(reportId, action, reason);
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), updateReportStatus));
+    }
+    catch (err) {
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+}
+
 exports.updateReportStatus = async (req, res) => {
     try {
         const lang = getLang(req);
-        const {status,reportId,action} = req.body
-          const updateReportStatus = await adminReportServices.updateReportStatusService(status,reportId,action);
-        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), updateReportStatus));
+        const { reportId, status} = req.body
+        const updateReportStatus = await adminReportServices.updateReportStatusService(reportId, status);
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessfull'), updateReportStatus));
     }
     catch (err) {
         const lang = getLang(req);

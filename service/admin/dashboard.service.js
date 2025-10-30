@@ -18,11 +18,9 @@ exports.dashboardDataService = async (userId) => {
             throw createError(400, "userNotFound", "notFound");
         }
         const user = await isUserExist(userId);
-
         if (!user) {
             throw createError(400, "userNotFound", "notFound");
         }
-
         const [overview, communityDistribution, monthlyGrowth, dailyTrafficPattern] = await Promise.all([
             platFormOverview(),
             CommunityDistribution(),

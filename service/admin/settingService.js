@@ -31,7 +31,8 @@ exports.allSuspendedUsersService = async (pageNo = 1, pageSize = 10) => {
                     createdAt: 1,
                     accountStatus: 1,
                     dateOfBirth: 1,
-                    updatedAt: 1
+                    updatedAt: 1,
+                    dateOfSuspend:1
                 }
             }
         ]);
@@ -77,8 +78,6 @@ exports.addFaqService = async (title, content, userId) => {
         if (existingFaq) {
             throw createError(400, "faqAlreadyExists", "validation");
         }
-
-        console.log("existingFaq---------", existingFaq)
 
         const newFaq = await FAQ.create({
             title: title.trim(),

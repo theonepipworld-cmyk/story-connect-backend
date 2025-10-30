@@ -7,6 +7,7 @@ const { authorizeRoles } = require('../../../middlewares/requestValidations/user
 
 router.get("/all-reports",isAuthenticated,authorizeRoles('admin'),adminReportController.getAllReportUser)
 router.get("/report-details/:reportId",isAuthenticated,authorizeRoles('admin'),adminReportController.getReportDetails);
+router.put("/report-action",isAuthenticated,authorizeRoles('admin'),adminReportController.reportAction);
 router.put("/update-report-status",isAuthenticated,authorizeRoles('admin'),adminReportController.updateReportStatus);
 
 module.exports = router;
