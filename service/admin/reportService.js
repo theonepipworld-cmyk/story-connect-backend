@@ -39,6 +39,27 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
                 }
             },
             { $unwind: "$categoryDetails" },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "reportedBy",
+                    foreignField: "_id",
+                    as: "reportedByDetails"
+                }
+            },
+            { $unwind: { path: "$reportedByDetails", preserveNullAndEmptyArrays: true } },
+
+
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "reportedUser",
+                    foreignField: "_id",
+                    as: "reportedToDetails"
+                }
+            },
+            { $unwind: { path: "$reportedToDetails", preserveNullAndEmptyArrays: true } },
+
 
             { $sort: { createdAt: -1 } },
 
@@ -52,7 +73,19 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
                     severity: 1,
                     status: 1,
                     createdAt: 1,
-                    category: "$categoryDetails"
+                    category: "$categoryDetails",
+                    reportedBy: {
+                        _id: "$reportedByDetails._id",
+                        name: "$reportedByDetails.username",
+                        email: "$reportedByDetails.email",
+                        profilePicture: "$reportedByDetails.avatarUrl"
+                    },
+                    reportedTo: {
+                        _id: "$reportedToDetails._id",
+                        name: "$reportedToDetails.username",
+                        email: "$reportedToDetails.email",
+                        profilePicture: "$reportedByDetails.avatarUrl"
+                    }
                 }
             }
         ]);

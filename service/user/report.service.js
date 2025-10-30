@@ -33,8 +33,6 @@ exports.reportUserService = async (reportUserId, description, category, severity
 
         
         let additionalEvidence = [];
-
-
         if (files && files.length > 0) {
             const uploadResults = await Promise.all(
                 files.map((file) => uploadFileToS3(file, "user/report/evidence"))
