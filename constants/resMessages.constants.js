@@ -25,12 +25,12 @@ module.exports = {
     },
 
     notifications: {
-        acceptedFriendReq: "accepted your friend request",
-        rejectedFriendReq: "rejected your friend request",
+        acceptedFriendReq: "Accepted your friend request",
+        rejectedFriendReq: "Rejected your friend request",
         sendFriendReq: "Send you friend request",
-        likedPost: "liked your post",
-        comment: "commented on your post",
-        commentLike:" liked your comment"
+        likedPost: "Liked your post",
+        comment: "Commented on your post",
+        commentLike:" Liked your comment"
     },
 
     notFound: {

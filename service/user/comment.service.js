@@ -8,8 +8,10 @@ const Comment = require('../../models/Comments.model');
 const { isPostExist, createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const UserStats = require("../../models/userActivityStats.model");
 const Block = require("../../models/block.model.js");
+const Notification = require("../../models/notification.model.js");
 const pushNotification = require("../../utils/pushNotification.js");
 
+const enums = require("../../constants/enum.constants.js")
 
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
     try {
@@ -81,6 +83,14 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                     console.log(`Cleared invalid device token for user ${postOwner._id}`);
                 }
             }
+
+            await Notification.create({
+                user: post.userId,
+                sender: userId,
+                type: enums.notification_Types.COMMENT,
+                message: `${user.username} ${resMessages.notifications.comment}`,
+                postId
+            });
         }
 
         return comment;

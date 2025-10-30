@@ -91,7 +91,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                         "message",
                         {
                             conversationId: conversation._id.toString(),
-                            senderId: senderId.toString()
+                            senderId: senderId.toString(),
+                            senderName:sender.username.toString(),
+                            senderImage:sender.avatarUrl.toString(),
+                            lastMessageId: savedTextMessage._id.toString()
                         }
                     );
                 } catch (error) {
