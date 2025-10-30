@@ -92,7 +92,6 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 postId
             });
         }
-
         return comment;
     } catch (error) {
         if (error.statusCode) throw error;

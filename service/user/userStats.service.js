@@ -107,17 +107,17 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             const comment = await Comment.findById(commentId).populate("userId", "username");
             if (comment && comment.userId.toString() !== userId.toString()) {
                 const commentOwner = comment.userId;
-                if (commentOwner && commentOwner.device_token) {
+                if ( commentOwner && user.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
                             commentOwner.device_token,
-                            `${username} ${resMessages.notifications.commentLike}`,
+                            `${user.username} ${resMessages.notifications.commentLike}`,
                             "commentLike",
                             {
-                                postId: postId.toString(),
-                                commentId: commentId.toString(),
-                                senderId: userId.toString(),
-                                parentCommentId: parentCommentId ? parentCommentId.toString() : null
+                                postId: String(postId),
+                                commentId: String(commentId),
+                                senderId: String(userId),
+                                parentCommentId: parentCommentId ? String(parentCommentId) : ""
                             }
                         );
                     } catch (error) {
@@ -129,11 +129,10 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         }
                     }
                 }
-
                 await Notification.create({
                     user: comment.userId,
                     sender: userId,
-                    type: enums.notification_Types.comment,
+                    type: enums.notification_Types.COMMENT,
                     message: `${username} ${resMessages.notifications.comment}`,
                     postId
                 });
@@ -144,26 +143,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
         await stats.save();
         return stats;
-        // let responseData = {};
-        // if (type === userActivityStats.userStats.Likes) {
-        //     responseData = {
-        //         totalLikes: stats.totalLikes,
-        //         //likes: stats.likes
-        //     };
-        // } else if (type === userActivityStats.userStats.Views) {
-        //     responseData = {
-        //         totalViews: stats.totalViews,
-        //         //views: stats.views
-        //     };
-        // } else if (type.startsWith("comment")) {
-        //     responseData = {
-        //         commentLikes: stats.commentLikes
-        //     };
-        // }
-
-        // return responseData;
-
-
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');

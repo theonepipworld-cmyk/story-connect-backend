@@ -37,7 +37,7 @@ module.exports = {
         emailNotFound: "Email not found",
         postNotFound: "post not found",
         userNotFound: "User not found",
-        ReqUser: "user which we requesting frined not found",
+        ReqUser: "User which we requesting frined not found",
         commentNotFound: "Comment not found",
         communityNotFound: "community not found",
         communityCategoryNotFound: "community category not found",
