@@ -12,10 +12,10 @@ const getLang = (req) => req.lang || 'en';
 exports.allSuspendedUsers = async (req, res) => {
     try {
         const lang = getLang(req);
-          const pageNo = parseInt(req.query.pageNo) || 1
+        const pageNo = parseInt(req.query.pageNo) || 1
         const pageSize = parseInt(req.query.pageSize) || 10
-          const result = await settingService.allSuspendedUsersService(pageNo, pageSize);
-                return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), result));F
+        const result = await settingService.allSuspendedUsersService(pageNo, pageSize);
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), result)); F
     }
     catch (err) {
         const lang = getLang(req);
@@ -68,6 +68,25 @@ exports.deleteFaq = async (req, res) => {
         const deletedFaq = await settingService.deleteFaqService(faqId, req.user.id);
         return res.status(200).json(
             successResponse(getMessage(lang, 'success', 'deleteSuccessful'), deletedFaq)
+        );
+    }
+    catch (err) {
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+};
+
+
+exports.userSuspensionAction = async (req, res) => {
+    try {
+        const lang = getLang(req);
+        const userId = req.params.userId;
+        const result = await settingService.removeSuspensionUserService(userId, req.user.id);
+        return res.status(200).json(
+            successResponse(getMessage(lang, 'success', 'userUnsuspend'), result)
         );
     }
     catch (err) {

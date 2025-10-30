@@ -1,6 +1,6 @@
 const Report = require("../../models/reportCollection.js")
 const mongoose = require("mongoose");
-const {createError, isUserExist } = require("../../helpers/dbHelpers.js")
+const { createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const enums = require("../../constants/enum.constants.js")
 const User = require('../../models/user.model');
 const FAQ = require("../../models/faq.model.js")
@@ -9,11 +9,11 @@ const FAQ = require("../../models/faq.model.js")
 
 exports.allSuspendedUsersService = async (pageNo = 1, pageSize = 10) => {
     try {
-
-        const matchStage = { accountStatus: enums.userAccountState.SUSPENDED };
+        const matchStage = { accountState: enums.userAccountState.SUSPENDED };
         const totalUsersAgg = await User.aggregate([
             { $match: matchStage }
         ]);
+        
         const totalUsers = totalUsersAgg.length;
         const skip = (pageNo - 1) * pageSize;
         const users = await User.aggregate([
@@ -32,7 +32,7 @@ exports.allSuspendedUsersService = async (pageNo = 1, pageSize = 10) => {
                     accountStatus: 1,
                     dateOfBirth: 1,
                     updatedAt: 1,
-                    dateOfSuspend:1
+                    dateOfSuspend: 1
                 }
             }
         ]);
@@ -168,4 +168,41 @@ exports.deleteFaqService = async (faqId, userId) => {
         throw createError(500, "serverError", "error");
     }
 };
+
+exports.removeSuspensionUserService = async (userIdToUnsuspend, adminId) => {
+    try {
+        if (!adminId) {
+            throw createError(400, "userNotFound", "notFound");
+        }
+        if(!userIdToUnsuspend){
+                throw createError(400, "userNotFound", "notFound");
+        
+        }
+
+        const adminUser = await isUserExist(adminId);
+        const userToUnsuspend = await isUserExist(userIdToUnsuspend);
+
+       if(!userToUnsuspend){
+            throw createError(400, "userNotFound", "notFound");
+       }
+        if (!adminUser) {
+            throw createError(400, "userNotFound", "notFound");
+        }
+        if (adminUser.role !== enums.userRole.ADMIN) {
+            throw createError(403, "notAuthorized", "validation");
+        }
+        if(userToUnsuspend.accountState !== enums.userAccountState.SUSPENDED){
+            throw createError(400, "userNotSuspended", "validation");
+        }
+        userToUnsuspend.accountState = enums.userAccountState.NORMAL;
+        userToUnsuspend.dateOfSuspend = null;
+        await userToUnsuspend.save();
+        return userToUnsuspend;
+
+    }
+    catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, "serverError", "error");
+    }
+}
 

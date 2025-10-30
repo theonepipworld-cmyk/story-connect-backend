@@ -132,8 +132,8 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 await Notification.create({
                     user: comment.userId,
                     sender: userId,
-                    type: enums.notification_Types.COMMENT,
-                    message: `${username} ${resMessages.notifications.comment}`,
+                    type: enums.notification_Types.LIKE,
+                    message: `${username} ${resMessages.notifications.commentLike}`,
                     postId
                 });
                 const io = getIo();

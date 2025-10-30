@@ -11,27 +11,30 @@ exports.getallFaqService = async (page = 1, limit = 10, userId) => {
         if (!userId) {
             throw createError(400, "userNotFound", "notFound");
         }
-        
+
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, "userNotFound", "notFound");
         }
 
         const offset = (page - 1) * limit;
-        const faqs = await FAQ.find({ isActive: true })
+
+        const filter = user.role === enums.userRole.ADMIN ? {} : { isActive: true };
+
+        const faqs = await FAQ.find(filter)
             .sort({ createdAt: -1 })
             .skip(offset)
             .limit(limit)
             .lean();
 
-        const totalCount = await FAQ.countDocuments({ isActive: true });
+        const totalCount = await FAQ.countDocuments(filter);
 
         return {
             data: faqs,
             pagination: {
                 total: totalCount,
-                page: (page),
-                limit: (limit),
+                page: page,
+                limit: limit,
                 totalPages: Math.ceil(totalCount / limit),
             },
         };
@@ -40,5 +43,4 @@ exports.getallFaqService = async (page = 1, limit = 10, userId) => {
         throw createError(500, "serverError", "error");
     }
 };
-
 

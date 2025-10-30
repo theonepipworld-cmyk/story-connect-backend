@@ -23,7 +23,8 @@
     "deviceTokenSaved": "Device token saved/updated successfully.",
     "addSuccessfully": "Added successfully.",
     "removeSuccessfully": "Removed successfully.",
-    "ResetLink": "Password reset link sent to your email."
+    "ResetLink": "Password reset link sent to your email.",
+    "userUnsuspended":"User unsuspended successfully"
   },
   "notifications": {
     "acceptedFriendReq": "accepted your friend request.",
@@ -104,7 +105,8 @@
     "invalidAction": "Action must be 'take' or 'dismiss'.",
     "accessDenied": "Access denied.",
     "faqAlreadyExists": "An FAQ with this title already exists.",
-    "reasonRequiredForDismissal": "Reason is required for suspension."
+    "reasonRequiredForDismissal": "Reason is required for suspension.",
+    "userNotSuspended": "User is not suspended."
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",

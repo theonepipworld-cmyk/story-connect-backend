@@ -8,7 +8,8 @@ const notification_Types = {
   LIKE: "like",
   FRIEND_REQUEST: "friend_request",
   FRIEND_REQUEST_ACCEPTED: "friend_request_accepted",
-  COMMENT: "comment"
+  COMMENT: "comment",
+  COMMENTLIKE:"commentLike"
 }
 
 const messages_Status = {
