@@ -29,7 +29,8 @@ module.exports = {
         rejectedFriendReq: "rejected your friend request",
         sendFriendReq: "Send you friend request",
         likedPost: "liked your post",
-        comment: "comment your post"
+        comment: "commented on your post",
+        commentLike:" liked your comment"
     },
 
     notFound: {

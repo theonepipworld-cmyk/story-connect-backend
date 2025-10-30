@@ -16,10 +16,14 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
         if (!userId) {
             throw createError(400, 'userNotFound', 'notFound');
         }
-
         const post = await isPostExist(postId);
         if (!post) {
             throw createError(400, 'postNotFound', 'notFound');
+        }
+
+        const user = await isUserExist(userId);
+        if (!user) {
+            throw createError(400, 'userNotFound', 'notFound');
         }
 
         const blocked = await Block.findOne({
@@ -55,19 +59,19 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             try {
                 await pushNotification.androidPushNotification(
                     postOwner.device_token,
-                    notificationMessage,
+                    `${user.username} ${resMessages.notifications.comment}`,
                     "comment",
                     {
                         postId: postId.toString(),
                         commentId: comment._id.toString(),
                         senderId: userId.toString(),
-                        parentCommentId: parentCommentId ? parentCommentId.toString() : null
+                        parentCommentId: parentCommentId ? parentCommentId.toString() : ""
                     }
                 );
             } catch (error) {
                 console.error(`Failed to send push to user ${postOwner._id}:`, error.message);
 
-              
+
                 if (error.code === 'messaging/invalid-argument' ||
                     error.code === 'messaging/registration-token-not-registered') {
                     await User.update(

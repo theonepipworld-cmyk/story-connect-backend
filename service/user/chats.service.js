@@ -77,8 +77,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 sender: savedTextMessage.sender
             };
 
-            console.log(conversation)
-
             let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
             if (unseenEntry) unseenEntry.count += 1;
             else conversation.unseenCount.push({ userId: receiverId, count: 1 });

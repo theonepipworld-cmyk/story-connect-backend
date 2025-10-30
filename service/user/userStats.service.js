@@ -77,8 +77,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         );
                     } catch (error) {
                         console.error(`Failed to send post like push to user ${postOwner._id}:`, error.message);
-                        console.log(error)
-                        // Optional: Clear invalid token
                         if (error.code === 'messaging/invalid-argument' ||
                             error.code === 'messaging/registration-token-not-registered') {
                             await User.findByIdAndUpdate(postOwner._id, { device_token: null });
@@ -107,15 +105,13 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
             const comment = await Comment.findById(commentId).populate("userId", "username");
-
             if (comment && comment.userId.toString() !== userId.toString()) {
-
                 const commentOwner = comment.userId;
                 if (commentOwner && commentOwner.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
                             commentOwner.device_token,
-                            `${username} ${resMessages.notifications.comment}`,
+                            `${username} ${resMessages.notifications.commentLike}`,
                             "commentLike",
                             {
                                 postId: postId.toString(),
