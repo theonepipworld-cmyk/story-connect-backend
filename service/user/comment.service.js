@@ -72,8 +72,6 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 );
             } catch (error) {
                 console.error(`Failed to send push to user ${postOwner._id}:`, error.message);
-
-
                 if (error.code === 'messaging/invalid-argument' ||
                     error.code === 'messaging/registration-token-not-registered') {
                     await User.update(

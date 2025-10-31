@@ -143,7 +143,6 @@ exports.forgotPassword = async (req, res) => {
 
       return res.json({ success: true, message: resMessages.success.deviceTokenSaved });
     } catch (error) {
-      console.error("Save Device Token Error:", error);
       return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
     }
   }

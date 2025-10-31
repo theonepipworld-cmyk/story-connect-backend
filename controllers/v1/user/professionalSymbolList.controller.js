@@ -11,7 +11,6 @@ exports.professionSymbolList = async (req, res) => {
       successResponse(resMessages.success.fetchProfessionalSymbol, symbols)
     );
   } catch (err) {
-    console.error("Error fetching Profession Symbols:", err);
     res.status(500).json({ error: "Failed to fetch symbols" });
   }
 };

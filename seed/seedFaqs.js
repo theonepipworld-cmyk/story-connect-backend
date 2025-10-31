@@ -14,9 +14,8 @@ const seedFaqs = async () => {
         upsert: true,
       },
     }));
-
+    
     await FAQ.bulkWrite(bulkOps);
-
     console.log(" FAQs seeded successfully (with upsert)!");
     return true;
   } catch (err) {

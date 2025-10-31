@@ -170,7 +170,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         await conversation.save();
         return messages;
     } catch (error) {
-        console.log(error)
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }

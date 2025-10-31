@@ -42,7 +42,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 { requester: friendReqId, recipient: userId }
             ]
         });
-        console.log("existing--------------", existing)
         if (existing) {
             if (existing.status === enums.friend_Request_status.PENDING) {
                 isRequested = true;
