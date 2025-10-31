@@ -76,7 +76,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                             { postId: postId.toString(), senderId: userId.toString() }
                         );
                     } catch (error) {
-                        console.error(`Failed to send post like push to user ${postOwner._id}:`, error.message);
                         if (error.code === 'messaging/invalid-argument' ||
                             error.code === 'messaging/registration-token-not-registered') {
                             await User.findByIdAndUpdate(postOwner._id, { device_token: null });
@@ -84,6 +83,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         }
                     }
                 }
+                
                 await Notification.create({
                     user: post.userId,
                     sender: userId,

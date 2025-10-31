@@ -21,22 +21,22 @@ exports.dashboardDataService = async (userId) => {
         if (!user) {
             throw createError(400, "userNotFound", "notFound");
         }
-        const [overview, communityDistribution, monthlyGrowth, dailyTrafficPattern] = await Promise.all([
+        if (user.role !== 'admin') {
+            throw createError(403, "notAuthorized", "validation");
+        }
+
+        const [overview, communityDistribution, monthlyGrowth, dailyTraffic] = await Promise.all([
             platFormOverview(),
             CommunityDistribution(),
             monthlyUserGrowth(),
-            //dailyTrafficPattern()
+            dailyUserPattern(),
+
         ]);
-
-
         return {
-         
-                overview,
-                communityDistribution,
-                monthlyGrowth,
-            
-
-            //dailyTrafficPattern
+            overview,
+            communityDistribution,
+            monthlyGrowth,
+            dailyTraffic
         };
 
     } catch (error) {
@@ -57,7 +57,6 @@ const platFormOverview = async () => {
             $lt: new Date(new Date().setHours(23, 59, 59, 999))
         }
     });
-
     return { totalUser, totalActiveUser, totalCommunities, totalPosts, totalReportUserToday };
 };
 
@@ -150,7 +149,7 @@ const monthlyUserGrowth = async () => {
 };
 
 
-const dailyTrafficPattern = async () => {
+const dailyUserPattern = async () => {
     try {
         const record = await DailyUserStats.find()
         return record;
@@ -160,6 +159,9 @@ const dailyTrafficPattern = async () => {
         throw error;
     }
 }
+
+
+
 
 
 
