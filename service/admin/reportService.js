@@ -310,10 +310,6 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(404, 'reportNotFound', 'notFound');
         }
 
-        // const validStatuses = [enums.reportStatus.PENDING, enums.reportStatus.UNDERREVIEW, enums.reportStatus.RESOLVED, enums.reportStatus.ONHOLD, enums.reportStatus.DISMISSED];
-        // if (!validStatuses.includes(reportStatus)) {
-        //     throw createError(400, 'invalidStatus', 'validation');
-        // }
         const validActions = [enums.userAccountState.NORMAL, enums.userAccountState.WARNING, enums.userAccountState.SUSPENDED];
         if (action && !validActions.includes(action)) {
             throw createError(400, 'invalidAction', 'validation');
@@ -326,7 +322,6 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(404, 'reportedUserNotFound', 'notFound');
         }
 
-        console.log("reportedUser----", reportedUser)
 
         reportedUser.accountState = action;
         reportedUser.dateOfSuspend = action === enums.userAccountState.SUSPENDED ? new Date() : null;

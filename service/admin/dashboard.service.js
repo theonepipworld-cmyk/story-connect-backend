@@ -151,14 +151,28 @@ const monthlyUserGrowth = async () => {
 
 const dailyUserPattern = async () => {
     try {
-        const record = await DailyUserStats.find()
-        return record;
-    }
-    catch (error) {
+        const records = await DailyUserStats.find();
+
+        // Transform each record
+        const formatted = records.map((record) => {
+            const hourlyData = record.hourlyCounts.map((count, index) => {
+                const hour = index.toString().padStart(2, "0") + ":00";
+                return { hour, count };
+            });
+
+            return {
+                _id: record._id,
+                date: record.date,
+                hourlyData,
+            };
+        });
+
+        return formatted;
+    } catch (error) {
         console.error("Error fetching dailyTrafficPattern:", error);
         throw error;
     }
-}
+};
 
 
 
