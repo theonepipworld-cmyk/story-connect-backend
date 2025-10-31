@@ -301,6 +301,7 @@ exports.reportActionService = async (reportId, action, reason) => {
         if (!action) {
             throw createError(400, 'actionRequired', 'validation');
         }
+        console.log("action----", action);
 
         const report = await Report.findById(
             reportId
@@ -320,10 +321,13 @@ exports.reportActionService = async (reportId, action, reason) => {
         if (action === enums.userAccountState.SUSPENDED && !reason) {
             throw createError(400, 'reasonRequiredForDismissal', 'validation');
         }
-        const reportedUser = await User.findById(report.reportedUser);
+        const reportedUser = await Report.findById(report._id);
         if (!reportedUser) {
             throw createError(404, 'reportedUserNotFound', 'notFound');
         }
+
+        console.log("reportedUser----", reportedUser)
+
         reportedUser.accountState = action;
         reportedUser.dateOfSuspend = action === enums.userAccountState.SUSPENDED ? new Date() : null;
         await reportedUser.save();
