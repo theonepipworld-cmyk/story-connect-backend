@@ -50,7 +50,6 @@ exports.login = async ({ email, password, device_token }) => {
 
     const correctPassword = await comparePassword(user.passwordHash, password);
     if (!correctPassword) throw createError(400, 'incorrectPassword', 'validation');
-
     const token = await getJWT(email, user._id, user.role, user.username);
     if (!token) throw createError(500, 'somethingWentWrong', 'error');
     if (device_token) await User.updateOne({ _id: user._id }, { device_token });

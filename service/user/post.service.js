@@ -99,7 +99,6 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
       }
     };
 
-    console.log(allFriendIds, allCommunityIds)
 
 
     let finalMatch;
@@ -305,7 +304,6 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
 //get Single Post
 exports.getPostById = async (id, userId) => {
   try {
-    console.log(id, userId);
 
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
@@ -731,7 +729,6 @@ exports.getTrendingTagsService = async () => {
     if (!result || result.length === 0) {
       throw createError(400, 'noTrendingTags', 'notFound');
     }
-    console.log(result)
 
     return result;
   } catch (error) {
@@ -745,7 +742,6 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
-    console.log(userId)
 
     const user = await isUserExist(userId);
     if (!user) {
@@ -993,7 +989,6 @@ exports.getHighlightedPostsService = async (userId) => {
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
-
     const user = await isUserExist(userId)
     if (!user) {
       throw createError(400, 'userNotFound', 'notFound');

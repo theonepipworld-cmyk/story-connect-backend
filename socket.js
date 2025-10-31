@@ -9,8 +9,6 @@ function initIo(server) {
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
-
- 
     socket.on("online", async (data) => {
       console.log("online event received:", data.userId);
       try {
@@ -45,9 +43,17 @@ function initIo(server) {
       try {
         if (data?.userId) {
           onlineUsers.delete(data.userId.toString());
-          await User.findByIdAndUpdate(data.userId, { isOnline: false, device_token: null });
+
+          const updatedUser = await User.findByIdAndUpdate(
+            data.userId,
+            { $set: { isOnline: false, device_token: null } },
+            { new: true } 
+          );
+
           await decrementHourlyActiveUser();
-          console.log(` Cleared token & offline for user ${data.userId}`);
+
+          console.log(` Cleared token & set offline for user ${data.userId}`);
+          console.log("Updated user:", updatedUser);
         }
       } catch (error) {
         console.error(" Error clearing device token:", error);

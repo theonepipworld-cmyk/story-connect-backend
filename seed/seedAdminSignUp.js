@@ -27,8 +27,6 @@ const seedAdminSignUp = async() => {
       admin.resetPasswordToken = token;
 
       await admin.save();
-
-      console.log(" Default admin created successfully!");
     } else {
       console.log(" Admin already exists. Skipping seeding.");
     }

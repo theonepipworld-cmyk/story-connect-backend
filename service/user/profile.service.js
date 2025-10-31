@@ -164,7 +164,7 @@ exports.updateProfile = async (userId, payload, files) => {
             patch.profileCoverImage = DEFAULT_AVATAR_URL;
         }
     }
-    console.log(patch)
+
     const updated = await User.findByIdAndUpdate(
         userId,
         { $set: patch },

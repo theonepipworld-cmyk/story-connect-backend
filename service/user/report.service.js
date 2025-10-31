@@ -63,7 +63,6 @@ exports.reportUserService = async (reportUserId, description, category, severity
 exports.getReportCategoryService = async () => {
     try {
         const result = await ReportCategory.find({}).lean();
-        console.log(result)
         if (!result || result.length === 0) {
             return { data: [] };
         }

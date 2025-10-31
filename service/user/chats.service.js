@@ -166,7 +166,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         }
 
         conversation.updatedAt = new Date();
-
         await conversation.save();
         return messages;
     } catch (error) {
