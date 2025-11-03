@@ -174,14 +174,13 @@ exports.removeSuspensionUserService = async (userIdToUnsuspend, adminId) => {
         if (!adminId) {
             throw createError(400, "userNotFound", "notFound");
         }
+
         if(!userIdToUnsuspend){
                 throw createError(400, "userNotFound", "notFound");
         
         }
-
         const adminUser = await isUserExist(adminId);
         const userToUnsuspend = await isUserExist(userIdToUnsuspend);
-
        if(!userToUnsuspend){
             throw createError(400, "userNotFound", "notFound");
        }

@@ -14,11 +14,9 @@ const DailyUserStats = require("../models/dailyUserStats.model.js")
 
 exports.checkFieldExists = async (fieldName, value, forUpdate = false) => {
   try {
-    console.log(fieldName, value)
     let query = User.findOne({ [fieldName]: value });
     if (!forUpdate) query = query.lean();
     const user = await query.exec();
-    console.log(user)
     return user;
   } catch (error) {
     throw error;
@@ -70,11 +68,13 @@ exports.isCommunityExist = async (id) => {
 
 //handle like and dislike comments section
 exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) => {
+  console.log("stats-------------------",stats)
   let commentEntry = stats.commentLikes.find(
     cl => cl.commentId.toString() === commentId.toString()
   );
+  console.log("Found commentEntry:", commentEntry)
   if (!commentEntry) {
-    commentEntry = {
+      commentEntry = {
       commentId,
       parentCommentId: parentCommentId || null,
       userIds: [userId],
@@ -82,7 +82,9 @@ exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) 
     };
     stats.commentLikes.push(commentEntry);
   } else {
+    console.log("Toggling like for commentEntry:", commentEntry)
     const userIndex = commentEntry.userIds.findIndex(id => id.toString() === userId.toString());
+    console.log("User index in commentEntry:", userIndex)
     if (userIndex === -1) {
       commentEntry.userIds.push(userId);
     } else {
@@ -395,28 +397,33 @@ exports.isConversationExist = async (id) => {
 
 exports.incrementHourlyActiveUser = async () => {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const currentHour = now.getHours();
+  const utcNow = new Date(now.toISOString());
+  const todayUtc = new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate()));
+  const currentHourUtc = utcNow.getUTCHours();
 
-  console.log("Incrementing hourly active user for hour:", currentHour, "on date:", today)
+  console.log("Incrementing hourly active user for UTC hour:", currentHourUtc, "on UTC date:", todayUtc);
+
   await DailyUserStats.updateOne(
-    { date: today },
-    { $inc: { [`hourlyCounts.${currentHour}`]: 1 } },
+    { date: todayUtc },
+    { $inc: { [`hourlyCounts.${currentHourUtc}`]: 1 } },
     { upsert: true }
   );
 };
 
 exports.decrementHourlyActiveUser = async () => {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const currentHour = now.getHours();
+  const utcNow = new Date(now.toISOString()); 
+  const todayUtc = new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate()));
+  const currentHourUtc = utcNow.getUTCHours();
+
+  console.log("Decrementing hourly active user for UTC hour:", currentHourUtc, "on UTC date:", todayUtc);
 
   await DailyUserStats.updateOne(
-    { date: today },
-    { $inc: { [`hourlyCounts.${currentHour}`]: -1 } }
+    { date: todayUtc },
+    { $inc: { [`hourlyCounts.${currentHourUtc}`]: -1 } },
+    { upsert: true }
   );
 };
-
 
 
 

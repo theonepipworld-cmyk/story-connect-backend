@@ -23,9 +23,6 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
             { $match: matchStage }
         ]);
         const totalReports = totalReportsAgg.length;
-
-
-
         const skip = (pageNo - 1) * pageSize;
 
         const reports = await Report.aggregate([
@@ -301,8 +298,6 @@ exports.reportActionService = async (reportId, action, reason) => {
         if (!action) {
             throw createError(400, 'actionRequired', 'validation');
         }
-        console.log("action----", action);
-
         const report = await Report.findById(
             reportId
         );
@@ -310,6 +305,13 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(404, 'reportNotFound', 'notFound');
         }
 
+
+        if (
+            report.status === enums.reportStatus.RESOLVED ||
+            report.status === enums.reportStatus.DISMISSED
+        ) {
+            throw createError(400, 'actionNotAllowedOnClosedReport', 'validation');
+        }
         const validActions = [enums.userAccountState.NORMAL, enums.userAccountState.WARNING, enums.userAccountState.SUSPENDED];
         if (action && !validActions.includes(action)) {
             throw createError(400, 'invalidAction', 'validation');
@@ -363,6 +365,17 @@ exports.updateReportStatusService = async (reportId, reportStatus) => {
 
         if (!validStatuses.includes(reportStatus)) {
             throw createError(400, "invalidStatus", "validation");
+        }
+
+        if (
+            report.status === enums.reportStatus.RESOLVED ||
+            report.status === enums.reportStatus.DISMISSED
+        ) {
+            throw createError(
+                400,
+                "cannotUpdateClosedReport",
+                "validation"
+            );
         }
 
         report.status = reportStatus;

@@ -40,7 +40,6 @@ exports.createCommunityValidator = [
     .withMessage(`${resMessages.validation.missingFields}: category`),
   (async (req, res, next) => {
     try {
-      console.log(req.body.category)
       const category = await communityCategory.findById(req.body.category);
       if (!category) {
         return res
@@ -151,7 +150,6 @@ exports.commmunityMemberLeave = [
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: communityId`)
     .isMongoId().withMessage(`${resMessages.validation.invalidId}: communityId`)
     .custom(async (value) => {
-     console.log(value)
       const community = await isCommunityExist(value)
       if (!community) {
         throw new Error(`${resMessages.validation.notFound}: communityId`);

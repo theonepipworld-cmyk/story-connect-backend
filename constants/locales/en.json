@@ -24,7 +24,7 @@
     "addSuccessfully": "Added successfully.",
     "removeSuccessfully": "Removed successfully.",
     "ResetLink": "Password reset link sent to your email.",
-    "userUnsuspended":"User unsuspended successfully"
+    "userUnsuspended": "User unsuspended successfully"
   },
   "notifications": {
     "acceptedFriendReq": "accepted your friend request.",
@@ -106,7 +106,9 @@
     "accessDenied": "Access denied.",
     "faqAlreadyExists": "An FAQ with this title already exists.",
     "reasonRequiredForDismissal": "Reason is required for suspension.",
-    "userNotSuspended": "User is not suspended."
+    "userNotSuspended": "User is not suspended.",
+    "actionNotAllowedOnClosedReport": " Action not allowed on resolved or dismissed reports.",
+    "cannotUpdateClosedReport": "Cannot update a report that is resolved or dismissed."
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",

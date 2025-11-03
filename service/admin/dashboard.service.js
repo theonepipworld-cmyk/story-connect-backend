@@ -152,8 +152,6 @@ const monthlyUserGrowth = async () => {
 const dailyUserPattern = async () => {
     try {
         const records = await DailyUserStats.find();
-
-        // Transform each record
         const formatted = records.map((record) => {
             const hourlyData = record.hourlyCounts.map((count, index) => {
                 const hour = index.toString().padStart(2, "0") + ":00";

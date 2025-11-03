@@ -56,7 +56,7 @@ exports.unblockUserService = async (userId, unblockUserId) => {
     if (!isBlocked) throw createError(400, 'userNotBlocked', 'notFound');
 
     const result = await Block.deleteOne({ blocker: userId, blocked: unblockUserId });
-    console.log("result------------------",result)
+
     return result;
   } catch (error) {
     if (error.statusCode) throw error;

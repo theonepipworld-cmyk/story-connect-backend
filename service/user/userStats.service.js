@@ -35,7 +35,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             ]
         });
 
-
         if (blocked) {
             throw createError(403, 'userNotLikedorView', 'validation');
         }
@@ -64,7 +63,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
-
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
                 if (postOwner && postOwner.device_token) {
@@ -83,7 +81,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         }
                     }
                 }
-                
+
                 await Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -105,9 +103,10 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
             const comment = await Comment.findById(commentId).populate("userId", "username");
-            if (comment && comment.userId.toString() !== userId.toString()) {
+            console.log(userId)
+            if (comment && comment.userId?._id.toString() !== userId.toString()) {
                 const commentOwner = comment.userId;
-                if ( commentOwner && user.device_token) {
+                if (commentOwner && user.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
                             commentOwner.device_token,
@@ -123,7 +122,9 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     } catch (error) {
                         console.error(`Failed to send comment push to user ${commentOwner._id}:`, error.message);
                         if (error.code === 'messaging/invalid-argument' ||
-                            error.code === 'messaging/registration-token-not-registered') {
+                            error.code === 'messaging/registration-token-not-registered' ||
+                            error.code === 'messaging/invalid-registration-token' ||
+                            error.code === 'messaging/invalid-payload') {
                             await User.findByIdAndUpdate(commentOwner._id, { device_token: null });
                             console.log(`Cleared invalid device token for user ${commentOwner._id}`);
                         }
@@ -140,7 +141,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 io.emit("comment_liked", { postId, commentId, userId, username });
             }
         }
-
         await stats.save();
         return stats;
     } catch (error) {
