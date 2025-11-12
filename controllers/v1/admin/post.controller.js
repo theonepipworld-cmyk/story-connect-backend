@@ -48,7 +48,7 @@ exports.getHighlightedPosts = async (req, res) => {
     try {
         const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await adminPostService.getHighlightedPostsService();
         const data = { storyOfTheMonthPosts, videoOfTheMonthPosts };
-        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data));
+        return res.status(200).json(successResponse( 'fetchSuccessfully', data));
     } catch (err) {
         const statusCode = err.statusCode || err.status || 500;
         const category = err.category || 'error';
