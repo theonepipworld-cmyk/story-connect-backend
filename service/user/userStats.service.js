@@ -178,7 +178,6 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
         }
 
         let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
-
         resultArr = resultArr.filter(u => !blockedUserIds.some(bid => bid.toString() === u.userId.toString()));
 
         return resultArr;

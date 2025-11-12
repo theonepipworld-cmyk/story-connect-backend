@@ -211,7 +211,6 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
            
         }
 
-
         const user = await User.findById(otherUserId)
             .select("-passwordHash -resetPasswordExpires -resetPasswordToken")
             .lean();
