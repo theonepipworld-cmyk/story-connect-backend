@@ -29,6 +29,7 @@ const dashboardRoutes = require("./routes/v1/admin/dashboard.routes.js")
 const adminReportRoutes = require("./routes/v1/admin/report.routes.js")
 const adminSettingRoutes = require("./routes/v1/admin/setting.routes.js")
 const adminAuthRoutes = require("./routes/v1/admin/auth.routes.js")
+const commonPublicRoutes = require("./routes/v1/common/public.routes.js")
 
 require('./config/db');
 
@@ -74,6 +75,9 @@ app.use('/api/v1/admin/report',adminReportRoutes)
 app.use('/api/v1/admin/setting',adminSettingRoutes);
 app.use('/api/v1/admin/auth', adminAuthRoutes)
 
+
+//public routes
+app.use('/api/v1/post',commonPublicRoutes)
 
 
 // Global 404 handler (for unknown routes)
