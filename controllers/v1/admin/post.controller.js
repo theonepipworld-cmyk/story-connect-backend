@@ -28,7 +28,7 @@ exports.addStoryAndVideoOfMonth = async (req, res) => {
 exports.removeStoryAndVideoOfMonth = async (req, res) => {
     try {
         const lang = getLang(req);
-        const {postId, type } = req.body
+        const { postId, type } = req.body
         const result = await adminPostService.removeStoryAndVideoOfMonthService(postId, type);
         return res.status(200).json(successResponse(
             getMessage(lang, 'success', 'removeSuccessfully'),
@@ -44,3 +44,15 @@ exports.removeStoryAndVideoOfMonth = async (req, res) => {
     }
 }
 
+exports.getHighlightedPosts = async (req, res) => {
+    try {
+        const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await adminPostService.getHighlightedPostsService();
+        const data = { storyOfTheMonthPosts, videoOfTheMonthPosts };
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data));
+    } catch (err) {
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+};

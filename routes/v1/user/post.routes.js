@@ -16,7 +16,7 @@ router.post(
   createPostValidator,
   postController.createPost
 );
-router.get("/highlightedPost", postController.getHighlightedPosts);
+router.get("/highlightedPost",isAuthenticated, authorizeRoles('user', 'admin'), postController.getHighlightedPosts)
 router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
 router.get("/trending-hashtags", isAuthenticated, authorizeRoles('user', 'admin'), postController.getTrendingTags);
 router.put("/:id", isAuthenticated, authorizeRoles('user'), updatePostValidator, postController.updatePost);
