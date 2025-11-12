@@ -8,5 +8,4 @@ const { authorizeRoles } = require('../../../middlewares/requestValidations/user
 
 router.put("/add-highlighted-post", isAuthenticated, authorizeRoles('admin'), adminpostController.addStoryAndVideoOfMonth);
 router.put("/remove-highlighted-post", isAuthenticated, authorizeRoles('admin'), adminpostController.removeStoryAndVideoOfMonth);
-router.get("/highlightedPost", adminpostController.getHighlightedPosts)
 module.exports = router;
