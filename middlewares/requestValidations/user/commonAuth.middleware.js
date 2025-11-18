@@ -89,15 +89,6 @@ const resetPasswordValidator = [
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: newPassword`)
     .isLength({ min: 6 })
     .withMessage(resMessages.validation.passwordTooShort),
-
-  check("confirmPassword")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: confirmPassword`)
-    .custom((value, { req }) => {
-      if (value !== req.body.newPassword) {
-        throw new Error(resMessages.validation.passwordsDoNotMatch);
-      }
-      return true;
-    }),
   validate
 ];
 

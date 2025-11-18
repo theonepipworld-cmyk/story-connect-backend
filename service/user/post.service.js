@@ -749,8 +749,8 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     }
 
     const allFriends = await getAllFriends(user._id);
+    console.log("allFriends---------", allFriends)
     const allFriendIds = allFriends.map(f => f._id.toString());
-
     const pendingRequests = await Friend.find({
       status: enums.friend_Request_status.PENDING,
       $or: [
@@ -779,8 +779,6 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
     const allIds = joinedCommunities.map(c => c.communityId);
-
-
     const baseMatch = {
       $expr: {
         $not: {

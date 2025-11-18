@@ -68,13 +68,12 @@ exports.isCommunityExist = async (id) => {
 
 //handle like and dislike comments section
 exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) => {
-  console.log("stats-------------------",stats)
   let commentEntry = stats.commentLikes.find(
     cl => cl.commentId.toString() === commentId.toString()
   );
   console.log("Found commentEntry:", commentEntry)
   if (!commentEntry) {
-      commentEntry = {
+    commentEntry = {
       commentId,
       parentCommentId: parentCommentId || null,
       userIds: [userId],
@@ -367,22 +366,37 @@ exports.getAllFriends = async (id) => {
   try {
     const result = await Friend.find({
       status: enums.friend_Request_status.ACCEPTED,
-      $or: [
-        { requester: id },
-        { recipient: id }
-      ]
-    }).populate("requester", "username avatarUrl currentCountry bio")
+      $or: [{ requester: id }, { recipient: id }]
+    })
+      .populate("requester", "username avatarUrl currentCountry bio")
       .populate("recipient", "username avatarUrl currentCountry bio");
 
-    const friendsList = result.map(f =>
-      f.requester._id.toString() === id.toString() ? f.recipient : f.requester
-    );
+    const friendsList = result
+      .map(f => {
+        if (!f.requester || !f.recipient) return null; 
+
+        const friend =
+          f.requester._id.toString() === id.toString()
+            ? f.recipient
+            : f.requester;
+    
+        return {
+          _id: friend._id,
+          username: friend.username || "",
+          avatarUrl: friend.avatarUrl || "",
+          bio: friend.bio || "",
+          currentCountry: friend.currentCountry && friend.currentCountry.code
+            ? friend.currentCountry
+            : { code: "", name: "" }
+        };
+      })
+      .filter(Boolean); 
     return friendsList;
-  }
-  catch (error) {
+  } catch (error) {
     throw error;
   }
-}
+};
+
 
 exports.isConversationExist = async (id) => {
   try {
@@ -398,29 +412,42 @@ exports.isConversationExist = async (id) => {
 exports.incrementHourlyActiveUser = async () => {
   const now = new Date();
   const utcNow = new Date(now.toISOString());
-  const todayUtc = new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate()));
+  const todayUtc = new Date(Date.UTC(
+    utcNow.getUTCFullYear(),
+    utcNow.getUTCMonth(),
+    utcNow.getUTCDate()
+  ));
   const currentHourUtc = utcNow.getUTCHours();
-
-  console.log("Incrementing hourly active user for UTC hour:", currentHourUtc, "on UTC date:", todayUtc);
+  console.log("Incrementing hourly active user for UTC hour:", currentHourUtc);
 
   await DailyUserStats.updateOne(
     { date: todayUtc },
-    { $inc: { [`hourlyCounts.${currentHourUtc}`]: 1 } },
+    {
+      $inc: { [`hourlyCounts.${currentHourUtc}`]: 1 },
+      $setOnInsert: { hourlyCounts: Array(24).fill(0) }
+    },
     { upsert: true }
   );
 };
 
 exports.decrementHourlyActiveUser = async () => {
   const now = new Date();
-  const utcNow = new Date(now.toISOString()); 
-  const todayUtc = new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate()));
+  const utcNow = new Date(now.toISOString());
+  const todayUtc = new Date(Date.UTC(
+    utcNow.getUTCFullYear(),
+    utcNow.getUTCMonth(),
+    utcNow.getUTCDate()
+  ));
   const currentHourUtc = utcNow.getUTCHours();
 
-  console.log("Decrementing hourly active user for UTC hour:", currentHourUtc, "on UTC date:", todayUtc);
+  console.log("Decrementing hourly active user for UTC hour:", currentHourUtc);
 
   await DailyUserStats.updateOne(
     { date: todayUtc },
-    { $inc: { [`hourlyCounts.${currentHourUtc}`]: -1 } },
+    {
+      $inc: { [`hourlyCounts.${currentHourUtc}`]: -1 },
+      $setOnInsert: { hourlyCounts: Array(24).fill(0) }
+    },
     { upsert: true }
   );
 };

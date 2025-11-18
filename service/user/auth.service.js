@@ -97,7 +97,6 @@ exports.resetPassword = async ({ token, newPassword }) => {
     });
 
     if (!user) throw createError(400, 'invalidOrExpiredToken', 'validation');
-
     user.passwordHash = await hashPassword(newPassword);
     user.resetPasswordToken = "";
     user.resetPasswordExpires = "";

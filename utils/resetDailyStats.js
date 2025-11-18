@@ -5,6 +5,9 @@ const resetDailyStats = async () => {
   try {
     const today = new Date();
     const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    await DailyUserStats.deleteMany({
+      date: { $lt: currentDay }
+    });
 
     const result = await DailyUserStats.updateOne(
       { date: currentDay },
@@ -12,7 +15,7 @@ const resetDailyStats = async () => {
     );
 
     if (result.matchedCount === 0) {
-      console.log("No record found for today, creating new one...");
+      console.log("No record for today — creating new...");
       await DailyUserStats.create({
         date: currentDay,
         hourlyCounts: Array(24).fill(0),
@@ -24,7 +27,6 @@ const resetDailyStats = async () => {
     console.error(" Error resetting daily stats:", err);
   }
 };
-
 
 cron.schedule("0 0 * * *", async () => {
   console.log("Running daily stats reset cron...");
