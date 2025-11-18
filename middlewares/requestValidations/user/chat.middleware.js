@@ -27,7 +27,7 @@ exports.sendMessageValidator = [
 
     body("type")
         .optional()
-        .isIn(["text", "image", "video", "file"])
+        .isIn(["text", "image", "video", "file","post"])
         .withMessage(`${resMessages.validation.invalidType}: type`),
 
     body().custom((value, { req }) => {

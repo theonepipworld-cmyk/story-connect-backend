@@ -18,14 +18,11 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
             throw createError(400, 'missingFields', 'validation');
         }
+
         const onlineUsers = getOnlineUsers();
-
         const sender = await isUserExist(senderId);
-        if (!sender) throw createError(404, 'invalidSender', 'validation');
-
         const receiver = await isUserExist(receiverId);
-        if (!receiver) throw createError(404, 'invalidReceiver', 'validation');
-
+        if (!sender || !receiver) throw createError(404, 'invalidUser', 'validation');
         if (senderId.toString() === receiverId.toString()) throw createError(400, 'cannotMessageYourself', 'validation');
 
         const isBlocked = await Block.findOne({ blocker: receiverId, blocked: senderId });
@@ -35,9 +32,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
 
+        let conversation = await Conversation.findOne({
+            participants: { $all: [senderId, receiverId] }
+        });
 
-
-        let conversation = await Conversation.findOne({ participants: { $all: [senderId, receiverId] } });
         if (!conversation) {
             conversation = new Conversation({
                 participants: [senderId, receiverId],
@@ -49,40 +47,48 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
+        let messages = [];
 
-        const messages = [];
+        if (messageText && Array.isArray(files) && files.length > 0) {
 
-        // TEXT MESSAGE
-        if (messageText) {
-            const textMessage = new Message({
+            const uploadedFiles = [];
+
+            for (const file of files) {
+                const uploaded = await uploadFileToS3(file, `messages/${conversation._id}`);
+                uploadedFiles.push({
+                    url: uploaded.Location,
+                    mimeType: file.mimetype
+                });
+            }
+
+            const postMessage = new Message({
                 conversationId: conversation._id,
                 sender: senderId,
                 text: messageText,
-                type: "text",
+                type: "post",
+                files: uploadedFiles,
                 status: messageStatus
             });
-            const savedTextMessage = await textMessage.save();
-            messages.push(savedTextMessage);
+
+            const savedPostMessage = await postMessage.save();
+            messages.push(savedPostMessage);
 
             const io = getIo();
-            io.emit("newMessage", savedTextMessage);
+            io.emit("newMessage", savedPostMessage);
 
-
-
+          
             conversation.lastMessage = {
-                _id: savedTextMessage._id,
-                text: savedTextMessage.text,
-                type: savedTextMessage.type,
-                status: savedTextMessage.status,
-                sender: savedTextMessage.sender
+                _id: savedPostMessage._id,
+                text: savedPostMessage.text,
+                type: savedPostMessage.type,
+                status: savedPostMessage.status,
+                sender: savedPostMessage.sender
             };
 
-            let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
-            if (unseenEntry) unseenEntry.count += 1;
-            else conversation.unseenCount.push({ userId: receiverId, count: 1 });
+            let unseen = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
+            unseen ? unseen.count++ : conversation.unseenCount.push({ userId: receiverId, count: 1 });
 
-            console.log('Sending FCM to token:', receiver.device_token);
-
+  
             if (receiver.device_token) {
                 try {
                     await pushNotification.androidPushNotification(
@@ -92,87 +98,138 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                         {
                             conversationId: conversation._id.toString(),
                             senderId: senderId.toString(),
-                            senderName:sender.username.toString(),
-                            senderImage:sender.avatarUrl.toString(),
-                            lastMessageId: savedTextMessage._id.toString()
+                            senderName: sender.username?.toString(),
+                            senderImage: sender.avatarUrl?.toString(),
+                            type: "post"
                         }
                     );
                 } catch (error) {
-                    console.error(`Failed to send push to user ${receiver._id}:`, error.message);
                     if (error.code === 'messaging/invalid-argument' ||
                         error.code === 'messaging/registration-token-not-registered') {
-                        await User.update(
-                            { device_token: null },
-                            { where: { id: receiver._id } }
-                        );
-                        console.log(`Cleared invalid device token for user ${receiver._id}`);
+                        await User.update({ device_token: null }, { where: { id: receiver._id } });
+                    }
+                }
+            }
+
+            conversation.updatedAt = new Date();
+            await conversation.save();
+
+            return messages;
+        }
+
+     
+        if (messageText && (!files || files.length === 0)) {
+            const textMessage = new Message({
+                conversationId: conversation._id,
+                sender: senderId,
+                text: messageText,
+                type: "text",
+                status: messageStatus
+            });
+
+            const savedTextMessage = await textMessage.save();
+            messages.push(savedTextMessage);
+
+            const io = getIo();
+            io.emit("newMessage", savedTextMessage);
+
+            conversation.lastMessage = {
+                _id: savedTextMessage._id,
+                text: savedTextMessage.text,
+                type: savedTextMessage.type,
+                status: savedTextMessage.status,
+                sender: savedTextMessage.sender
+            };
+
+            let unseen = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
+            unseen ? unseen.count++ : conversation.unseenCount.push({ userId: receiverId, count: 1 });
+
+            if (receiver.device_token) {
+                try {
+                    await pushNotification.androidPushNotification(
+                        receiver.device_token,
+                        messageText,
+                        "message",
+                        {
+                            conversationId: conversation._id.toString(),
+                            senderId: senderId.toString()
+                        }
+                    );
+                } catch (error) {
+                    if (error.code === 'messaging/invalid-argument' ||
+                        error.code === 'messaging/registration-token-not-registered') {
+                        await User.update({ device_token: null }, { where: { id: receiver._id } });
                     }
                 }
             }
         }
 
-        // FILES
-        files = Array.isArray(files) ? files : [];
-        for (const file of files) {
-            const uploadedFile = await uploadFileToS3(file, `messages/${conversation._id}`);
-            const fileType = file.mimetype.startsWith("image/") ? "image" : file.mimetype.startsWith("video/") ? "video" : "file";
+        if ((!messageText || messageText.trim() === "") &&
+            Array.isArray(files) && files.length > 0) {
 
-            const fileMessage = new Message({
-                conversationId: conversation._id,
-                sender: senderId,
-                text: uploadedFile.Location,
-                type: fileType,
-                status: messageStatus
-            });
-            const savedFileMessage = await fileMessage.save();
-            messages.push(savedFileMessage);
+            for (const file of files) {
+                const uploaded = await uploadFileToS3(file, `messages/${conversation._id}`);
+                const fileType = file.mimetype.startsWith("image/")
+                    ? "image"
+                    : file.mimetype.startsWith("video/") ? "video" : "file";
 
-            const io = getIo();
-            io.emit("newMessage", savedFileMessage);
+                const fileMessage = new Message({
+                    conversationId: conversation._id,
+                    sender: senderId,
+                    text: uploaded.Location,
+                    type: fileType,
+                    status: messageStatus
+                });
 
-            conversation.lastMessage = {
-                _id: savedFileMessage._id,
-                text: savedFileMessage.text,
-                type: savedFileMessage.type,
-                status: savedFileMessage.status,
-                sender: savedFileMessage.sender
-            };
+                const savedFileMessage = await fileMessage.save();
+                messages.push(savedFileMessage);
 
-            let unseenEntry = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
-            if (unseenEntry) unseenEntry.count += 1;
-            else conversation.unseenCount.push({ userId: receiverId, count: 1 });
+                const io = getIo();
+                io.emit("newMessage", savedFileMessage);
 
-            if (receiver.device_token) {
-                try {
-                    await pushNotification.androidPushNotification(receiver.device_token, `Sent a ${fileType}`, "message", {
-                        conversationId: conversation._id.toString(),
-                        senderId: senderId.toString(),
-                        fileType
-                    });
-                }
-                catch (error) {
-                    console.error(`Failed to send push to user ${receiver._id}:`, error.message);
-                    if (error.code === 'messaging/invalid-argument' ||
-                        error.code === 'messaging/registration-token-not-registered') {
-                        await User.update(
-                            { device_token: null },
-                            { where: { id: receiver._id } }
+                conversation.lastMessage = {
+                    _id: savedFileMessage._id,
+                    text: savedFileMessage.text,
+                    type: savedFileMessage.type,
+                    status: savedFileMessage.status,
+                    sender: savedFileMessage.sender
+                };
+
+                let unseen = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
+                unseen ? unseen.count++ : conversation.unseenCount.push({ userId: receiverId, count: 1 });
+
+                if (receiver.device_token) {
+                    try {
+                        await pushNotification.androidPushNotification(
+                            receiver.device_token,
+                            `Sent a ${fileType}`,
+                            "message",
+                            {
+                                conversationId: conversation._id.toString(),
+                                senderId: senderId.toString()
+                            }
                         );
-                        console.log(`Cleared invalid device token for user ${receiver._id}`);
+                    } catch (error) {
+                        if (error.code === 'messaging/invalid-argument' ||
+                            error.code === 'messaging/registration-token-not-registered') {
+                            await User.update({ device_token: null }, { where: { id: receiver._id } });
+                        }
                     }
-
                 }
             }
         }
 
         conversation.updatedAt = new Date();
         await conversation.save();
+
         return messages;
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
+
 
 
 // GET USER CONVERSATIONS
