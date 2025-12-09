@@ -42,7 +42,6 @@ exports.forgotPassword = async ({ email }) => {
         await user.save();
 
         const resetLink = `${ADMIN_RESET_PASS_LINK}/${resetToken}`;
-
         await sendEmail({
             to: email,
             subject: 'Password Reset Request',

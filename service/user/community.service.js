@@ -282,7 +282,7 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
 
         const blockedUserIds = (Blocked || []).map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
-        );
+        ).filter(Boolean);
 
         const result = await Community.aggregate([
             { $match: { userId: { $nin: blockedUserIds } } },
@@ -334,7 +334,7 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                                 $expr: {
                                     $and: [
                                         { $eq: ["$communityId", "$$communityIdObj"] },
-                                        { $not: { $in: ["$userId", "$$blockedIds"] } } 
+                                        { $not: { $in: ["$userId", "$$blockedIds"] } }
                                     ]
                                 }
                             }
@@ -522,14 +522,24 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             status: enums.friend_Request_status.PENDING
         });
 
-        const allPendingFriendIds = new Set(loginUserSendedRequest.map(f => f.recipient.toString()));
-        const loginUserFriendIds = new Set(loginUserFriends.map(f => f._id.toString()));
+        const loginUserFriendIds = new Set(
+            loginUserFriends
+                .map(f => f?._id ? f._id.toString() : null)
+                .filter(Boolean)
+        );
 
+        const allPendingFriendIds = new Set(
+            loginUserSendedRequest
+                .map(f => f?.recipient ? f.recipient.toString() : null)
+                .filter(Boolean)
+        );
 
-        const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
+        const blocked = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        }) || [];
         const blockedUserIds = (blocked || []).map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
-        );
+        ).filter(Boolean)
 
         const offset = (page - 1) * limit;
 
@@ -575,11 +585,20 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             }
         ]);
 
-        const data = (result[0]?.data || []).map(f => ({
-            ...f,
-            isThisUserFriend: loginUserFriendIds.has(f.userId.toString()),
-            isReqPending: allPendingFriendIds.has(f.userId.toString())
-        }));
+        const safeData = Array.isArray(result[0]?.data)
+            ? result[0].data
+            : [];
+
+        const data = safeData.map(f => {
+            const uid = f?.userId ? f.userId.toString() : null;
+
+            return {
+                ...f,
+                isThisUserFriend: uid ? loginUserFriendIds.has(uid) : false,
+                isReqPending: uid ? allPendingFriendIds.has(uid) : false
+            };
+        });
+
 
         const totalCount = result[0]?.totalCount[0]?.count || 0;
 

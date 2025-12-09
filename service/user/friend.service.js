@@ -22,7 +22,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         }
         const user = await isUserExist(userId);
         const recipient = await isUserExist(friendReqId);
-        console.log(recipient.device_token)
         if (!recipient) {
             throw createError(400, 'ReqUser', 'notFound');
         }
@@ -234,6 +233,9 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
             throw createError(400, 'userNotFound', 'notFound');
         }
 
+        console.log("loginUserId:", loginUserId);
+        console.log("userId:", userId);
+
         const loginUser = await isUserExist(loginUserId)
         if (!loginUser) {
             throw createError(400, 'userNotFound', 'notFound');
@@ -261,16 +263,32 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
         const blockedUsers = await Block.find({
             $or: [{ blocker: loginUser._id }, { blocked: loginUser._id }]
         });
-        const blockedIds = blockedUsers.map(b =>
-            b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
-        );
+
+        const blockedIds = blockedUsers.map(b => {
+            if (b.blocker.toString() === loginUserId.toString()) {
+                return b.blocked.toString();
+            }
+            if (b.blocked.toString() === loginUserId.toString()) {
+                return b.blocker.toString();
+            }
+            return null;
+        }).filter(Boolean);
+
+
         const filteredFriends = allUserFriends
-            .filter((f) => !blockedIds.includes(f._id.toString()))
-            .map((f) => ({
-                ...f.toObject(),
-                isThisUserFriend: allLoginUserFriendsId.has(f._id.toString()),
-                isPendingReq: loginUserSenderIds.has(f._id.toString())
-            }));
+            .filter((f) => {
+                if (!f || !f._id) return false;
+                const id = f._id.toString();
+                return !blockedIds.includes(id);
+            })
+            .map((f) => {
+                const id = f._id?.toString() ?? null;
+                return {
+                    ...(typeof f.toObject === "function" ? f.toObject() : f),
+                    isThisUserFriend: id ? allLoginUserFriendsId.has(id) : false,
+                    isPendingReq: id ? loginUserSenderIds.has(id) : false
+                };
+            });
 
         return {
             allFriends: filteredFriends,

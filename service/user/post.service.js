@@ -71,18 +71,18 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
 
     const pendingUserIds = pendingRequests.map(req =>
       req.requester._id.toString() === user._id.toString() ? req.recipient : req.requester
-    );
+    ).filter(Boolean);
 
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
-    const allCommunityIds = joinedCommunities.map(c => c.communityId.toString());
+    const allCommunityIds = joinedCommunities.map(c => c.communityId.toString()).filter(Boolean);
 
     const blocked = await Block.find({ $or: [{ blocked: userId }, { blocker: userId }] });
     const blockedUserIds = blocked.map(b =>
       new mongoose.Types.ObjectId(
         b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
       )
-    );
+    ).filter(Boolean);
 
     // const baseMatch = {
     //   userId: { $nin: [...blockedUserIds, new mongoose.Types.ObjectId(userId)] }
@@ -570,7 +570,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
 
-    const allCommunityIds = joinedCommunities.map(c => c.communityId);
+    const allCommunityIds = joinedCommunities.map(c => c.communityId).filter(Boolean);
 
     const skip = (page - 1) * limit;
     let matchStage = {};
@@ -749,8 +749,9 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     }
 
     const allFriends = await getAllFriends(user._id);
-    console.log("allFriends---------", allFriends)
-    const allFriendIds = allFriends.map(f => f._id.toString());
+    const allFriendIds = allFriends
+      .map(f => f?._id?.toString())
+      .filter(Boolean);
     const pendingRequests = await Friend.find({
       status: enums.friend_Request_status.PENDING,
       $or: [
@@ -761,24 +762,29 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
 
 
-    const pendingUserIds = pendingRequests.map(req =>
-      req.requester._id.toString() === user._id.toString() ? req.recipient : req.requester
-    );
+    const pendingUserIds = pendingRequests
+      .map(req => {
+        if (!req || !req.requester || !req.recipient) return null;
 
+        return req.requester._id.toString() === user._id.toString()
+          ? req.recipient?._id?.toString()
+          : req.requester?._id?.toString();
+      })
+      
 
     const blocked = await Block.find({
       $or: [{ blocked: userId }, { blocker: userId }]
     });
 
 
-    const blockedUserIds = blocked.map(b =>
-      new mongoose.Types.ObjectId(
-        b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
-      )
-    );
+    const blockedUserIds = blocked
+      .map(b => {
+        const id = b.blocker.toString() === userId.toString() ? b.blocked : b.blocker;
+        return id ? new mongoose.Types.ObjectId(id) : null;
+      })
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
-    const allIds = joinedCommunities.map(c => c.communityId);
+    const allIds = joinedCommunities.map(c => c.communityId)
     const baseMatch = {
       $expr: {
         $not: {
@@ -1006,7 +1012,7 @@ exports.getHighlightedPostsService = async (userId) => {
 
       const blockedUserIds = blockedRelations.map(b =>
         b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
-      );
+      ).filter(Boolean);
 
       if (blockedUserIds.length > 0) {
         matchStage = {

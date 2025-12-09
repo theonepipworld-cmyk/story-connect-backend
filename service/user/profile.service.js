@@ -105,6 +105,7 @@ exports.updateProfile = async (userId, payload, files) => {
         }
     }
 
+    
     if (payload.entryYear) patch.entryYear = payload.entryYear;
     if (payload.phone) patch.phone = payload.phone;
     if (payload.dateOfBirth) patch.dateOfBirth = payload.dateOfBirth;

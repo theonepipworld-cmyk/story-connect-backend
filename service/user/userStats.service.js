@@ -164,7 +164,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
 
         const blockedUserIds = (blocked || []).map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
-        );
+        ).filter(Boolean);
 
         let stats;
         if (type === userActivityStats.userStats.Likes) {
