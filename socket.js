@@ -43,7 +43,6 @@ function initIo(server) {
       try {
         if (data?.userId) {
           onlineUsers.delete(data.userId.toString());
-
           const updatedUser = await User.findByIdAndUpdate(
             data.userId,
             { $set: { isOnline: false, device_token: null } },
