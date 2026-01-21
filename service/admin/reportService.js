@@ -16,9 +16,6 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
         const matchStage = {};
         if (status) matchStage.status = status;
         if (severity) matchStage.severity = severity;
-        if (search) {
-            matchStage.description = { $regex: search, $options: "i" };
-        }
 
         const totalReportsAgg = await Report.aggregate([
             { $match: matchStage }
@@ -37,6 +34,7 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
                 }
             },
             { $unwind: "$categoryDetails" },
+
             {
                 $lookup: {
                     from: "users",
@@ -46,7 +44,6 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
                 }
             },
             { $unwind: { path: "$reportedByDetails", preserveNullAndEmptyArrays: true } },
-
 
             {
                 $lookup: {
@@ -58,11 +55,23 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
             },
             { $unwind: { path: "$reportedToDetails", preserveNullAndEmptyArrays: true } },
 
+         
+            ...(search
+                ? [{
+                    $match: {
+                        $or: [
+                            { description: { $regex: search, $options: "i" } },
+                            { "categoryDetails.name": { $regex: search, $options: "i" } },
+                            { "reportedByDetails.username": { $regex: search, $options: "i" } },
+                            { "reportedToDetails.username": { $regex: search, $options: "i" } }
+                        ]
+                    }
+                }]
+                : []),
 
             { $sort: { createdAt: -1 } },
-
             { $skip: skip },
-            { $limit: (pageSize) },
+            { $limit: pageSize },
 
             {
                 $project: {
@@ -82,7 +91,7 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
                         _id: "$reportedToDetails._id",
                         name: "$reportedToDetails.username",
                         email: "$reportedToDetails.email",
-                        profilePicture: "$reportedByDetails.avatarUrl"
+                        profilePicture: "$reportedToDetails.avatarUrl"
                     }
                 }
             }
@@ -306,7 +315,7 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(404, 'reportNotFound', 'notFound');
         }
 
-       
+
         if (
             report.status === enums.reportStatus.RESOLVED ||
             report.status === enums.reportStatus.DISMISSED
@@ -321,7 +330,7 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(400, 'reasonRequiredForDismissal', 'validation');
         }
         const reportedUser = await User.findById(report.reportedUser);
-      
+
         if (!reportedUser) {
             throw createError(404, 'reportedUserNotFound', 'notFound');
         }
