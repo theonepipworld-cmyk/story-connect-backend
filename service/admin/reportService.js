@@ -5,6 +5,7 @@ const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommun
 const resMessages = require("../../constants/resMessages.constants.js")
 const { uploadFileToS3, deleteFileFromS3 } = require("../../utils/s3.util.js")
 const ReportCategory = require("../../models/reportCategories.js")
+const User = require("../../models/user.model.js")
 const enums = require("../../constants/enum.constants.js")
 
 
@@ -305,7 +306,7 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(404, 'reportNotFound', 'notFound');
         }
 
-
+       
         if (
             report.status === enums.reportStatus.RESOLVED ||
             report.status === enums.reportStatus.DISMISSED
@@ -320,9 +321,12 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(400, 'reasonRequiredForDismissal', 'validation');
         }
         const reportedUser = await User.findById(report.reportedUser);
+      
         if (!reportedUser) {
             throw createError(404, 'reportedUserNotFound', 'notFound');
         }
+
+
 
         reportedUser.accountState = action;
         reportedUser.dateOfSuspend =
