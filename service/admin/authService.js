@@ -61,7 +61,7 @@ exports.resetPassword = async ( token, newPassword ) => {
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
-            resetPasswordExpires: { $gt: Date.now() }
+            resetPasswordExpires: { $gte: Date.now() }
         });
                  
         if (!user) throw createError(400, 'invalidOrExpiredToken', 'validation');
