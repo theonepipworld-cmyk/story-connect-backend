@@ -16,7 +16,7 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
         const matchStage = {};
         if (status) matchStage.status = status;
         if (severity) matchStage.severity = severity;
-
+        search = search?.trim();
 
         const totalReportsAgg = await Report.aggregate([
             { $match: matchStage }
@@ -56,7 +56,7 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
             },
             { $unwind: { path: "$reportedToDetails", preserveNullAndEmptyArrays: true } },
 
-         
+
             ...(search
                 ? [{
                     $match: {

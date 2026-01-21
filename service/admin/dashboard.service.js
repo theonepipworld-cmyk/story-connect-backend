@@ -47,7 +47,9 @@ exports.dashboardDataService = async (userId) => {
 
 
 const platFormOverview = async () => {
-    const totalUser = await User.countDocuments();
+    const totalUser = await User.countDocuments({
+        status: { $ne: "deleted" }
+    });
     const totalActiveUser = await User.countDocuments({ isOnline: true });
     const totalCommunities = await Community.countDocuments();
     const totalPosts = await Post.countDocuments();
@@ -172,6 +174,62 @@ const dailyUserPattern = async () => {
     }
 };
 
+
+exports.getAllUserService = async (
+    pageNo = 1,
+    pageSize = 10,
+    search,
+    accountState,
+    status
+) => {
+    try {
+        const query = { status: { $ne: 'deleted' } };
+        if (status) {
+            query.status = status;
+        }
+
+        if (accountState) {
+            query.accountState = accountState;
+        }
+
+
+        if (search) {
+            search = search.trim();
+            query.$or = [
+                { username: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const skip = (pageNo - 1) * pageSize;
+
+        const [users, totalUsers] = await Promise.all([
+            User.find(query, {
+                passwordHash: 0,
+                resetPasswordToken: 0,
+                resetPasswordExpires: 0
+            })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(pageSize),
+
+            User.countDocuments(query)
+        ]);
+
+        return {
+            pagination: {
+                totalUsers,
+                totalPages: Math.ceil(totalUsers / pageSize),
+                currentPage: Number(pageNo),
+                limit: Number(pageSize)
+            },
+            data: users
+        };
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};
 
 
 
