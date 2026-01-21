@@ -102,7 +102,7 @@ const io = initIo(server);
 
 
 const PORT = secretVariables.port;
-server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+ server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
 module.exports = { app, server };
 
 
