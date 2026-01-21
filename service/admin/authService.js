@@ -56,19 +56,26 @@ exports.forgotPassword = async ({ email }) => {
     }
 };
 
-exports.resetPassword = async ( token, newPassword ) => {
+exports.resetPassword = async ({ token, newPassword }) => {
     try {
-        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(token)
+            .digest('hex');
+
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
             resetPasswordExpires: { $gte: Date.now() }
         });
-                 
-        if (!user) throw createError(400, 'invalidOrExpiredToken', 'validation');
+
+        if (!user) {
+            throw createError(400, 'invalidOrExpiredToken', 'validation');
+        }
 
         user.passwordHash = await hashPassword(newPassword);
-        user.resetPasswordToken = "";
-        user.resetPasswordExpires = "";
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+
         await user.save();
 
         return { message: 'Password reset successful.' };
@@ -77,3 +84,4 @@ exports.resetPassword = async ( token, newPassword ) => {
         throw createError(500, 'serverError', 'error');
     }
 };
+
