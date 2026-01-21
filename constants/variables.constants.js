@@ -9,6 +9,6 @@ module.exports = {
         CommentReplyLike: "commentReplyLike",
         Views: "views"
     },
-    ADMIN_DEFAULT_EMAIL:"rahul12@yopmail.com",
-    ADMIN_DEFAULT_PASSWORD:"Rahul@1234"
+    ADMIN_DEFAULT_EMAIL:"theonepipworld@gmail.com",
+    ADMIN_DEFAULT_PASSWORD:"Test@1234"
 }

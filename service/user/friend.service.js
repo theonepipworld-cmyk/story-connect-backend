@@ -436,8 +436,6 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
 
 
         suggestionIds = Array.from(suggestionIds);
-
-
         for (let i = suggestionIds.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [suggestionIds[i], suggestionIds[j]] = [suggestionIds[j], suggestionIds[i]];
@@ -448,8 +446,6 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         const totalPages = Math.ceil(total / limit);
         const skip = (page - 1) * limit;
         const paginatedSuggestions = suggestionIds.slice(skip, skip + limit);
-
-
         const suggestions = await User.find(
             { _id: { $in: paginatedSuggestions } },
             "username email avatarUrl currentCountry bio profession"
