@@ -41,7 +41,7 @@ exports.forgotPassword = async ({ email }) => {
         user.resetPasswordExpires = Date.now() + 1000 * 60 * 15;
         await user.save();
 
-        const resetLink = `${ADMIN_RESET_PASS_LINK}/reset-password?token=${token}`
+        const resetLink = `${ADMIN_RESET_PASS_LINK}/api/v1/auth/reset-password?token=${token}`
         await sendEmail({
             to: email,
             subject: 'Password Reset Request',
