@@ -50,7 +50,7 @@ const platFormOverview = async () => {
     const totalUser = await User.countDocuments({
         status: { $ne: "deleted" }
     });
-    const totalActiveUser = await User.countDocuments({ status: active });
+    const totalActiveUser = await User.countDocuments({ status: "active" });
     const totalCommunities = await Community.countDocuments();
     const totalPosts = await Post.countDocuments();
     const totalReportUserToday = await Report.countDocuments({
