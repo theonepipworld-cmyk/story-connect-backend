@@ -7,7 +7,7 @@ const { sendEmail } = require('../../utils/email.util.js');
 const { ADMIN_RESET_PASS_LINK } = require("../../constants/variables.constants.js");
 
 
-exports.login = async({ email, password }) => {
+exports.login = async ({ email, password }) => {
     try {
         const user = await checkFieldExists('email', email);
         if (!user) throw createError(404, 'emailNotFound', 'notFound');
@@ -38,10 +38,10 @@ exports.forgotPassword = async ({ email }) => {
         const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
         user.resetPasswordToken = hashedToken;
-        user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; 
+        user.resetPasswordExpires = Date.now() + 1000 * 60 * 15;
         await user.save();
 
-        const resetLink = `${ADMIN_RESET_PASS_LINK}/${resetToken}`;
+        const resetLink = `${ADMIN_RESET_PASS_LINK}/reset-password?token=${token}`
         await sendEmail({
             to: email,
             subject: 'Password Reset Request',
