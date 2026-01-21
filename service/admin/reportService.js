@@ -17,6 +17,7 @@ exports.allReportUser = async (pageNo = 1, pageSize = 10, status, severity, sear
         if (status) matchStage.status = status;
         if (severity) matchStage.severity = severity;
 
+
         const totalReportsAgg = await Report.aggregate([
             { $match: matchStage }
         ]);
