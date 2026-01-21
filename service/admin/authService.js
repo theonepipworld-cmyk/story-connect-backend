@@ -56,14 +56,14 @@ exports.forgotPassword = async ({ email }) => {
     }
 };
 
-exports.resetPassword = async ({ token, newPassword }) => {
+exports.resetPassword = async (token, {newPassword}) => {
     try {
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
             resetPasswordExpires: { $gt: Date.now() }
         });
-
+                 
         if (!user) throw createError(400, 'invalidOrExpiredToken', 'validation');
 
         user.passwordHash = await hashPassword(newPassword);

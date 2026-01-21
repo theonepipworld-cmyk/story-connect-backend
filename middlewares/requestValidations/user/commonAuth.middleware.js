@@ -82,9 +82,6 @@ const forgotPasswordValidator = [
 
 
 const resetPasswordValidator = [
-  check("token")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: token`),
-
   check("newPassword")
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: newPassword`)
     .isLength({ min: 6 })
