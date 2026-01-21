@@ -29,15 +29,15 @@ exports.getAllUser = async (req, res) => {
         const lang = getLang(req);
 
         const {
-            pageNo = 1,
-            pageSize = 10,
+            page = 1,
+            limit = 10,
             search,
             status,    
         } = req.query;
 
         const result = await dashboardService.getAllUserService(
-            pageNo,
-            pageSize,
+            page,
+            limit,
             search,
             status
         );

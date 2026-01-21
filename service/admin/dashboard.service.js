@@ -194,7 +194,6 @@ exports.getAllUserService = async (
         }
 
         const skip = (pageNo - 1) * pageSize;
-
         const [users, totalUsers] = await Promise.all([
             User.find(query, {
                 passwordHash: 0,
