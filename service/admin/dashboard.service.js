@@ -179,7 +179,6 @@ exports.getAllUserService = async (
     pageNo = 1,
     pageSize = 10,
     search,
-    accountState,
     status
 ) => {
     try {
@@ -187,11 +186,6 @@ exports.getAllUserService = async (
         if (status) {
             query.status = status;
         }
-
-        if (accountState) {
-            query.accountState = accountState;
-        }
-
 
         if (search) {
             search = search.trim();

@@ -39,7 +39,6 @@ exports.getAllUser = async (req, res) => {
             pageNo,
             pageSize,
             search,
-            accountState,
             status
         );
 
