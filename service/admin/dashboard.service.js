@@ -222,6 +222,42 @@ exports.getAllUserService = async (
     }
 };
 
+exports.updateStatusOfUser = async (loginUserId, action, userId) => {
+    const VALID_ACTIONS = {
+        active: 'active',
+        inactive: 'inactive',
+        delete: null,
+    };
+
+    if (!(action in VALID_ACTIONS)) {
+        throw createError(400, "invalidUserAction", "validation");
+    }
+
+    try {
+        const [loginUser, targetUser] = await Promise.all([
+            isUserExist(loginUserId),
+            User.findById(userId),
+        ]);
+
+        if (!loginUser) throw createError(400, "userNotFound", "notFound");
+        if (!targetUser) throw createError(400, "userNotFound", "notFound");
+        if (loginUser.role !== 'admin') throw createError(403, "notAuthorized", "validation");
+
+        if (action === 'delete') {
+            await User.findByIdAndDelete(userId);
+            return { success: true, message: "User permanently deleted" };
+        }
+
+        targetUser.status = VALID_ACTIONS[action];
+        await targetUser.save();
+        return { success: true, message: `User marked as ${action}` };
+
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};
+
 
 
 

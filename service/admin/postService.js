@@ -101,7 +101,7 @@ exports.getHighlightedPostsService = async () => {
                     totalViews: {
                         $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] }
                     },
-                    isPostLikedByMe: false 
+                    isPostLikedByMe: false
                 }
             },
             {
@@ -159,3 +159,35 @@ exports.getHighlightedPostsService = async () => {
     }
 };
 
+
+exports.updateStatusOfCommunity = async (loginUserId, action, communityId) => {
+    const VALID_ACTIONS = new Set(['active', 'inactive', 'delete']);
+
+    if (!VALID_ACTIONS.has(action)) {
+        throw createError(400, "invalidCommunityAction", "validation");
+    }
+
+    try {
+        const [loginUser, targetCommunity] = await Promise.all([
+            isUserExist(loginUserId),
+            Community.findById(communityId),
+        ]);
+
+        if (!loginUser) throw createError(400, "userNotFound", "notFound");
+        if (!targetCommunity) throw createError(400, "communityNotFound", "notFound");
+        if (loginUser.role !== 'admin') throw createError(403, "notAuthorized", "validation");
+
+        if (action === 'delete') {
+            await Community.findByIdAndDelete(communityId);
+            return { success: true, message: "Community permanently deleted" };
+        }
+
+        targetCommunity.isActive = action === 'active';
+        await targetCommunity.save();
+        return { success: true, message: `Community marked as ${action}` };
+
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};

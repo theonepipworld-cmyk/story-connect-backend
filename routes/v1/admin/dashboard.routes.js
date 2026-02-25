@@ -7,6 +7,7 @@ const { authorizeRoles } = require('../../../middlewares/requestValidations/user
 
 
 router.get("/dashboard-data", isAuthenticated, authorizeRoles('admin'), adminDashboardController.getDashBoardData);
-router.get("/all-user",isAuthenticated, authorizeRoles('admin'), adminDashboardController.getAllUser)
+router.get("/all-user", isAuthenticated, authorizeRoles('admin'), adminDashboardController.getAllUser)
+router.patch('/user/status/:userId/:action', isAuthenticated,authorizeRoles('admin'), adminDashboardController.updateStatusOfUser);
 
 module.exports = router;

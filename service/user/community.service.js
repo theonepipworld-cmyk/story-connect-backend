@@ -273,7 +273,6 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
         if (!user) {
             throw createError(400, 'userNotFound', 'notFound');
         }
-
         const offset = (page - 1) * limit;
 
         const Blocked = await Block.find({

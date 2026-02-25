@@ -56,3 +56,24 @@ exports.getHighlightedPosts = async (req, res) => {
         return res.status(statusCode).json(errorResponse(finalMessage));
     }
 };
+
+exports.actionOnCommunityController = async (req, res) => {
+    try {
+        const lang = getLang(req);
+        const { action, communityId } = req.params;
+        const loginUserId = req.user.id;
+        const result = await adminPostService.updateStatusOfCommunity(loginUserId, action, communityId);
+        return res.status(200).json(
+            successResponse(
+                getMessage(lang, 'success', 'updatedSuccessfully'),
+                result
+            )
+        );
+    }
+    catch (err) {
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+}

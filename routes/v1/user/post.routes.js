@@ -11,12 +11,12 @@ router.get("/user-feed", isAuthenticated, authorizeRoles('user'), postController
 router.post(
   "/",
   isAuthenticated,
-  authorizeRoles('user'),
+  authorizeRoles('user', 'admin'),
   mediaUploadHandler,
   createPostValidator,
   postController.createPost
 );
-router.get("/highlightedPost",isAuthenticated, authorizeRoles('user', 'admin'), postController.getHighlightedPosts)
+router.get("/highlightedPost", isAuthenticated, authorizeRoles('user', 'admin'), postController.getHighlightedPosts)
 router.get("/profile/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostsOfProfile);
 router.get("/trending-hashtags", isAuthenticated, authorizeRoles('user', 'admin'), postController.getTrendingTags);
 router.put("/:id", isAuthenticated, authorizeRoles('user'), updatePostValidator, postController.updatePost);

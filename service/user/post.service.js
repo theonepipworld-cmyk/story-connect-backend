@@ -17,35 +17,31 @@ const Friend = require("../../models/friends.model.js")
 exports.createPost = async (data, cleanHashTags) => {
   try {
     if (data.postType === "community") {
-      if (!data.communityId) {
-        throw createError(400, 'communityNotFound', 'notFound');
-      }
+      if (!data.communityId) throw createError(400, "communityNotFound", "notFound");
+
       const communityExists = await isCommunityExist(data.communityId);
-      if (!communityExists) {
-        throw createError(400, 'communityNotFound', 'notFound');
-      }
-    }
-    const post = new Post(data);
-    //update hashTagColection
-    if (cleanHashTags?.length > 0) {
-      await Promise.all(
-        cleanHashTags.map(async (tag) => {
-          await HashTag.findOneAndUpdate(
-            { tag: tag },
-            {
-              $inc: { usageCount: 1 },
-              $addToSet: { posts: post._id }
-            },
-            { upsert: true, new: true }
-          );
-        })
-      );
+      if (!communityExists) throw createError(400, "communityNotFound", "notFound");
     }
 
-    return await post.save();
+    const post = new Post(data);
+
+    await Promise.all([
+      post.save(),
+      ...(cleanHashTags?.length
+        ? cleanHashTags.map(tag =>
+          HashTag.findOneAndUpdate(
+            { tag },
+            { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
+            { upsert: true, new: true }
+          )
+        )
+        : []),
+    ]);
+
+    return post;
   } catch (error) {
     if (error.statusCode) throw error;
-    throw createError(500, 'serverError', 'error');
+    throw createError(500, "serverError", "error");
   }
 };
 
@@ -770,7 +766,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
           ? req.recipient?._id?.toString()
           : req.requester?._id?.toString();
       })
-      
+
 
     const blocked = await Block.find({
       $or: [{ blocked: userId }, { blocker: userId }]

@@ -108,7 +108,8 @@
     "reasonRequiredForDismissal": "Reason is required for suspension.",
     "userNotSuspended": "User is not suspended.",
     "actionNotAllowedOnClosedReport": " Action not allowed on resolved or dismissed reports.",
-    "cannotUpdateClosedReport": "Cannot update a report that is resolved or dismissed."
+    "cannotUpdateClosedReport": "Cannot update a report that is resolved or dismissed.",
+    "invalidUserAction":"Action must be inactive or delete"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",

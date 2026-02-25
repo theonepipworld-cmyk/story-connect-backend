@@ -8,36 +8,41 @@ const getLang = (req) => req.lang || 'en';
 
 
 exports.createPost = async (req, res) => {
+  const lang = getLang(req);
   try {
-    const lang = getLang(req);
     req.body.userId = req.user.id;
 
+    
     let mediaUrls = [];
-    if (req.files && req.files.length > 0) {
-      const uploadResults = await Promise.all(req.files.map(file => uploadFileToS3(file, "posts")));
+    if (req.files?.length) {
+      const uploadResults = await Promise.all(
+        req.files.map(file => uploadFileToS3(file, "posts"))
+      );
       mediaUrls = uploadResults.map(r => r.Location);
     }
 
-    let cleanHashtags = [];
-    if (req.body.hashTags && Array.isArray(req.body.hashTags)) {
-      cleanHashtags = req.body.hashTags
-        .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
-        .filter((tag, index, self) => tag && self.indexOf(tag) === index);
-    }
+    const cleanHashtags = Array.isArray(req.body.hashTags)
+      ? [...new Set(
+        req.body.hashTags
+          .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
+          .filter(Boolean)
+      )]
+      : [];
 
-    const postData = { ...req.body, mediaUrls, hashtags: cleanHashtags };
+    const { hashTags: _, ...restBody } = req.body;
+    const postData = { ...restBody, mediaUrls, hashtags: cleanHashtags };
     const post = await postService.createPost(postData, cleanHashtags);
 
-    return res.status(200).json(successResponse(getMessage(lang, 'success', 'createSuccessful'), post));
+    return res.status(200).json(
+      successResponse(getMessage(lang, "success", "createSuccessful"), post)
+    );
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-      }
+    const statusCode = err.statusCode || err.status || 500;
+    const finalMessage =
+      getMessage(lang, err.category || "error", err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
-
 
 exports.getUserFeedPosts = async (req, res) => {
   try {
@@ -47,12 +52,12 @@ exports.getUserFeedPosts = async (req, res) => {
     const { posts, pagination } = await postService.getUserFeedPostsService(page, limit, req.user?.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), posts, pagination));
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 
@@ -65,12 +70,12 @@ exports.getPostById = async (req, res) => {
       return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), post));
   } catch (err) {
-       const lang = getLang(req);
-          const statusCode = err.statusCode || err.status || 500;
-          const category = err.category || 'error';
-          const finalMessage = getMessage(lang, category, err.message) || err.message;
-          return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 
@@ -86,12 +91,12 @@ exports.updatePost = async (req, res) => {
 
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), post));
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 
@@ -107,12 +112,12 @@ exports.deletePost = async (req, res) => {
 
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), post));
   } catch (err) {
-       const lang = getLang(req);
-          const statusCode = err.statusCode || err.status || 500;
-          const category = err.category || 'error';
-          const finalMessage = getMessage(lang, category, err.message) || err.message;
-          return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 
@@ -132,11 +137,11 @@ exports.getPostsOfProfile = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), posts, pagination));
   } catch (err) {
     const lang = getLang(req);
-       const statusCode = err.statusCode || err.status || 500;
-       const category = err.category || 'error';
-       const finalMessage = getMessage(lang, category, err.message) || err.message;
-       return res.status(statusCode).json(errorResponse(finalMessage));
-      }
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 
@@ -146,12 +151,12 @@ exports.getTrendingTags = async (req, res) => {
     const trendingTags = await postService.getTrendingTagsService();
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), trendingTags));
   } catch (err) {
-       const lang = getLang(req);
-          const statusCode = err.statusCode || err.status || 500;
-          const category = err.category || 'error';
-          const finalMessage = getMessage(lang, category, err.message) || err.message;
-          return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 
@@ -171,16 +176,16 @@ exports.getAllPost = async (req, res) => {
     const { data, pagination } = await postService.getAllPostService(textSearch, page, limit, req.user?.id, hashtagSearch);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));
   } catch (error) {
-      const lang = getLang(req);
-         const statusCode = error.statusCode || error.status || 500;
-         const category = error.category || 'error';
-         const finalMessage = getMessage(lang, category, error.message) || error.message;
-         return res.status(statusCode).json(errorResponse(finalMessage));
-        }
+    const lang = getLang(req);
+    const statusCode = error.statusCode || error.status || 500;
+    const category = error.category || 'error';
+    const finalMessage = getMessage(lang, category, error.message) || error.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
 
 // Get Highlighted Posts
-exports.getHighlightedPosts = async(req, res) => {
+exports.getHighlightedPosts = async (req, res) => {
   try {
     const lang = getLang(req);
     const { storyOfTheMonthPosts, videoOfTheMonthPosts } = await postService.getHighlightedPostsService(req.user?.id);
@@ -188,9 +193,9 @@ exports.getHighlightedPosts = async(req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data));
   } catch (err) {
     const lang = getLang(req);
-       const statusCode = err.statusCode || err.status || 500;
-       const category = err.category || 'error';
-       const finalMessage = getMessage(lang, category, err.message) || err.message;
-       return res.status(statusCode).json(errorResponse(finalMessage));
-      }
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || 'error';
+    const finalMessage = getMessage(lang, category, err.message) || err.message;
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };
