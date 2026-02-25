@@ -95,14 +95,11 @@ app.use((err, req, res, next) => {
 
 require("./utils/resetDailyStats.js")
 
-//const server = http.createServer(app);
-//const io = initIo(server);
+const server = http.createServer(app);
+const io = initIo(server);
 
-
-
-
-// const PORT = secretVariables.port;
-//  server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-module.exports = { app };
+const PORT = secretVariables.port;
+ server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+module.exports = { app, server };
 
 
