@@ -339,6 +339,7 @@ exports.reportActionService = async (reportId, action, reason) => {
 
 
         reportedUser.accountState = action;
+        reportedUser.status = action
         reportedUser.dateOfSuspend =
             action === enums.userAccountState.SUSPENDED ? new Date() : null;
 

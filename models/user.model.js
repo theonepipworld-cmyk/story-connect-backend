@@ -74,7 +74,7 @@ const userSchema = new Schema({
   dateOfBirth: { type: Date },
   status: {
     type: String,
-    enum: ['active', 'inactive', 'banned', 'deleted'],
+    enum: ['active', 'inactive', 'banned', 'deleted', 'suspended'],
     default: 'active'
   },
   resetPasswordToken: {
@@ -121,10 +121,10 @@ const userSchema = new Schema({
     enum: ['normal', 'warning', 'suspended'],
     default: 'normal'
   },
-  dateOfSuspend:{
-    type:Date
+  dateOfSuspend: {
+    type: Date
   },
-  
+
 
 }, {
   timestamps: true

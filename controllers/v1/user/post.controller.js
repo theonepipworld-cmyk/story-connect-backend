@@ -12,7 +12,7 @@ exports.createPost = async (req, res) => {
   try {
     req.body.userId = req.user.id;
 
-    
+
     let mediaUrls = [];
     if (req.files?.length) {
       const uploadResults = await Promise.all(
@@ -127,6 +127,7 @@ exports.getPostsOfProfile = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const type = req.query.type;
+    console.log(type)
     const userId = req.user.id;
     const { posts, pagination } = await postService.getProfilePost(req.params.id, page, limit, userId, type);
 

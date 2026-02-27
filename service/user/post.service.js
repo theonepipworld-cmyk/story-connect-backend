@@ -550,6 +550,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
+   
     const user = await isUserExist(userId);
     if (!user) {
       throw createError(400, 'userNotFound', 'notFound');
@@ -562,10 +563,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     });
     if (isBlocked) throw createError(403, 'userBlocked', 'validation');
 
-
-
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
-
     const allCommunityIds = joinedCommunities.map(c => c.communityId).filter(Boolean);
 
     const skip = (page - 1) * limit;

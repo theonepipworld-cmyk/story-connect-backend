@@ -109,7 +109,12 @@
     "userNotSuspended": "User is not suspended.",
     "actionNotAllowedOnClosedReport": " Action not allowed on resolved or dismissed reports.",
     "cannotUpdateClosedReport": "Cannot update a report that is resolved or dismissed.",
-    "invalidUserAction":"Action must be inactive or delete"
+    "invalidUserAction": "Action must be inactive or delete",
+    "accountBanned": "Your account has been permanently banned.",
+    "accountSuspended": "Your account has been suspended. Please contact support.",
+    "accountDeleted": "This account has been deleted.",
+    "registrationIncomplete": "Registration is incomplete. Please complete your registration.",
+    "invalidOrExpiredToken": "Reset token is invalid or has expired."
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",
@@ -144,5 +149,10 @@
     "noPendingReq": "No pending requests.",
     "noFriends": "No friends found.",
     "invalidConversation": "Invalid conversation."
+  },
+  "forbidden": {
+    "accountBanned": "Your account has been permanently banned.",
+    "accountSuspended": "Your account has been suspended. Please contact support.",
+    "accountDeleted": "This account has been deleted."
   }
 }

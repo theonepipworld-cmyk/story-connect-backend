@@ -37,7 +37,7 @@ exports.signup = async (data) => {
     return { token };
   } catch (error) {
     if (error.statusCode) throw error;
-    throw createError(500, 'serverError','error');
+    throw createError(500, 'serverError', 'error');
   }
 };
 
@@ -50,26 +50,33 @@ exports.login = async ({ email, password, device_token }) => {
 
     const correctPassword = await comparePassword(user.passwordHash, password);
     if (!correctPassword) throw createError(400, 'incorrectPassword', 'validation');
+
+    if (user.status === 'banned') throw createError(403, 'accountBanned', 'forbidden');
+    if (user.accountState === 'suspended') throw createError(403, 'accountSuspended', 'forbidden');
+
     const token = await getJWT(email, user._id, user.role, user.username);
     if (!token) throw createError(500, 'somethingWentWrong', 'error');
+
     if (device_token) await User.updateOne({ _id: user._id }, { device_token });
+
     return { token };
   } catch (error) {
     if (error.statusCode) throw error;
-     throw createError(500, 'serverError','error');
+    throw createError(500, 'serverError', 'error');
   }
 };
-
 exports.forgotPassword = async ({ email }) => {
   try {
     const user = await checkFieldExists('email', email, true);
     if (!user) throw createError(404, 'emailNotFound', 'notFound');
 
+    if (user.status === 'banned') throw createError(403, 'accountBanned', 'forbidden');
+
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
     user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; 
+    user.resetPasswordExpires = Date.now() + 1000 * 60 * 15;
     await user.save();
 
     const resetLink = `${RESET_PASS_LINK}/${resetToken}`;
@@ -84,7 +91,7 @@ exports.forgotPassword = async ({ email }) => {
     return { message: 'ResetLink' };
   } catch (error) {
     if (error.statusCode) throw error;
-     throw createError(500, 'serverError','error');
+    throw createError(500, 'serverError', 'error');
   }
 };
 
@@ -97,6 +104,7 @@ exports.resetPassword = async ({ token, newPassword }) => {
     });
 
     if (!user) throw createError(400, 'invalidOrExpiredToken', 'validation');
+    if (user.status === 'banned') throw createError(403, 'accountBanned', 'forbidden');
     user.passwordHash = await hashPassword(newPassword);
     user.resetPasswordToken = "";
     user.resetPasswordExpires = "";
@@ -105,6 +113,6 @@ exports.resetPassword = async ({ token, newPassword }) => {
     return { message: 'Password reset successful.' };
   } catch (error) {
     if (error.statusCode) throw error;
-     throw createError(500, 'serverError','error');
+    throw createError(500, 'serverError', 'error');
   }
 };

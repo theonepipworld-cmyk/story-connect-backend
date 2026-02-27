@@ -226,8 +226,11 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
     const VALID_ACTIONS = {
         active: 'active',
         inactive: 'inactive',
+        suspend: 'suspended',
         delete: null,
     };
+
+    console.log(action, userId)
 
     if (!(action in VALID_ACTIONS)) {
         throw createError(400, "invalidUserAction", "validation");
@@ -239,6 +242,8 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
             User.findById(userId),
         ]);
 
+
+
         if (!loginUser) throw createError(400, "userNotFound", "notFound");
         if (!targetUser) throw createError(400, "userNotFound", "notFound");
         if (loginUser.role !== 'admin') throw createError(403, "notAuthorized", "validation");
@@ -248,7 +253,20 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
             return { success: true, message: "User permanently deleted" };
         }
 
-        targetUser.status = VALID_ACTIONS[action];
+        if (action === 'suspend') {
+            targetUser.accountState = VALID_ACTIONS[action];
+            targetUser.status = VALID_ACTIONS[action]
+            targetUser.dateOfSuspend = new Date();
+        } else {
+            targetUser.status = VALID_ACTIONS[action];
+
+
+            if (action === 'active') {
+                targetUser.dateOfSuspend = undefined;
+                targetUser.accountState = 'normal';
+            }
+        }
+
         await targetUser.save();
         return { success: true, message: `User marked as ${action}` };
 
@@ -257,7 +275,6 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 
 

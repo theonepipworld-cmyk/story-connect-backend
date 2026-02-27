@@ -194,6 +194,7 @@ exports.removeSuspensionUserService = async (userIdToUnsuspend, adminId) => {
             throw createError(400, "userNotSuspended", "validation");
         }
         userToUnsuspend.accountState = enums.userAccountState.NORMAL;
+        userToUnsuspend.status = 'active'
         userToUnsuspend.dateOfSuspend = null;
         await userToUnsuspend.save();
         return userToUnsuspend;

@@ -51,7 +51,6 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
         if (!communityCategory) {
             throw createError(404, 'communityCategoryNotFound', 'notFound');
         }
-
         if (communityCategory.name === "Others") {
             if (!communityDetails.categoryName) {
                 throw createError(400, 'CategoryRequired', 'validation');
