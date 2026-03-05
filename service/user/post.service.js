@@ -550,7 +550,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
-   
+
     const user = await isUserExist(userId);
     if (!user) {
       throw createError(400, 'userNotFound', 'notFound');
@@ -994,8 +994,8 @@ exports.getHighlightedPostsService = async (userId) => {
 
     let matchStage = {
       $or: [
-        { $and: [{ $or: [{ type: enums.typePost.IMAGE }, { type: null }] }, { storyOfTheMonth: true }] },
-        { $and: [{ type: enums.typePost.VIDEO }, { videoOfTheMonth: true }] }
+        { $and: [{ $or: [{ type: enums.typePost.IMAGE }, { type: "both" }, { type: null }] }, { storyOfTheMonth: true }] },
+        { $and: [{ $or: [{ type: enums.typePost.VIDEO }, { type: "both" }] }, { videoOfTheMonth: true }] }
       ]
     };
 

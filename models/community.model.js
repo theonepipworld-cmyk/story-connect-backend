@@ -17,9 +17,9 @@ const communitySchema = new mongoose.Schema({
     coverImage: {
         type: String,
     },
-    isActive:{
-        type:Boolean,
-        default:true
+    isActive: {
+        type: Boolean,
+        default: true
     },
     category: {
         type: mongoose.Schema.Types.ObjectId,
@@ -29,11 +29,29 @@ const communitySchema = new mongoose.Schema({
     manualCategoryName: {
         type: String
     },
-    memberCount:{
-        type:Number
+    memberCount: {
+        type: Number
     }
 }, { timestamps: true })
 
 communitySchema.index({ userId: -1 });
+
+communitySchema.pre('findOneAndDelete', async function (next) {
+    try {
+        const communityId = this.getQuery()._id;
+        const CommunityMember = mongoose.model('CommunityMember');
+        const Post = mongoose.model('Post');
+
+        await Promise.all([
+            CommunityMember.deleteMany({ communityId }),
+            Post.deleteMany({ communityId })
+        ]);
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+
 
 module.exports = mongoose.model('Community', communitySchema);

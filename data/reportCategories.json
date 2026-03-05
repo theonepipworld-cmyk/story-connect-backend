@@ -1,26 +1,32 @@
 [
   {
     "name": "Harassment or Bullying",
-    "description": "Targeted harassment, Cyberbullying"
+    "description": "Targeted harassment, Cyberbullying",
+    "icon": "Report.png"
   },
   {
     "name": "Spam or Fake Account",
-    "description": "Spam content, Fake or impersonation account"
+    "description": "Spam content, Fake or impersonation account",
+    "icon": "Report.png"
   },
   {
     "name": "Inappropriate Content",
-    "description": "Adult content, violence or graphic content"
+    "description": "Adult content, violence or graphic content",
+    "icon": "Report.png"
   },
   {
     "name": "Abusive Behaviour",
-    "description": "Verbal abuse, Discriminatory behaviour"
+    "description": "Verbal abuse, Discriminatory behaviour",
+    "icon": "Report.png"
   },
   {
     "name": "Privacy Violation",
-    "description": "Sharing private information, Unauthorized photos, videos"
+    "description": "Sharing private information, Unauthorized photos, videos",
+    "icon": "Report.png"
   },
   {
     "name": "Other Issues",
-    "description": "Terms of service violation, Copyright infringement"
+    "description": "Terms of service violation, Copyright infringement",
+    "icon": "Report.png"
   }
 ]

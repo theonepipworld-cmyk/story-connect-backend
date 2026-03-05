@@ -230,7 +230,7 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
         delete: null,
     };
 
-    console.log(action, userId)
+ 
 
     if (!(action in VALID_ACTIONS)) {
         throw createError(400, "invalidUserAction", "validation");
@@ -259,8 +259,6 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
             targetUser.dateOfSuspend = new Date();
         } else {
             targetUser.status = VALID_ACTIONS[action];
-
-
             if (action === 'active') {
                 targetUser.dateOfSuspend = undefined;
                 targetUser.accountState = 'normal';

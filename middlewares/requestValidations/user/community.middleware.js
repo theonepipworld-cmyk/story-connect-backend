@@ -10,10 +10,9 @@ const mongoose = require("mongoose")
 const multer = require("multer");
 const storage = multer.memoryStorage();
 
-
 const coverImage = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!file) return cb(null, true);
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
@@ -25,8 +24,23 @@ const coverImage = multer({
 });
 
 
+const handleCoverImageUpload = (req, res, next) => {
+  coverImage.single("coverImage")(req, res, function (err) {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json(errorResponse("File too large. Maximum size is 20MB"));
+      }
+      if (err.message) {
+        return res.status(400).json(errorResponse(err.message));
+      }
+      return res.status(500).json(errorResponse(resMessages.serverError.processingError));
+    }
+    next();
+  });
+};
+
 exports.createCommunityValidator = [
-  coverImage.single("coverImage"),
+  handleCoverImageUpload,
   check("name")
     .notEmpty()
     .withMessage(`${resMessages.validation.missingFields}: name`),
@@ -156,78 +170,72 @@ exports.commmunityMemberLeave = [
       }
       return true;
     }),
-  ]
+]
 
-
-
-  exports.updateCommunityValidator = [
-    coverImage.single("coverImage"),
-    param("id")
-      .notEmpty().withMessage(`${resMessages.validation.missingFields}: communityId`)
-      .isMongoId().withMessage(`${resMessages.validation.invalidId}: communityId`)
-      .custom(async (value) => {
-        const community = await isCommunityExist(value)
-        if (!community) {
-          throw new Error(`${resMessages.validation.notFound}: communityId`);
-        }
-        return true;
-      }),
-    check("name")
-      .optional()
-      .notEmpty()
-      .withMessage(`${resMessages.validation.missingFields}: name`),
-
-    check("description")
-      .optional()
-      .notEmpty()
-      .withMessage(`${resMessages.validation.missingFields}: description`),
-
-    check("category")
-      .optional()
-      .notEmpty()
-      .withMessage(`${resMessages.validation.missingFields}: category`)
-      .isMongoId()
-      .withMessage(`${resMessages.validation.invalidId}: category`),
-
-    async (req, res, next) => {
-      try {
-        if (req.body.category) {
-          const category = await communityCategory.findById(req.body.category);
-          if (!category) {
-            return res
-              .status(400)
-              .json(errorResponse(resMessages.validation.invalidCategory));
-          }
-          if (category.name === "Others" && !req.body.categoryName) {
-            return res
-              .status(400)
-              .json(errorResponse(resMessages.validation.categoryName));
-          }
-        }
-        next();
-      } catch (err) {
-        next(err);
+exports.updateCommunityValidator = [
+  handleCoverImageUpload, 
+  param("id")
+    .notEmpty().withMessage(`${resMessages.validation.missingFields}: communityId`)
+    .isMongoId().withMessage(`${resMessages.validation.invalidId}: communityId`)
+    .custom(async (value) => {
+      const community = await isCommunityExist(value)
+      if (!community) {
+        throw new Error(`${resMessages.validation.notFound}: communityId`);
       }
-    },
+      return true;
+    }),
+  check("name")
+    .optional()
+    .notEmpty()
+    .withMessage(`${resMessages.validation.missingFields}: name`),
 
-    (req, res, next) => {
-      const files = req.files || {};
-      if (!files.communityImage || !files.communityImage.length) {
-        return next();
-      }
-      const file = files.communityImage[0];
-      const imageMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-      if (!imageMimes.includes(file.mimetype)) {
-        return res
-          .status(400)
-          .json(
-            errorResponse(
-              `${resMessages.validation.invalidFileType}: ${file.originalname}`
-            )
-          );
+  check("description")
+    .optional()
+    .notEmpty()
+    .withMessage(`${resMessages.validation.missingFields}: description`),
+
+  check("category")
+    .optional()
+    .notEmpty()
+    .withMessage(`${resMessages.validation.missingFields}: category`)
+    .isMongoId()
+    .withMessage(`${resMessages.validation.invalidId}: category`),
+
+  async (req, res, next) => {
+    try {
+      if (req.body.category) {
+        const category = await communityCategory.findById(req.body.category);
+        if (!category) {
+          return res
+            .status(400)
+            .json(errorResponse(resMessages.validation.invalidCategory));
+        }
+        if (category.name === "Others" && !req.body.categoryName) {
+          return res
+            .status(400)
+            .json(errorResponse(resMessages.validation.categoryName));
+        }
       }
       next();
-    },
+    } catch (err) {
+      next(err);
+    }
+  },
 
-    validate
-  ];
+  (req, res, next) => {
+    const files = req.files || {};
+    if (!files.communityImage || !files.communityImage.length) {
+      return next();
+    }
+    const file = files.communityImage[0];
+    const imageMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!imageMimes.includes(file.mimetype)) {
+      return res
+        .status(400)
+        .json(errorResponse(`${resMessages.validation.invalidFileType}: ${file.originalname}`));
+    }
+    next();
+  },
+
+  validate
+];

@@ -1,29 +1,59 @@
-const mongoose = require("mongoose");
-const ReportReason = require("../models/reportCategories.js"); 
-const connectDB = require("../config/db.js");
+const fs = require("fs");
+const path = require("path");
+const ReportCategory = require("../models/reportCategories");
+const { uploadFileToS3 } = require("../utils/s3.util");
 const reportReasons = require("../data/reportCategories.json");
+const connectDB = require("../config/db");
 
-const seedReportReasons = async () => {
+async function seedReportReasons() {
   try {
     console.log(" Importing Report Reasons...");
     await connectDB();
 
-    const bulkOps = reportReasons.map((item) => ({
-      updateOne: {
-        filter: { name: item.name },
-        update: { $set: item },
-        upsert: true,
-      },
-    }));
+    for (const item of reportReasons) {
+      let uploadResult = null;
 
-    await ReportReason.bulkWrite(bulkOps);
+      // Upload icon if exists
+      if (item.icon) {
+        const filePath = path.join(__dirname, "../asset/reportIcons", item.icon);
 
-    console.log(" Report reasons seeded successfully (with upsert)!");
-    return true; 
-  } catch (err) {
-    console.error(" Seeding failed:", err.message);
-    throw err;
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+
+          const fileObj = {
+            originalname: item.icon,
+            buffer: fileBuffer,
+            mimetype: "image/png",
+          };
+
+          uploadResult = await uploadFileToS3(fileObj, "report-icons");
+        } else {
+          console.warn(`Icon file not found: ${filePath}`);
+        }
+      }
+
+      // Upsert into DB
+      await ReportCategory.updateOne(
+        { name: item.name },
+        {
+          $set: {
+            name: item.name,
+            description: item.description,
+            iconUrl: uploadResult ? uploadResult.Location : null,
+            fileKey: uploadResult ? uploadResult.key : null,
+          },
+        },
+        { upsert: true }
+      );
+
+      console.log(` Synced: ${item.name}`);
+    }
+
+    console.log(" Report Reasons seeding completed!");
+  } catch (error) {
+    console.error(" Seeding failed:", error);
+    throw error;
   }
-};
+}
 
 module.exports = seedReportReasons;
