@@ -14,11 +14,17 @@ exports.getProfile = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), responseData));
   } catch (err) {
     const lang = getLang(req);
-       const statusCode = err.statusCode || err.status || 500;
-       const category = err.category || 'error';
-       const finalMessage = getMessage(lang, category, err.message) || err.message;
-       return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+    let message = err.message;
+    const translated = getMessage(lang, category, message);
+    const finalMessage = translated && translated !== message
+      ? translated
+      : message || "Something went wrong";
+    return res
+      .status(statusCode)
+      .json(errorResponse(finalMessage));
+  }
 };
 
 // Update profile
@@ -29,11 +35,18 @@ exports.updateProfile = async (req, res) => {
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
   } catch (err) {
     const lang = getLang(req);
-       const statusCode = err.statusCode || err.status || 500;
-       const category = err.category || 'error';
-       const finalMessage = getMessage(lang, category, err.message) || err.message;
-       return res.status(statusCode).json(errorResponse(finalMessage));
-        }
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+    let message = err.message;
+    const translated = getMessage(lang, category, message);
+    const finalMessage = translated && translated !== message
+      ? translated
+      : message || "Something went wrong";
+
+    return res
+      .status(statusCode)
+      .json(errorResponse(finalMessage));
+  }
 };
 
 // Delete profile
@@ -43,12 +56,19 @@ exports.deleteProfile = async (req, res) => {
     const result = await profileService.deleteProfile(req.user.id);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), result));
   } catch (err) {
-   const lang = getLang(req);
-      const statusCode = err.statusCode || err.status || 500;
-      const category = err.category || 'error';
-      const finalMessage = getMessage(lang, category, err.message) || err.message;
-      return res.status(statusCode).json(errorResponse(finalMessage));
-     }
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+    let message = err.message;
+    const translated = getMessage(lang, category, message);
+    const finalMessage = translated && translated !== message
+      ? translated
+      : message || "Something went wrong";
+
+    return res
+      .status(statusCode)
+      .json(errorResponse(finalMessage));
+  }
 };
 
 // Get another user's profile
@@ -56,18 +76,30 @@ exports.getOtherProfile = async (req, res) => {
   try {
     const lang = getLang(req);
     const otherUserId = req.params.userId;
-    const { user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending } =
+    const { user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId,
+      lastMessageId } =
       await profileService.getOtherProfileService(otherUserId, req.user.id);
-
-    const data = { ...user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending };
+    const data = { ...user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId, lastMessageId };
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), data));
   } catch (err) {
-     const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+
+    const lang = getLang(req);
+
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+
+    let message = err.message;
+
+    const translated = getMessage(lang, category, message);
+
+    const finalMessage = translated && translated !== message
+      ? translated
+      : message || "Something went wrong";
+
+    return res
+      .status(statusCode)
+      .json(errorResponse(finalMessage));
+  }
 };
 
 // Change language
@@ -78,10 +110,46 @@ exports.changeLanguage = async (req, res) => {
     const result = await profileService.changeLanguageService(req.user.id, newLang);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
   } catch (err) {
-      const lang = getLang(req);
-         const statusCode = err.statusCode || err.status || 500;
-         const category = err.category || 'error';
-         const finalMessage = getMessage(lang, category, err.message) || err.message;
-         return res.status(statusCode).json(errorResponse(finalMessage));
-       }
+
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+    let message = err.message;
+    const translated = getMessage(lang, category, message);
+    const finalMessage = translated && translated !== message
+      ? translated
+      : message || "Something went wrong";
+
+    return res
+      .status(statusCode)
+      .json(errorResponse(finalMessage));
+  }
+};
+
+exports.getSearchUser = async (req, res) => {
+  try {
+    const lang = getLang(req);
+
+    const result = await profileService.searchUser(req.user?.id, req.query.search);
+    return res
+      .status(200)
+      .json(successResponse(getMessage(lang, 'success', 'getSuccessful'), result));
+
+  } catch (err) {
+
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+
+    let message = err.message;
+
+    const translated = getMessage(lang, category, message);
+
+    const finalMessage =
+      translated && translated !== message
+        ? translated
+        : message || "Something went wrong";
+
+    return res.status(statusCode).json(errorResponse(finalMessage));
+  }
 };

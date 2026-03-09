@@ -8,6 +8,7 @@ const professionalSymbol = require("../../models/professionalSymbolModel.js")
 const Friend = require("../../models/friends.model.js")
 const Block = require("../../models/block.model.js")
 const enums = require("../../constants/enum.constants.js")
+const Conversation = require("../../models/conversations.model.js")
 
 exports.getProfile = async (userId) => {
 
@@ -73,7 +74,7 @@ exports.updateProfile = async (userId, payload, files) => {
 
     if (payload.profession && payload.profession.toLowerCase() === 'other') {
         if (!payload.manualProfession) {
-                throw createError(404,'professionName','validation');
+            throw createError(404, 'professionName', 'validation');
         }
         patch.manualProfession = (payload.manualProfession).trim();
     } else {
@@ -105,7 +106,7 @@ exports.updateProfile = async (userId, payload, files) => {
         }
     }
 
-    
+
     if (payload.entryYear) patch.entryYear = payload.entryYear;
     if (payload.phone) patch.phone = payload.phone;
     if (payload.dateOfBirth) patch.dateOfBirth = payload.dateOfBirth;
@@ -130,18 +131,18 @@ exports.updateProfile = async (userId, payload, files) => {
     ]);
 
     if (emailExist) {
-         throw createError(404,'emailAlreadyExist','validation');
+        throw createError(404, 'emailAlreadyExist', 'validation');
     }
 
     if (usernameExist) {
-           throw createError(404,'usernameAlreadyExist','validation');
+        throw createError(404, 'usernameAlreadyExist', 'validation');
     }
 
     if (payload.dateOfBirth) {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (!dateRegex.test(payload.dateOfBirth)) {
-             throw createError(404,'invalidDateOfBirthFormat','validation');
-           
+            throw createError(404, 'invalidDateOfBirthFormat', 'validation');
+
         }
         patch.dateOfBirth = payload.dateOfBirth;
     }
@@ -173,9 +174,9 @@ exports.updateProfile = async (userId, payload, files) => {
     ).lean();
 
     if (!updated) {
-        throw createError(404,'userNotFound','notFound');
+        throw createError(404, 'userNotFound', 'notFound');
 
-        
+
     }
 
     return { message: resMessages.success.updateSuccessful };
@@ -186,7 +187,7 @@ exports.deleteProfile = async (userId) => {
         $set: { status: 'deleted' }
     }, { new: true, select: 'status' });
     if (!deleted) {
-          throw createError(404,'userNotFound','notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
     return { message: resMessages.success.deleteSuccessful };
 };
@@ -208,8 +209,8 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
         }
 
         if (isBlocked) {
-               throw createError(404,'userBlocked','validation');
-           
+            throw createError(404, 'userBlocked', 'validation');
+
         }
 
         const user = await User.findById(otherUserId)
@@ -217,7 +218,7 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             .lean();
 
         if (!user) {
-           throw createError(400, 'userNotFound', 'notFound');
+            throw createError(400, 'userNotFound', 'notFound');
         }
         let mutualFriendsCount = 0;
         if (loginUserId && loginUserId.toString() !== user._id.toString()) {
@@ -244,6 +245,11 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             ]
         });
 
+        let conversation = await Conversation.findOne({
+            participants: { $all: [otherUserId, loginUserId] }
+        });
+
+
         const isThisUserFriend = friendship?.status === enums.friend_Request_status.ACCEPTED;
         const isreqPending = friendship?.status === enums.friend_Request_status.PENDING;
 
@@ -252,15 +258,71 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             totalFriends,
             mutualFriendsCount,
             isThisUserFriend,
-            isreqPending
+            isreqPending,
+            conversationId: conversation ? conversation._id : null,
+            lastMessageId: conversation ? conversation.lastMessage : null
         };
 
 
     }
     catch (error) {
         if (error.statusCode) throw error;
-             throw createError(500, 'serverError','error');
+        throw createError(500, 'serverError', 'error');
     }
+};
+
+
+
+exports.searchUser = async (loginUserId, search) => {
+    if (!search) return [];
+    const users = await User.find({
+        _id: { $ne: loginUserId },
+        status: "active",
+        $or: [
+            { username: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } }
+        ]
+    })
+        .select("username email avatarUrl bio profession currentCountry")
+        .lean();
+
+    const loginUserFriends = await getAllFriends(loginUserId);
+    const loginFriendIds = new Set(loginUserFriends.map(f => f._id.toString()));
+
+    const result = [];
+
+    for (const user of users) {
+        const isBlocked = await Block.findOne({
+            $or: [
+                { blocker: user._id, blocked: loginUserId },
+                { blocker: loginUserId, blocked: user._id }
+            ]
+        });
+
+        if (isBlocked) continue;
+
+        const friendship = await Friend.findOne({
+            $or: [
+                { requester: loginUserId, recipient: user._id },
+                { requester: user._id, recipient: loginUserId }
+            ]
+        });
+
+        const profileUserFriends = await getAllFriends(user._id);
+
+        const mutualFriends = profileUserFriends.filter(f =>
+            loginFriendIds.has(f._id.toString())
+        );
+
+        result.push({
+            ...user,
+            isThisUserFriend: friendship?.status === "accepted",
+            isreqPending: friendship?.status === "pending",
+            mutualFriendsCount: mutualFriends.length
+        });
+    }
+
+    return result;
 };
 
 

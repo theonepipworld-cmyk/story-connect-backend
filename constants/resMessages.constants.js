@@ -21,7 +21,8 @@ module.exports = {
         messageSent: "message sent successfully",
         seenSuccessfully: "seen successfully",
         deviceTokenSaved: "Device token saved/updated successfully",
-        leaveMember: "user leave the community successfully"
+        leaveMember: "user leave the community successfully",
+        cancelReqSuccessfully:"friend Req cancel successfully"
     },
 
     notifications: {

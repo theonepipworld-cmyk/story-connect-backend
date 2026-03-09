@@ -499,6 +499,35 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
     }
 }
 
+exports.cancelFriendReqService = async (userId, friendId) => {
+    try {
+
+        if (!userId || !friendId) {
+            throw createError(400, 'userOrFriendIdNotFound', 'notFound');
+        }
+
+        const request = await Friend.findOne({
+            requester: userId,
+            recipient: friendId,
+            status: enums.friend_Request_status.PENDING
+        });
+
+        if (!request) {
+            throw createError(400, 'friendReqNotFound', 'notFound');
+        }
+
+        await request.deleteOne();
+        return {
+            success: true,
+            message: "Friend request cancelled successfully"
+        };
+
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};
+
 
 
 
