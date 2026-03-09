@@ -1086,8 +1086,13 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
         const communities = result[0]?.paginatedResults || [];
         const total = result[0]?.totalCount?.[0]?.count || 0;
 
+        const categoryName = communities.length > 0
+            ? communities[0].categoryInfo?.name
+            : null;
+
         return {
             communities,
+            categoryName,
             pagination: {
                 total,
                 totalPages: Math.ceil(total / limit),

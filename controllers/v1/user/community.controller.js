@@ -220,8 +220,15 @@ exports.getCommunitiesByCategories = async (req, res) => {
     const lang = getLang(req);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { communities, pagination } = await getCommunitiesByCategoriesService(req.user.id, req.params.categoryId, page, limit);
-    return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), communities, pagination));
+    const { communities, pagination, categoryName } = await getCommunitiesByCategoriesService(req.user.id, req.params.categoryId, page, limit);
+    return res.status(200).json(
+      successResponse(
+        getMessage(lang, 'success', 'fetchSuccessfully'),
+        { categoryName, communities },
+        pagination
+      )
+    );
+
   } catch (err) {
     const lang = getLang(req);
     const statusCode = err.statusCode || err.status || 500;
