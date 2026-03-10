@@ -64,6 +64,7 @@ exports.getUserFeedPosts = async (req, res) => {
 exports.getPostById = async (req, res) => {
   try {
     const lang = getLang(req);
+    console.log(req.user.id, "req.user")
     const userId = req.user.id;
     const { post } = await postService.getPostById(req.params.id, userId);
     if (!post)

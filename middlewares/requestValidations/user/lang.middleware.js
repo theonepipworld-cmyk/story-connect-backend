@@ -1,9 +1,24 @@
-
-const { errorResponse } = require('../../../utils/responseHandler.util');
-const resMessages = require("../../../constants/resMessages.constants");
-
+const allowedLanguages = ["en", "fr", "es", "cr"];
 
 exports.languageMiddleware = (req, res, next) => {
-    req.lang = req.body.lang || req.headers['accept-language'] || 'en';
+
+    let lang = req.body.lang || req.headers["accept-language"] || "en";
+
+    
+    if (lang.includes(",")) {
+        lang = lang.split(",")[0];
+    }
+
+    if (lang.includes("-")) {
+        lang = lang.split("-")[0];
+    }
+
+    // validate language
+    if (!allowedLanguages.includes(lang)) {
+        lang = "en";
+    }
+
+    req.lang = lang;
+
     next();
 };

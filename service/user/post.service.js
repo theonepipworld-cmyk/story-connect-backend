@@ -300,7 +300,7 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
 //get Single Post
 exports.getPostById = async (id, userId) => {
   try {
-
+    console.log(userId)
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
@@ -348,8 +348,6 @@ exports.getPostById = async (id, userId) => {
         },
       },
       { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
-
-
       {
         $lookup: {
           from: "communitycategories",

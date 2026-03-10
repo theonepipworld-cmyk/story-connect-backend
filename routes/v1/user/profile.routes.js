@@ -19,6 +19,7 @@ router.get('/search', profileController.getSearchUser);
 
 // Soft delete user profile (deactivate)
 router.delete('/', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);
+router.post("/update-lang", isAuthenticated, authorizeRoles('user'), profileController.changeLanguage)
 
 
 module.exports = router;

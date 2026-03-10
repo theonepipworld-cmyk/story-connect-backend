@@ -9,6 +9,7 @@ const getLang = (req) => req.lang || 'en';
 exports.getProfile = async (req, res) => {
   try {
     const lang = getLang(req);
+    console.log(lang)
     const { user, totalFriends } = await profileService.getProfile(req.user.id);
     const responseData = { ...user, totalFriends };
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), responseData));
@@ -104,25 +105,40 @@ exports.getOtherProfile = async (req, res) => {
 
 // Change language
 exports.changeLanguage = async (req, res) => {
-  try {
-    const lang = getLang(req);
-    const { lang: newLang } = req.body;
-    const result = await profileService.changeLanguageService(req.user.id, newLang);
-    return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
-  } catch (err) {
+  const lang = getLang(req);
 
-    const lang = getLang(req);
-    const statusCode = err.statusCode || err.status || 500;
-    const category = err.category || "error";
-    let message = err.message;
-    const translated = getMessage(lang, category, message);
-    const finalMessage = translated && translated !== message
-      ? translated
-      : message || "Something went wrong";
+  try {
+    const { lang: newLang } = req.body;
+    if (!newLang) {
+      return res
+        .status(400)
+        .json(errorResponse(getMessage(lang, "validation", "languageRequired")));
+    }
+
+    const result = await profileService.changeLanguageService(
+      req.user.id,
+      newLang
+    );
 
     return res
-      .status(statusCode)
-      .json(errorResponse(finalMessage));
+      .status(200)
+      .json(successResponse(getMessage(lang, "success", "updateSuccessful"), result));
+
+  } catch (err) {
+
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+
+    let message = err.message;
+
+    const translated = getMessage(lang, category, message);
+
+    const finalMessage =
+      translated && translated !== message
+        ? translated
+        : message || "Something went wrong";
+
+    return res.status(statusCode).json(errorResponse(finalMessage));
   }
 };
 

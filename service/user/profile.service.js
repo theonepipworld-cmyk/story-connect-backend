@@ -194,7 +194,6 @@ exports.deleteProfile = async (userId) => {
 
 exports.getOtherProfileService = async (otherUserId, loginUserId) => {
     try {
-
         if (!otherUserId || !loginUserId) {
             throw createError(400, 'userNotFound', 'notFound');
         }
@@ -325,4 +324,35 @@ exports.searchUser = async (loginUserId, search) => {
     return result;
 };
 
+
+exports.changeLanguageService = async (userId, newLang) => {
+    try {
+        if (!userId) {
+            throw { statusCode: 400, message: "userNotFound", category: "notFound" };
+        }
+
+        const allowedLanguages = ["en", "fr", "es", "cr"];
+
+        if (!allowedLanguages.includes(newLang)) {
+            throw { statusCode: 400, message: "invalidLanguage", category: "validation" };
+        }
+
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { language: newLang },
+            { new: true }
+        ).select("language");
+
+        if (!user) {
+            throw { statusCode: 404, message: "userNotFound", category: "notFound" };
+        }
+
+        return {
+            language: user.language
+        };
+
+    } catch (error) {
+        throw error;
+    }
+};
 

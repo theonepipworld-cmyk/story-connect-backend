@@ -114,7 +114,8 @@
     "accountSuspended": "Your account has been suspended. Please contact support.",
     "accountDeleted": "This account has been deleted.",
     "registrationIncomplete": "Registration is incomplete. Please complete your registration.",
-    "invalidOrExpiredToken": "Reset token is invalid or has expired."
+    "invalidOrExpiredToken": "Reset token is invalid or has expired.",
+    "invalidLanguage":"invalid language code"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",
