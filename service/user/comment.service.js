@@ -10,7 +10,7 @@ const UserStats = require("../../models/userActivityStats.model");
 const Block = require("../../models/block.model.js");
 const Notification = require("../../models/notification.model.js");
 const pushNotification = require("../../utils/pushNotification.js");
-
+const { getIo, getUserSocketId } = require("../../socket"); 
 const enums = require("../../constants/enum.constants.js")
 
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
@@ -56,29 +56,31 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 { $inc: { replyCount: 1 } }
             );
         }
+
         if (post.userId.toString() !== userId.toString()) {
             const postOwner = await User.findById(post.userId);
-            try {
-                await pushNotification.androidPushNotification(
-                    postOwner.device_token,
-                    `${user.username} ${resMessages.notifications.comment}`,
-                    "comment",
-                    {
-                        postId: postId.toString(),
-                        commentId: comment._id.toString(),
-                        senderId: userId.toString(),
-                        parentCommentId: parentCommentId ? parentCommentId.toString() : ""
-                    }
-                );
-            } catch (error) {
-                console.error(`Failed to send push to user ${postOwner._id}:`, error.message);
-                if (error.code === 'messaging/invalid-argument' ||
-                    error.code === 'messaging/registration-token-not-registered') {
-                    await User.update(
-                        { device_token: null },
-                        { where: { id: postOwner._id } }
+
+            // Mobile push notification
+            if (postOwner?.device_token) {
+                try {
+                    await pushNotification.androidPushNotification(
+                        postOwner.device_token,
+                        `${user.username} ${resMessages.notifications.comment}`,
+                        "comment",
+                        {
+                            postId: postId.toString(),
+                            commentId: comment._id.toString(),
+                            senderId: userId.toString(),
+                            parentCommentId: parentCommentId ? parentCommentId.toString() : ""
+                        }
                     );
-                    console.log(`Cleared invalid device token for user ${postOwner._id}`);
+                } catch (error) {
+                    console.error(`Failed to send push to user ${postOwner._id}:`, error.message);
+                    if (error.code === 'messaging/invalid-argument' ||
+                        error.code === 'messaging/registration-token-not-registered') {
+                        await User.findByIdAndUpdate(postOwner._id, { device_token: null }); 
+                        console.log(`Cleared invalid device token for user ${postOwner._id}`);
+                    }
                 }
             }
 
@@ -89,7 +91,21 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 message: `${user.username} ${resMessages.notifications.comment}`,
                 postId
             });
+
+       
+            const io = getIo();
+            const postOwnerSocketId = getUserSocketId(post.userId.toString());
+            if (postOwnerSocketId) {
+                io.to(postOwnerSocketId).emit("new_comment", {
+                    postId,
+                    commentId: comment._id,
+                    senderId: userId,
+                    senderUsername: user.username,
+                    parentCommentId: parentCommentId || null
+                });
+            }
         }
+
         return comment;
     } catch (error) {
         if (error.statusCode) throw error;
@@ -98,7 +114,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 };
 
 
-//update comment by whom uploaded this
+// update comment by whom uploaded this
 exports.updateCommentService = async (postId, commentId, parentCommentId, content, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
@@ -145,7 +161,9 @@ exports.updateCommentService = async (postId, commentId, parentCommentId, conten
         throw createError(500, 'serverError', 'error');
     }
 };
-//delete comment by user who upload the commenta and also ownerUser of the profile
+
+
+// delete comment by user who upload the comment and also ownerUser of the profile
 exports.deleteCommentService = async (postId, commentId, parentCommentId, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
@@ -177,12 +195,11 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
             throw new Error(400, 'commentNotDeleted', 'customError');
         }
 
-        //delete that comment from userstats
-
         await UserStats.updateOne(
             { "commentLikes.commentId": commentId },
             { $pull: { commentLikes: { commentId: commentId } } }
         );
+
         if (parentCommentId) {
             await Comment.findByIdAndUpdate(
                 parentCommentId,
@@ -196,6 +213,7 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
         throw createError(500, 'serverError', 'error');
     }
 };
+
 
 exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
     try {
@@ -338,8 +356,6 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
 };
 
 
-
-
 exports.getReplyCommentService = async (postId, page, limit, parentCommentId, userId) => {
     try {
         if (!userId) {
@@ -474,11 +490,5 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
-
     }
 };
-
-
-
-
-
