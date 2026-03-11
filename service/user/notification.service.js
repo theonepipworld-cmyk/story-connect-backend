@@ -14,6 +14,7 @@ const Notification = require("../../models/notification.model.js");
 
 exports.getUserNotificationService = async (userId) => {
     try {
+
         if (!userId) {
             throw createError(400, 'userNotFound', 'notFound');
         }
@@ -27,13 +28,16 @@ exports.getUserNotificationService = async (userId) => {
             user: user._id,
             isRead: false
         })
-            .populate("sender", "name avatarUrl")
+            .populate("sender", "username avatarUrl")
+            .populate("postId", "mediaUrls")
             .sort({ createdAt: -1 });
 
         return result;
-    }
-    catch (error) {
+
+    } catch (error) {
+
         if (error.statusCode) throw error;
+
         throw createError(500, 'serverError', 'error');
     }
 };
@@ -66,7 +70,7 @@ exports.changeStatusPushNotificationService = async (userId, isPushNotification)
             { new: true, select: 'isPushNotification username email' }
         );
 
-        if (!user)  throw createError(400, 'userNotFound', 'notFound');
+        if (!user) throw createError(400, 'userNotFound', 'notFound');
 
         return {
             message: `Push notification ${isPushNotification ? 'enabled' : 'disabled'} successfully.`,
