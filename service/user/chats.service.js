@@ -5,11 +5,10 @@ const { createError, isUserExist, isConversationExist } = require("../../helpers
 const Block = require("../../models/block.model.js");
 const Message = require("../../models/message.model.js");
 const Conversation = require("../../models/conversations.model.js");
-const { getIo } = require("../../socket");
+const { getIo, getOnlineUsers, getUserSocketId } = require("../../socket"); 
 const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
-const { getOnlineUsers } = require("../../socket.js");
-const resMessages = require("../../constants/resMessages.constants.js");
+const resMessages = require("../../constants/resMessages.constants.js"); 
 
 
 // SEND MESSAGE
@@ -47,18 +46,23 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
+
+        const emitToParticipants = (event, payload) => {
+            const io = getIo();
+            const senderSocketId = getUserSocketId(senderId.toString());
+            const receiverSocketId = getUserSocketId(receiverId.toString());
+            if (senderSocketId) io.to(senderSocketId).emit(event, payload);
+            if (receiverSocketId) io.to(receiverSocketId).emit(event, payload);
+        };
+
         let messages = [];
 
+   
         if (messageText && Array.isArray(files) && files.length > 0) {
-
             const uploadedFiles = [];
-
             for (const file of files) {
                 const uploaded = await uploadFileToS3(file, `messages/${conversation._id}`);
-                uploadedFiles.push({
-                    url: uploaded.Location,
-                    mimeType: file.mimetype
-                });
+                uploadedFiles.push({ url: uploaded.Location, mimeType: file.mimetype });
             }
 
             const postMessage = new Message({
@@ -73,10 +77,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const savedPostMessage = await postMessage.save();
             messages.push(savedPostMessage);
 
-            const io = getIo();
-            io.emit("newMessage", savedPostMessage);
+            emitToParticipants("newMessage", savedPostMessage); // ← io.emit replace kiya
 
-          
             conversation.lastMessage = {
                 _id: savedPostMessage._id,
                 text: savedPostMessage.text,
@@ -88,13 +90,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             let unseen = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
             unseen ? unseen.count++ : conversation.unseenCount.push({ userId: receiverId, count: 1 });
 
-  
             if (receiver.device_token) {
                 try {
                     await pushNotification.androidPushNotification(
-                        receiver.device_token,
-                        messageText,
-                        "message",
+                        receiver.device_token, messageText, "message",
                         {
                             conversationId: conversation._id.toString(),
                             senderId: senderId.toString(),
@@ -106,14 +105,13 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 } catch (error) {
                     if (error.code === 'messaging/invalid-argument' ||
                         error.code === 'messaging/registration-token-not-registered') {
-                        await User.update({ device_token: null }, { where: { id: receiver._id } });
+                        await User.findByIdAndUpdate(receiver._id, { device_token: null });
                     }
                 }
             }
 
             conversation.updatedAt = new Date();
             await conversation.save();
-
             return messages;
         }
 
@@ -130,8 +128,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const savedTextMessage = await textMessage.save();
             messages.push(savedTextMessage);
 
-            const io = getIo();
-            io.emit("newMessage", savedTextMessage);
+            emitToParticipants("newMessage", savedTextMessage); 
 
             conversation.lastMessage = {
                 _id: savedTextMessage._id,
@@ -147,9 +144,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             if (receiver.device_token) {
                 try {
                     await pushNotification.androidPushNotification(
-                        receiver.device_token,
-                        messageText,
-                        "message",
+                        receiver.device_token, messageText, "message",
                         {
                             conversationId: conversation._id.toString(),
                             senderId: senderId.toString()
@@ -158,15 +153,14 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 } catch (error) {
                     if (error.code === 'messaging/invalid-argument' ||
                         error.code === 'messaging/registration-token-not-registered') {
-                        await User.update({ device_token: null }, { where: { id: receiver._id } });
+                        await User.findByIdAndUpdate(receiver._id, { device_token: null });
                     }
                 }
             }
         }
 
-        if ((!messageText || messageText.trim() === "") &&
-            Array.isArray(files) && files.length > 0) {
-
+     
+        if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
                 const uploaded = await uploadFileToS3(file, `messages/${conversation._id}`);
                 const fileType = file.mimetype.startsWith("image/")
@@ -184,8 +178,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const savedFileMessage = await fileMessage.save();
                 messages.push(savedFileMessage);
 
-                const io = getIo();
-                io.emit("newMessage", savedFileMessage);
+                emitToParticipants("newMessage", savedFileMessage); 
 
                 conversation.lastMessage = {
                     _id: savedFileMessage._id,
@@ -201,9 +194,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 if (receiver.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
-                            receiver.device_token,
-                            `Sent a ${fileType}`,
-                            "message",
+                            receiver.device_token, `Sent a ${fileType}`, "message",
                             {
                                 conversationId: conversation._id.toString(),
                                 senderId: senderId.toString()
@@ -212,7 +203,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     } catch (error) {
                         if (error.code === 'messaging/invalid-argument' ||
                             error.code === 'messaging/registration-token-not-registered') {
-                            await User.update({ device_token: null }, { where: { id: receiver._id } });
+                            await User.findByIdAndUpdate(receiver._id, { device_token: null });
                         }
                     }
                 }
@@ -221,7 +212,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         conversation.updatedAt = new Date();
         await conversation.save();
-
         return messages;
 
     } catch (error) {
@@ -229,7 +219,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 
 // GET USER CONVERSATIONS
@@ -244,7 +233,6 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
         const blockedUsers = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
         }).lean();
-
 
         const blockedUserIds = blockedUsers.map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
@@ -346,18 +334,13 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
         throw createError(500, 'serverError', 'error');
     }
 };
-exports.loadMoreMessagesService = async (
-    userId,
-    conversationId,
-    lastMessageId,
-    limit = 10,
-    page = 1
-) => {
+
+
+exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10, page = 1) => {
     try {
         if (!userId || !conversationId || !lastMessageId) {
             throw createError(404, resMessages.validation.missingFields);
         }
-
 
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
@@ -365,30 +348,22 @@ exports.loadMoreMessagesService = async (
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) throw createError(404, 'invalidConversationId', 'validation');
 
-
         if (!conversation.participants.includes(new mongoose.Types.ObjectId(userId))) {
             throw createError(403, 'unauthorizedAccess', 'auth');
         }
-
-        //const participants = conversation.participants.map(p => p.toString());
-        // const receiverId = participants.find(p => p !== userId);
-        //const onlineUsers = getOnlineUsers();
 
         const totalMessages = await Message.countDocuments({ conversationId });
         const totalPages = Math.ceil(totalMessages / limit);
         const skip = (page - 1) * limit;
 
-
         const lastMessage = await Message.findById(lastMessageId);
         if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
-
 
         const messages = await Message.find({ conversationId })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .populate("sender", "username avatarUrl currentCountry");
-
 
         await Conversation.updateOne(
             { _id: conversationId, "unseenCount.userId": userId },
@@ -397,35 +372,19 @@ exports.loadMoreMessagesService = async (
         );
 
         await Message.updateMany(
-            {
-                conversationId,
-                sender: { $ne: userId },
-                status: { $ne: enums.messages_Status.SEEN }
-            },
+            { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
             { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
         );
 
-        // const onlineUsersSet = new Set(onlineUsers); 
-        //const receiverOnline = onlineUsersSet.has(receiverId); 
-
         return {
-            //receiverOnline,
             data: messages.reverse(),
-            pagination: {
-                total: totalMessages,
-                totalPages,
-                currentPage: page,
-                limit,
-                hasMore: page < totalPages,
-            },
+            pagination: { total: totalMessages, totalPages, currentPage: page, limit, hasMore: page < totalPages },
         };
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
 
 
 // SEEN MESSAGE
@@ -446,11 +405,12 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             { $set: { status: "seen" } }
         );
 
-        conversation.unseenCount = conversation.unseenCount.map(u => u.userId.toString() === receiverId.toString() ? { ...u, count: 0 } : u);
+        conversation.unseenCount = conversation.unseenCount.map(u =>
+            u.userId.toString() === receiverId.toString() ? { ...u, count: 0 } : u
+        );
         await conversation.save();
 
         getIo().emit("messages_seen", { conversationId, seenBy: receiverId, data: result });
-
         return result;
     } catch (error) {
         if (error.statusCode) throw error;
@@ -490,10 +450,8 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
 exports.updateMessageService = async (conversationId, messageId, messageText, userId) => {
     try {
         const { message } = await validateMessageAction(conversationId, messageId, userId);
-
         const update = await Message.updateOne({ _id: messageId }, { $set: { text: messageText } });
         getIo().emit("messages_updated", { conversationId, updatedby: userId, updatedMessage: message });
-
         return update;
     } catch (error) {
         if (error.statusCode) throw error;
@@ -506,14 +464,12 @@ exports.updateMessageService = async (conversationId, messageId, messageText, us
 exports.deleteMessageservice = async (conversationId, messageId, userId) => {
     try {
         const { message } = await validateMessageAction(conversationId, messageId, userId);
-
         const deleted = await Message.deleteOne({ _id: messageId });
         getIo().emit("messages_deleted", { conversationId, deletedby: userId, deletedMessage: message });
-
         return deleted;
     } catch (error) {
         if (error.statusCode) throw error;
-        throw createError(500, 'serverError', 'error');;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
@@ -535,7 +491,6 @@ exports.deleteConversationService = async (conversationId, userId) => {
             { _id: conversationId },
             { $addToSet: { hiddenBy: userId } }
         );
-
         return result;
     } catch (error) {
         if (error.statusCode) throw error;
@@ -544,7 +499,7 @@ exports.deleteConversationService = async (conversationId, userId) => {
 };
 
 
-// VALIDATE MESSAGE ACTION
+
 const validateMessageAction = async (conversationId, messageId, userId) => {
     if (!userId) throw createError(403, 'userNotFound', 'notFound');
 

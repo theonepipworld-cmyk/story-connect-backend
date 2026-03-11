@@ -5,13 +5,12 @@ const userActivityStats = require("../../constants/variables.constants.js")
 const { isPostExist, validateComment, createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js");
 const Block = require("../../models/block.model.js");
-const { getIo } = require("../../socket");
+const { getIo, getUserSocketId } = require("../../socket"); 
 const Notification = require("../../models/notification.model.js");
 const User = require("../../models/user.model.js")
 const enums = require("../../constants/enum.constants.js")
 const pushNotification = require("../../utils/pushNotification.js")
 
-//add likes ,views ,commentlikes of users on post
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
         if (!userId || !username) {
@@ -90,8 +89,12 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
+             
                 const io = getIo();
-                io.emit("post_liked", { postId, userId, username });
+                const postOwnerSocketId = getUserSocketId(post.userId.toString());
+                if (postOwnerSocketId) {
+                    io.to(postOwnerSocketId).emit("post_liked", { postId, userId, username });
+                }
             }
 
         } else if (type === userActivityStats.userStats.Views) {
@@ -99,11 +102,10 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             if (!alreadyView) stats.views.push({ userId, userName: username });
             stats.totalViews = stats.views.length;
 
-        }
-        else if (type.startsWith("comment")) {
+        } else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
             const comment = await Comment.findById(commentId).populate("userId", "username");
-            console.log(userId)
+            console.log(userId);
             if (comment && comment.userId?._id.toString() !== userId.toString()) {
                 const commentOwner = comment.userId;
                 if (commentOwner && user.device_token) {
@@ -130,6 +132,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         }
                     }
                 }
+
                 await Notification.create({
                     user: comment.userId,
                     sender: userId,
@@ -137,10 +140,15 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     message: `${username} ${resMessages.notifications.commentLike}`,
                     postId
                 });
+
                 const io = getIo();
-                io.emit("comment_liked", { postId, commentId, userId, username });
+                const commentOwnerSocketId = getUserSocketId(commentOwner._id.toString());
+                if (commentOwnerSocketId) {
+                    io.to(commentOwnerSocketId).emit("comment_liked", { postId, commentId, userId, username });
+                }
             }
         }
+
         await stats.save();
         return stats;
     } catch (error) {
@@ -150,7 +158,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 };
 
 
-//get all liked or views users those liked or view the post
 exports.getAllLikedUserService = async (postId, type, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);

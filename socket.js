@@ -37,7 +37,6 @@ function initIo(server) {
       }
     });
 
-
     socket.on("logout", async (data) => {
       console.log("Logout event received:", data);
       try {
@@ -46,11 +45,9 @@ function initIo(server) {
           const updatedUser = await User.findByIdAndUpdate(
             data.userId,
             { $set: { isOnline: false, device_token: null } },
-            { new: true } 
+            { new: true }
           );
-
           await decrementHourlyActiveUser();
-
           console.log(` Cleared token & set offline for user ${data.userId}`);
           console.log("Updated user:", updatedUser);
         }
@@ -79,15 +76,18 @@ function initIo(server) {
   return io;
 }
 
-// Get socket.io instance
 function getIo() {
   if (!io) throw new Error("Socket.io not initialized!");
   return io;
 }
 
-// Get all online users
 function getOnlineUsers() {
   return onlineUsers;
 }
 
-module.exports = { initIo, getIo, getOnlineUsers };
+
+function getUserSocketId(userId) {
+  return onlineUsers.get(userId.toString()) || null;
+}
+
+module.exports = { initIo, getIo, getOnlineUsers, getUserSocketId }; 
