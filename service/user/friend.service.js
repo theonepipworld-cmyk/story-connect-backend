@@ -122,37 +122,30 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         if (userId === friendReqId) {
             throw createError(400, 'idIsSame', 'validation');
         }
+
         const user = await isUserExist(userId);
         const requester = await isUserExist(friendReqId);
 
-        if (!requester) {
-            throw createError(400, 'userNotFound', 'notFound');
+        if (!requester) throw createError(400, 'userNotFound', 'notFound');
 
-        }
         const existing = await Friend.findOne({
             requester: new mongoose.Types.ObjectId(friendReqId),
             recipient: user._id
         });
-        console.log(existing)
 
+        if (!existing) throw createError(404, 'noFriendFound', 'notFound');
 
-        if (!existing) {
-            throw createError(404, 'noFriendFound', 'notFound');
-        }
         const isBlocked = await Block.findOne({
             $or: [
                 { blocker: userId, blocked: friendReqId },
                 { blocker: friendReqId, blocked: userId }
             ]
         });
-        if (isBlocked) {
-            throw createError(403, 'userBlocked', 'validation');
-        }
+        if (isBlocked) throw createError(403, 'userBlocked', 'validation');
 
         if (existing.status === enums.friend_Request_status.ACCEPTED) {
             throw createError(400, 'alreadyFriend', 'customError');
         }
-
         if (existing.status === enums.friend_Request_status.REJECTED) {
             throw createError(400, 'alreadyRejected', 'customError');
         }
@@ -165,8 +158,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             throw createError(400, 'invalidFriendAction', 'validation');
         }
 
-
-
         await existing.save();
         const io = getIo();
         io.emit("friend_request_responded", {
@@ -175,17 +166,41 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             data: existing,
         });
 
+        const isAccepted = existing.status === enums.friend_Request_status.ACCEPTED;
+
+       
+        await Notification.findOneAndUpdate(
+            {
+                user: existing.requester,
+                sender: userId,
+                type: enums.notification_Types.FRIEND_REQUEST
+            },
+            {
+                $set: {
+                    type: isAccepted
+                        ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
+                        : enums.notification_Types.FRIEND_REQUEST_REJECTED,
+                    message: isAccepted
+                        ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
+                        : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
+                    isRead: true
+                }
+            },
+            { new: true, upsert: true }
+        );
+
         await Notification.create({
-            user: existing.requester,
-            sender: userId,
-            type: existing.status === enums.friend_Request_status.ACCEPTED
+            user: userId,
+            sender: existing.requester,
+            type: isAccepted
                 ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
-                : enums.notification_Types.FRIEND_REQUEST,
-            message: existing.status === enums.friend_Request_status.ACCEPTED
-                ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
-                : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
+                : enums.notification_Types.FRIEND_REQUEST_REJECTED,
+            message: isAccepted
+                ? `You accepted ${requester.username}'s friend request`
+                : `You rejected ${requester.username}'s friend request`,
             postId: null
         });
+
         return existing;
 
     } catch (error) {
@@ -193,7 +208,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 exports.getAllpendingReqService = async (userId) => {
     try {

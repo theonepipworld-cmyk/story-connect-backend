@@ -14,19 +14,20 @@ const Notification = require("../../models/notification.model.js");
 
 exports.getUserNotificationService = async (userId) => {
     try {
-
         if (!userId) {
             throw createError(400, 'userNotFound', 'notFound');
         }
-
         const user = await isUserExist(userId);
         if (!user) {
             throw createError(400, 'userNotFound', 'notFound');
         }
 
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+
         const result = await Notification.find({
             user: user._id,
-            isRead: false
+            createdAt: { $gte: lastMonth } 
         })
             .populate("sender", "username avatarUrl")
             .populate("postId", "mediaUrls")
@@ -35,13 +36,10 @@ exports.getUserNotificationService = async (userId) => {
         return result;
 
     } catch (error) {
-
         if (error.statusCode) throw error;
-
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 
 exports.makeAllUserNotificationReadService = async (userId) => {
