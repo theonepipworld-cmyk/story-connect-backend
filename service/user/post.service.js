@@ -452,51 +452,87 @@ exports.getPostById = async (id, userId) => {
 // Update Post
 exports.updatePost = async (id, updateData, userId) => {
   try {
+
+
     if (!userId) {
       throw createError(400, 'userNotFound', 'notFound');
     }
+
+
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) {
       throw createError(400, 'postNotFound', 'notFound');
     }
-    if (isPostIdExist.userId.toString() != userId.toString()) {
-      throw new Error(resMessages.customError.NotAuthorized);
+   
+    if (isPostIdExist.userId.toString() !== userId.toString()) {
+      throw createError(403, 'NotAuthorized', 'error');
     }
 
-    let cleanHashtags = []
-    cleanHashtags = updateData.hashtags
-      .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
-      .filter((tag, index, self) => tag && self.indexOf(tag) === index);
-    updateData.hashtags = cleanHashtags;
-    const oldTags = isPostIdExist.hashtags
-    const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag))
-    const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag))
-    const post = await Post.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    let cleanHashtags = [];
+    if (updateData.hashtags && Array.isArray(updateData.hashtags)) {
+      cleanHashtags = updateData.hashtags
+        .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
+        .filter((tag, index, self) => tag && self.indexOf(tag) === index);
+      updateData.hashtags = cleanHashtags;
+    } else {
+
+      updateData.hashtags = isPostIdExist.hashtags;
+      cleanHashtags = isPostIdExist.hashtags;
+    }
+
+    const oldTags = isPostIdExist.hashtags;
+    const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag));
+    const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag));
+
+
+    const post = await Post.findByIdAndUpdate(
+      id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!post) {
+      throw createError(400, 'postNotFound', 'notFound');
+    }
 
     await Promise.all([
+
+      // add new tags
       ...addTags.map(tag =>
         HashTag.findOneAndUpdate(
           { tag },
-          { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
+          {
+            $inc: { usageCount: 1 },
+            $addToSet: { posts: post._id }
+          },
           { upsert: true }
         )
       ),
+
+      // remove old tags
       ...removeTags.map(async tag => {
         const updated = await HashTag.findOneAndUpdate(
           { tag },
-          { $inc: { usageCount: -1 }, $pull: { posts: post._id } },
+          {
+            $inc: { usageCount: -1 },
+            $pull: { posts: post._id }
+          },
           { new: true }
         );
-        if (updated?.usageCount <= 0) await HashTag.deleteOne({ tag });
+
+        // delete hashtag document if no more usage
+        if (updated?.usageCount <= 0) {
+          await HashTag.deleteOne({ tag });
+        }
       })
     ]);
 
     return post;
-  }
-  catch (error) {
+
+  } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, 'serverError', 'error');
   }

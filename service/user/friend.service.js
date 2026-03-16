@@ -41,6 +41,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 { requester: friendReqId, recipient: userId }
             ]
         });
+
         if (existing) {
             if (existing.status === enums.friend_Request_status.PENDING) {
                 isRequested = true;
@@ -61,6 +62,8 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             recipient: friendReqId,
             status: enums.friend_Request_status.PENDING
         });
+
+        console.log(result)
 
 
         if (result) {
@@ -168,7 +171,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
 
         const isAccepted = existing.status === enums.friend_Request_status.ACCEPTED;
 
-       
+
         await Notification.findOneAndUpdate(
             {
                 user: existing.requester,
@@ -519,7 +522,7 @@ exports.cancelFriendReqService = async (userId, friendId) => {
         if (!userId || !friendId) {
             throw createError(400, 'userOrFriendIdNotFound', 'notFound');
         }
-
+      
         const request = await Friend.findOne({
             requester: userId,
             recipient: friendId,

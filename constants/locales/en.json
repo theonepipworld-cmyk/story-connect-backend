@@ -54,7 +54,8 @@
     "reportCategoryNotFound": "Report category not found.",
     "faqNotFound": "FAQ not found.",
     "reportedUserNotFound": "Reported user not found.",
-    "actionRequired": "Action is required."
+    "actionRequired": "Action is required.",
+    "friendReqNotFound":"No friend found"
   },
   "validation": {
     "missingFields": "Missing required fields.",

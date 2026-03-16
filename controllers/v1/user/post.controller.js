@@ -84,6 +84,8 @@ exports.updatePost = async (req, res) => {
   try {
     const lang = getLang(req);
     const userId = req.user.id;
+    console.log(req.body)
+    console.log(req.params.id)
     const post = await postService.updatePost(req.params.id, req.body, userId);
 
     if (!post) {

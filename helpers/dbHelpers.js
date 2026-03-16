@@ -373,13 +373,13 @@ exports.getAllFriends = async (id) => {
 
     const friendsList = result
       .map(f => {
-        if (!f.requester || !f.recipient) return null; 
+        if (!f.requester || !f.recipient) return null;
 
         const friend =
           f.requester._id.toString() === id.toString()
             ? f.recipient
             : f.requester;
-    
+
         return {
           _id: friend._id,
           username: friend.username || "",
@@ -390,7 +390,7 @@ exports.getAllFriends = async (id) => {
             : { code: "", name: "" }
         };
       })
-      .filter(Boolean); 
+      .filter(Boolean);
     return friendsList;
   } catch (error) {
     throw error;

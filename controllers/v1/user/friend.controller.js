@@ -135,8 +135,8 @@ exports.unfriendReq = async (req, res) => {
 exports.cancelFriendReq = async (req, res) => {
     try {
         const lang = getLang(req);
-        const { result, iscancelled } = await cancelFriendReqService(req.user.id, req.params.id);
-        return res.status(200).json(successResponse(getMessage(lang, 'success', 'cancelReqSuccessfully'), isRequested));
+        const response = await cancelFriendReqService(req.user.id, req.params.id);
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'cancelReqSuccessfully'), response));
     }
     catch (err) {
         const lang = getLang(req);
