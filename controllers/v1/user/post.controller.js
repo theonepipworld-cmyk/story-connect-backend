@@ -11,8 +11,6 @@ exports.createPost = async (req, res) => {
   const lang = getLang(req);
   try {
     req.body.userId = req.user.id;
-
-
     let mediaUrls = [];
     if (req.files?.length) {
       const uploadResults = await Promise.all(

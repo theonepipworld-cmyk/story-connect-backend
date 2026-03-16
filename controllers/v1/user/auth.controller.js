@@ -109,6 +109,13 @@ exports.forgotPassword = async (req, res) => {
 
       let user = await User.findOne({ email });
 
+
+
+
+
+
+      
+
       if (!user) {
         user = new User({ email, name, googleId });
         await user.save();

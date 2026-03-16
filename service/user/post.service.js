@@ -463,7 +463,7 @@ exports.updatePost = async (id, updateData, userId) => {
     if (!isPostIdExist) {
       throw createError(400, 'postNotFound', 'notFound');
     }
-   
+
     if (isPostIdExist.userId.toString() !== userId.toString()) {
       throw createError(403, 'NotAuthorized', 'error');
     }
@@ -765,83 +765,96 @@ exports.getTrendingTagsService = async () => {
   }
 };
 
-exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
+// constants
+const SAMPLE_POOL_SIZE = 300; 
+
+exports.getAllPostService = async (
+  search = "",
+  page,
+  limit,
+  userId,
+  hashtagSearch = ""
+) => {
   try {
-    if (!userId) {
-      throw createError(400, 'userNotFound', 'notFound');
-    }
+    if (!userId) throw createError(400, "userNotFound", "notFound");
 
     const user = await isUserExist(userId);
-    if (!user) {
-      throw createError(400, 'userNotFound', 'notFound');
-    }
+    if (!user) throw createError(400, "userNotFound", "notFound");
 
-    const allFriends = await getAllFriends(user._id);
+   
+    const [allFriends, pendingRequests, blocked, joinedCommunities] =
+      await Promise.all([
+        getAllFriends(user._id),
+        Friend.find({
+          status: enums.friend_Request_status.PENDING,
+          $or: [{ requester: user._id }, { recipient: user._id }],
+        }),
+        Block.find({ $or: [{ blocked: userId }, { blocker: userId }] }),
+        CommunityMember.find({ userId: user._id }).select("communityId"),
+      ]);
+
     const allFriendIds = allFriends
-      .map(f => f?._id?.toString())
+      .map((f) => f?._id?.toString())
       .filter(Boolean);
-    const pendingRequests = await Friend.find({
-      status: enums.friend_Request_status.PENDING,
-      $or: [
-        { requester: user._id },
-        { recipient: user._id }
-      ]
-    });
-
-
 
     const pendingUserIds = pendingRequests
-      .map(req => {
-        if (!req || !req.requester || !req.recipient) return null;
-
+      .map((req) => {
+        if (!req?.requester || !req?.recipient) return null;
         return req.requester._id.toString() === user._id.toString()
           ? req.recipient?._id?.toString()
           : req.requester?._id?.toString();
       })
-
-
-    const blocked = await Block.find({
-      $or: [{ blocked: userId }, { blocker: userId }]
-    });
-
+      .filter(Boolean);
 
     const blockedUserIds = blocked
-      .map(b => {
-        const id = b.blocker.toString() === userId.toString() ? b.blocked : b.blocker;
+      .map((b) => {
+        const id =
+          b.blocker.toString() === userId.toString() ? b.blocked : b.blocker;
         return id ? new mongoose.Types.ObjectId(id) : null;
       })
+      .filter(Boolean);
 
-    const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
-    const allIds = joinedCommunities.map(c => c.communityId)
+    const joinedCommunityIds = joinedCommunities.map((c) => c.communityId);
+
+  
     const baseMatch = {
       $expr: {
         $not: {
           $in: [
             { $toObjectId: "$userId" },
-            [...blockedUserIds.map(id => new mongoose.Types.ObjectId(id)), new mongoose.Types.ObjectId(userId)]
-          ]
-        }
-      }
+            [
+              ...blockedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+              new mongoose.Types.ObjectId(userId),
+            ],
+          ],
+        },
+      },
     };
 
     if (search) {
       baseMatch.$or = [
         { postHeading: { $regex: search, $options: "i" } },
-        { postDescription: { $regex: search, $options: "i" } }
+        { postDescription: { $regex: search, $options: "i" } },
       ];
     }
 
     if (hashtagSearch) {
       baseMatch.hashtags = { $regex: `^${hashtagSearch}$`, $options: "i" };
     }
+
     const skip = (page - 1) * limit;
+
 
     const result = await Post.aggregate([
       { $match: baseMatch },
+
+      { $sample: { size: SAMPLE_POOL_SIZE } },
+
       {
         $facet: {
+     
           data: [
-
+            // Users
             {
               $lookup: {
                 from: "users",
@@ -852,7 +865,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
             },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
 
-
+            // Communities
             {
               $lookup: {
                 from: "communities",
@@ -861,9 +874,14 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 as: "community",
               },
             },
-            { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
+            {
+              $unwind: {
+                path: "$community",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
 
-
+            // Community categories
             {
               $lookup: {
                 from: "communitycategories",
@@ -872,9 +890,14 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 as: "communityCategory",
               },
             },
-            { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
+            {
+              $unwind: {
+                path: "$communityCategory",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
 
-
+            // Stats (likes + views)
             {
               $lookup: {
                 from: "userstats",
@@ -886,10 +909,14 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
             {
               $addFields: {
                 totalLikes: {
-                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] },
+                  $size: {
+                    $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []],
+                  },
                 },
                 totalViews: {
-                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] },
+                  $size: {
+                    $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []],
+                  },
                 },
                 isPostLikedByMe: {
                   $let: {
@@ -899,7 +926,12 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                         $map: {
                           input: { $ifNull: ["$$statsDoc.likes", []] },
                           as: "like",
-                          in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                          in: {
+                            $eq: [
+                              "$$like.userId",
+                              { $toString: user._id },
+                            ],
+                          },
                         },
                       },
                     },
@@ -908,7 +940,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
               },
             },
 
-
+            // Comments
             {
               $lookup: {
                 from: "comments",
@@ -917,13 +949,9 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 as: "comments",
               },
             },
-            {
-              $addFields: {
-                totalComments: { $size: "$comments" },
-              },
-            },
+            { $addFields: { totalComments: { $size: "$comments" } } },
 
-
+           
             {
               $addFields: {
                 community: {
@@ -941,7 +969,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                       },
                       isJoinedByMe: {
                         $cond: [
-                          { $in: ["$communityId", allIds] },
+                          { $in: ["$communityId", joinedCommunityIds] },
                           true,
                           false,
                         ],
@@ -952,14 +980,30 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 },
               },
             },
+
+            // Social flags
             {
               $addFields: {
-                isFriend: { $in: ["$userId", allFriendIds.map(id => new mongoose.Types.ObjectId(id))] },
-                isPendingRequest: { $in: ["$userId", pendingUserIds.map(id => new mongoose.Types.ObjectId(id))] }
-              }
+                isFriend: {
+                  $in: [
+                    "$userId",
+                    allFriendIds.map(
+                      (id) => new mongoose.Types.ObjectId(id)
+                    ),
+                  ],
+                },
+                isPendingRequest: {
+                  $in: [
+                    "$userId",
+                    pendingUserIds.map(
+                      (id) => new mongoose.Types.ObjectId(id)
+                    ),
+                  ],
+                },
+              },
             },
 
-
+            // Shape final output
             {
               $project: {
                 _id: 1,
@@ -984,14 +1028,16 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 totalComments: 1,
                 isPostLikedByMe: 1,
                 isFriend: 1,
-                isPendingRequest: 1
+                isPendingRequest: 1,
               },
             },
 
-            { $sort: { createdAt: -1 } },
+        
             { $skip: skip },
             { $limit: limit },
           ],
+
+     
           totalCount: [{ $count: "count" }],
         },
       },
@@ -1011,7 +1057,7 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
     };
   } catch (error) {
     if (error.statusCode) throw error;
-    throw createError(500, 'serverError', 'error');
+    throw createError(500, "serverError", "error");
   }
 };
 
