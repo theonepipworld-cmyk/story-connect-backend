@@ -9,12 +9,12 @@ const FAQ = require("../../models/faq.model.js")
 exports.getallFaqService = async (page = 1, limit = 10, userId) => {
     try {
         if (!userId) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
         const offset = (page - 1) * limit;

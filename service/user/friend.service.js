@@ -58,7 +58,7 @@ const safeEmit = (room, event, payload) => {
 exports.sendFriendReqService = async (userId, friendReqId) => {
     try {
         if (!userId || !friendReqId) {
-            throw createError(400, "userOrFriendIdNotFound", "notFound");
+            throw createError(404, "userOrFriendIdNotFound", "notFound");
         }
 
         if (userId.toString() === friendReqId.toString()) {
@@ -70,8 +70,8 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             isUserExist(friendReqId)
         ]);
 
-        if (!user) throw createError(400, "userNotFound", "notFound");
-        if (!recipient) throw createError(400, "ReqUser", "notFound");
+        if (!user) throw createError(404, "userNotFound", "notFound");
+        if (!recipient) throw createError(404, "ReqUser", "notFound");
 
         const isBlocked = await Block.findOne({
             $or: [
@@ -173,7 +173,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 exports.respondFriendReqService = async (userId, friendReqId, action) => {
     try {
         if (!userId || !friendReqId) {
-            throw createError(400, "userOrFriendIdNotFound", "notFound");
+            throw createError(404, "userOrFriendIdNotFound", "notFound");
         }
 
 
@@ -186,8 +186,8 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             isUserExist(friendReqId)
         ]);
 
-        if (!user) throw createError(400, "userNotFound", "notFound");
-        if (!requester) throw createError(400, "userNotFound", "notFound");
+        if (!user) throw createError(404, "userNotFound", "notFound");
+        if (!requester) throw createError(404, "userNotFound", "notFound");
 
         const existing = await Friend.findOne({
             requester: new mongoose.Types.ObjectId(friendReqId),
@@ -287,11 +287,11 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
 exports.getAllpendingReqService = async (userId) => {
     try {
         if (!userId) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
 
@@ -335,12 +335,12 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
         limit = parseInt(limit);
 
         if (!userId || !loginUserId) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
         const loginUser = await isUserExist(loginUserId);
         if (!loginUser) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
 
@@ -413,7 +413,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
         const skip = (page - 1) * limit;
 
         if (!loginUserId || !otherUserId) {
-            throw createError(400, "userOrFriendIdNotFound", "notFound");
+            throw createError(404, "userOrFriendIdNotFound", "notFound");
         }
 
 
@@ -427,7 +427,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
         ]);
 
         if (!user || !recipient) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
 
@@ -470,10 +470,10 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         page = parseInt(page);
         limit = parseInt(limit);
 
-        if (!userId) throw createError(400, "userNotFound", "notFound");
+        if (!userId) throw createError(404, "userNotFound", "notFound");
 
         const user = await isUserExist(userId);
-        if (!user) throw createError(400, "userNotFound", "notFound");
+        if (!user) throw createError(404, "userNotFound", "notFound");
 
         const allFriends = await getAllFriends(user._id);
         const allFriendIds = allFriends.map((f) => f._id.toString());
@@ -609,16 +609,16 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
 exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
     try {
         if (!loginUserId) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
         if (!unfriendUserId) {
-            throw createError(400, "userOrFriendIdNotFound", "notFound");
+            throw createError(404, "userOrFriendIdNotFound", "notFound");
         }
 
         const user = await isUserExist(loginUserId);
         if (!user) {
-            throw createError(400, "userNotFound", "notFound");
+            throw createError(404, "userNotFound", "notFound");
         }
 
         const result = await Friend.deleteOne({
@@ -646,7 +646,7 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
 exports.cancelFriendReqService = async (userId, friendId) => {
     try {
         if (!userId || !friendId) {
-            throw createError(400, "userOrFriendIdNotFound", "notFound");
+            throw createError(404, "userOrFriendIdNotFound", "notFound");
         }
 
         if (userId.toString() === friendId.toString()) {
@@ -660,7 +660,7 @@ exports.cancelFriendReqService = async (userId, friendId) => {
         });
 
         if (!request) {
-            throw createError(400, "friendReqNotFound", "notFound");
+            throw createError(404, "friendReqNotFound", "notFound");
         }
 
         await request.deleteOne();

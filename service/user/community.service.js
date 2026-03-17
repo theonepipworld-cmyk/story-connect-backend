@@ -21,12 +21,12 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
     try {
         // Validate userId
         if (!userId) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         // Check for duplicate community name
@@ -91,11 +91,11 @@ exports.joinCommunityService = async (userId, data) => {
     try {
         const { communityId } = data
         if (!userId) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
         const isAlreadyMember = await CommunityMember.findOne({
             userId: user._id,
@@ -134,12 +134,12 @@ exports.joinCommunityService = async (userId, data) => {
 
 exports.userCommunityService = async (userId, search = "", page = 1, limit = 10) => {
     if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
     try {
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         const allUserCommunities = await CommunityMember.find({
@@ -264,13 +264,13 @@ exports.categoryService = async () => {
 
 exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => {
     if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
 
     try {
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
         const offset = (page - 1) * limit;
 
@@ -413,12 +413,12 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
 
 exports.getCommunityDetailService = async (communityId, userId) => {
     if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
     try {
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
         const community = await isCommunityExist(communityId)
         const communityUserId = community.userId
@@ -510,7 +510,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
 
 exports.getCommunityMemberService = async (communityId, userId, page = 1, limit = 10) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         userId = new mongoose.Types.ObjectId(userId);
         communityId = new mongoose.Types.ObjectId(communityId);
@@ -620,13 +620,13 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
 
 exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
     if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
     try {
 
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
         const community = await isCommunityExist(communityId);
         const blocked = await Block.findOne({
@@ -816,13 +816,13 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
 
 exports.removeCommunityMemberService = async (data, userId) => {
     if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
 
     try {
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         const community = await Community.findById(data.communityId)
@@ -836,7 +836,7 @@ exports.removeCommunityMemberService = async (data, userId) => {
         })
 
         if (!isMemberExist) {
-            throw createError(400, 'memberNotFound', 'notFound');
+            throw createError(404, 'memberNotFound', 'notFound');
         }
 
         if (community.userId.toString() !== userId.toString()) {
@@ -866,12 +866,12 @@ exports.removeCommunityMemberService = async (data, userId) => {
 
 exports.removeCommunityService = async (communityId, userId) => {
     if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
     try {
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         const community = await Community.findById(communityId)
@@ -907,9 +907,9 @@ exports.removeCommunityService = async (communityId, userId) => {
 
 exports.updateCommunityService = async (communityId, userId, data, file) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
         const user = await isUserExist(userId);
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const community = await Community.findById(communityId)
         if (community.userId.toString() !== userId.toString()) {
@@ -979,11 +979,11 @@ exports.listAllCommunityService = async (userId) => {
 exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1, limit = 10) => {
     try {
         if (!userId) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         if (!categoryId) {
-            throw createError(400, 'communityCategoryNotFound', 'notFound');
+            throw createError(404, 'communityCategoryNotFound', 'notFound');
         }
 
         const offset = (page - 1) * limit;
@@ -1110,14 +1110,14 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
 
 exports.leaveCommunityService = async (communityId, userId) => {
     if (!userId) {
-        throw createError(400, 'userNotFound', 'notFound');
+        throw createError(404, 'userNotFound', 'notFound');
     }
 
     try {
         const user = await isUserExist(userId);
         console.log(communityId)
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         communityId = new mongoose.Types.ObjectId(communityId);
@@ -1129,7 +1129,7 @@ exports.leaveCommunityService = async (communityId, userId) => {
         });
 
         if (!membership) {
-            throw createError(400, 'communityNotFound', 'notFound');
+            throw createError(404, 'communityNotFound', 'notFound');
         }
 
 

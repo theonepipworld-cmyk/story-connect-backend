@@ -390,14 +390,14 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 // SEEN MESSAGE
 exports.seenMessageService = async (conversationId, receiverId) => {
     try {
-        if (!receiverId) throw createError(403, 'userNotFound', 'notFound');
+        if (!receiverId) throw createError(404, 'userNotFound', 'notFound');
 
         const receiver = await isUserExist(receiverId);
-        if (!receiver) throw createError(403, 'userNotFound', 'notFound');
+        if (!receiver) throw createError(404, 'userNotFound', 'notFound');
 
         const conversation = await isConversationExist(conversationId);
         if (!conversation.participants.some(p => p.toString() === receiverId)) {
-            throw createError(403, 'receiverNotPart', 'notFound');
+            throw createError(404, 'receiverNotPart', 'notFound');
         }
 
         const result = await Message.updateMany(
@@ -422,14 +422,14 @@ exports.seenMessageService = async (conversationId, receiverId) => {
 // DELIVERED MESSAGE
 exports.deliveredMessageService = async (conversationId, receiverId) => {
     try {
-        if (!receiverId) throw createError(403, 'userNotFound', 'notFound');
+        if (!receiverId) throw createError(404, 'userNotFound', 'notFound');
 
         const receiver = await isUserExist(receiverId);
-        if (!receiver) throw createError(403, 'userNotFound', 'notFound');
+        if (!receiver) throw createError(404, 'userNotFound', 'notFound');
 
         const conversation = await isConversationExist(conversationId);
         if (!conversation.participants.some(p => p.toString() === receiverId)) {
-            throw createError(403, 'receiverNotPart', 'notFound');
+            throw createError(404, 'receiverNotPart', 'notFound');
         }
 
         const result = await Message.updateMany(
@@ -477,14 +477,14 @@ exports.deleteMessageservice = async (conversationId, messageId, userId) => {
 // DELETE CONVERSATION
 exports.deleteConversationService = async (conversationId, userId) => {
     try {
-        if (!userId) throw createError(403, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         const user = await isUserExist(userId);
-        if (!user) throw createError(403, 'userNotFound', 'notFound');
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const conversation = await isConversationExist(conversationId);
         if (!conversation.participants.some(p => p.toString() === userId)) {
-            throw createError(403, 'receiverNotPart', 'notFound');
+            throw createError(404, 'receiverNotPart', 'notFound');
         }
 
         const result = await Conversation.updateOne(
@@ -501,14 +501,14 @@ exports.deleteConversationService = async (conversationId, userId) => {
 
 
 const validateMessageAction = async (conversationId, messageId, userId) => {
-    if (!userId) throw createError(403, 'userNotFound', 'notFound');
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
     const user = await isUserExist(userId);
-    if (!user) throw createError(403, 'userNotFound', 'notFound');
+    if (!user) throw createError(404, 'userNotFound', 'notFound');
 
     const conversation = await isConversationExist(conversationId);
     if (!conversation.participants.some(p => p.toString() === userId.toString())) {
-        throw createError(403, 'receiverNotPart', 'notFound');
+        throw createError(404, 'receiverNotPart', 'notFound');
     }
 
     const message = await Message.findById(messageId);

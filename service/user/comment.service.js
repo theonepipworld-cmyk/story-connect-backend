@@ -31,7 +31,7 @@ const safeEmit = (socketId, event, payload) => {
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
     try {
         if (!userId) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         const [post, user] = await Promise.all([
@@ -39,8 +39,8 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             isUserExist(userId)
         ]);
 
-        if (!post) throw createError(400, 'postNotFound', 'notFound');
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
+        if (!post) throw createError(404, 'postNotFound', 'notFound');
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const blocked = await Block.findOne({
             $or: [
@@ -126,12 +126,12 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 exports.updateCommentService = async (postId, commentId, parentCommentId, content, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
-        if (!isPostIdExist) throw createError(400, 'postNotFound', 'notFound');
+        if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
 
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         const comment = await Comment.findById(commentId);
-        if (!comment) throw createError(400, 'commentNotFound', 'notFound');
+        if (!comment) throw createError(404, 'commentNotFound', 'notFound');
 
       
         if (comment.userId.toString() !== userId.toString()) {
@@ -164,7 +164,7 @@ exports.updateCommentService = async (postId, commentId, parentCommentId, conten
             { new: true }
         );
 
-        if (!updatedComment) throw createError(400, 'commentNotFound', 'notFound');
+        if (!updatedComment) throw createError(404, 'commentNotFound', 'notFound');
 
         return updatedComment;
     } catch (error) {
@@ -178,15 +178,15 @@ exports.updateCommentService = async (postId, commentId, parentCommentId, conten
 exports.deleteCommentService = async (postId, commentId, parentCommentId, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
-        if (!isPostIdExist) throw createError(400, 'postNotFound', 'notFound');
+        if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
 
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         const comment = await Comment.findById(commentId)
             .populate("userId", "_id")
             .populate("postId", "userId");
 
-        if (!comment) throw createError(400, 'commentNotFound', 'notFound');
+        if (!comment) throw createError(404, 'commentNotFound', 'notFound');
 
         const isCommentOwner = comment.userId._id.toString() === userId.toString();
         const isPostOwner = comment.postId.userId.toString() === userId.toString();
@@ -259,15 +259,15 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
         page = parseInt(page);
         limit = parseInt(limit);
 
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         const [user, isPostIdExist] = await Promise.all([
             isUserExist(userId),
             isPostExist(postId)
         ]);
 
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
-        if (!isPostIdExist) throw createError(400, 'postNotFound', 'notFound');
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
+        if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
 
         const offset = (page - 1) * limit;
 
@@ -413,15 +413,15 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
         page = parseInt(page);
         limit = parseInt(limit);
 
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         const [user, isPostIdExist] = await Promise.all([
             isUserExist(userId),
             isPostExist(postId)
         ]);
 
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
-        if (!isPostIdExist) throw createError(400, 'postNotFound', 'notFound');
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
+        if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
 
         const offset = (page - 1) * limit;
 

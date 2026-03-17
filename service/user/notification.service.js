@@ -15,11 +15,11 @@ const Notification = require("../../models/notification.model.js");
 exports.getUserNotificationService = async (userId) => {
     try {
         if (!userId) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
         const user = await isUserExist(userId);
         if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
+            throw createError(404, 'userNotFound', 'notFound');
         }
 
         const lastMonth = new Date();
@@ -59,7 +59,7 @@ exports.makeAllUserNotificationReadService = async (userId) => {
 
 exports.changeStatusPushNotificationService = async (userId, isPushNotification) => {
     try {
-        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
         if (typeof isPushNotification !== 'boolean') throw createError(400, 'InvalidPushNotification', 'validation');
 
         const user = await User.findByIdAndUpdate(
@@ -68,7 +68,7 @@ exports.changeStatusPushNotificationService = async (userId, isPushNotification)
             { new: true, select: 'isPushNotification username email' }
         );
 
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         return {
             message: `Push notification ${isPushNotification ? 'enabled' : 'disabled'} successfully.`,

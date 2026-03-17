@@ -85,7 +85,6 @@ exports.getOtherProfile = async (req, res) => {
   } catch (err) {
 
     const lang = getLang(req);
-
     const statusCode = err.statusCode || err.status || 500;
     const category = err.category || "error";
 

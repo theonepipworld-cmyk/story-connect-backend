@@ -22,15 +22,17 @@ const safeEmit = (socketId, event, payload) => {
 
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
+    
         if (!userId || !username) {
             throw createError(400, 'userNotFound', 'notFound');
         }
 
+       
         const user = await isUserExist(userId);
-        if (!user) throw createError(400, 'userNotFound', 'notFound');
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const post = await isPostExist(postId);
-        if (!post) throw createError(400, 'postNotFound', 'notFound');
+        if (!post) throw createError(404, 'postNotFound', 'notFound');
 
         const blocked = await Block.findOne({
             $or: [
@@ -41,11 +43,13 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         if (blocked) throw createError(403, 'userNotLikedorView', 'validation');
 
         if (type === userActivityStats.userStats.CommentLikes) {
+            
             if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId);
         }
 
         if (type === userActivityStats.userStats.CommentReplyLike) {
+         
             if (!parentCommentId || !commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId, true);
         }
@@ -66,7 +70,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         );
 
         if (type === userActivityStats.userStats.Likes) {
-        
             const liked = togglePostLike(stats, user);
 
             if (liked && post.userId.toString() !== userId.toString()) {
@@ -150,7 +153,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
-             
                 const commentOwnerSocketId = getUserSocketId(comment.userId._id.toString());
                 safeEmit(commentOwnerSocketId, "comment_liked", { postId, commentId, userId, username });
             }
@@ -167,8 +169,9 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
 exports.getAllLikedUserService = async (postId, type, userId) => {
     try {
+    
         const isPostIdExist = await isPostExist(postId);
-        if (!isPostIdExist) throw createError(400, 'postNotFound', 'notFound');
+        if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
 
         const blocked = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
@@ -185,8 +188,8 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
             stats = await userStats.findOne({ postId }).select("views");
         }
 
-    
-        if (!stats) throw createError(400, 'noUserStatsFound', 'customError');
+     
+        if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
 
         let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
         resultArr = resultArr.filter(u =>
