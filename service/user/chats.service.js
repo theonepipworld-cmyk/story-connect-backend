@@ -5,10 +5,10 @@ const { createError, isUserExist, isConversationExist } = require("../../helpers
 const Block = require("../../models/block.model.js");
 const Message = require("../../models/message.model.js");
 const Conversation = require("../../models/conversations.model.js");
-const { getIo, getOnlineUsers, getUserSocketId } = require("../../socket");
+const { getIo, getOnlineUsers, getUserSocketId } = require("../../socket"); 
 const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
-const resMessages = require("../../constants/resMessages.constants.js");
+const resMessages = require("../../constants/resMessages.constants.js"); 
 
 
 // SEND MESSAGE
@@ -48,28 +48,16 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
 
         const emitToParticipants = (event, payload) => {
-            try {
-                const io = getIo();
-                const senderSocketId = getUserSocketId(senderId.toString());
-                const receiverSocketId = getUserSocketId(receiverId.toString());
-                  console.log("s-----------",senderSocketId,receiverSocketId)
-                if (senderSocketId) {
-                    io.to(senderSocketId).emit(event, payload, (ack) => {
-                        console.log(`Sender received [${event}]:`, ack);
-                    });
-                }
-
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit(event, payload, (ack) => {
-                        console.log(`Receiver received [${event}]:`, ack);
-                    });
-                }
-            } catch (err) {
-                console.error("Socket emit error:", err);
-            }
+            const io = getIo();
+            const senderSocketId = getUserSocketId(senderId.toString());
+            const receiverSocketId = getUserSocketId(receiverId.toString());
+            if (senderSocketId) io.to(senderSocketId).emit(event, payload);
+            if (receiverSocketId) io.to(receiverSocketId).emit(event, payload);
         };
+
         let messages = [];
 
+   
         if (messageText && Array.isArray(files) && files.length > 0) {
             const uploadedFiles = [];
             for (const file of files) {
@@ -89,8 +77,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const savedPostMessage = await postMessage.save();
             messages.push(savedPostMessage);
 
-            emitToParticipants("newMessage", savedPostMessage);
-
+            emitToParticipants("newMessage", savedPostMessage); // ← io.emit replace kiya
 
             conversation.lastMessage = {
                 _id: savedPostMessage._id,
@@ -128,7 +115,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             return messages;
         }
 
-
+     
         if (messageText && (!files || files.length === 0)) {
             const textMessage = new Message({
                 conversationId: conversation._id,
@@ -141,7 +128,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const savedTextMessage = await textMessage.save();
             messages.push(savedTextMessage);
 
-            emitToParticipants("newMessage", savedTextMessage);
+            emitToParticipants("newMessage", savedTextMessage); 
 
             conversation.lastMessage = {
                 _id: savedTextMessage._id,
@@ -172,7 +159,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }
         }
 
-
+     
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
                 const uploaded = await uploadFileToS3(file, `messages/${conversation._id}`);
@@ -191,7 +178,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const savedFileMessage = await fileMessage.save();
                 messages.push(savedFileMessage);
 
-                emitToParticipants("newMessage", savedFileMessage);
+                emitToParticipants("newMessage", savedFileMessage); 
 
                 conversation.lastMessage = {
                     _id: savedFileMessage._id,
