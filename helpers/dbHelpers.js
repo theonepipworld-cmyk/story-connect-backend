@@ -408,49 +408,23 @@ exports.isConversationExist = async (id) => {
     throw error;
   }
 }
-
-exports.incrementHourlyActiveUser = async () => {
+const updateHourlyActiveUser = async (delta) => {
   const now = new Date();
-  const utcNow = new Date(now.toISOString());
   const todayUtc = new Date(Date.UTC(
-    utcNow.getUTCFullYear(),
-    utcNow.getUTCMonth(),
-    utcNow.getUTCDate()
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
   ));
-  const currentHourUtc = utcNow.getUTCHours();
-  console.log("Incrementing hourly active user for UTC hour:", currentHourUtc);
+  const currentHourUtc = now.getUTCHours();
 
   await DailyUserStats.updateOne(
     { date: todayUtc },
-    {
-      $inc: { [`hourlyCounts.${currentHourUtc}`]: 1 },
-      $setOnInsert: { hourlyCounts: Array(24).fill(0) }
-    },
+    { $inc: { [`hourlyCounts.${currentHourUtc}`]: delta } },
     { upsert: true }
   );
 };
 
-exports.decrementHourlyActiveUser = async () => {
-  const now = new Date();
-  const utcNow = new Date(now.toISOString());
-  const todayUtc = new Date(Date.UTC(
-    utcNow.getUTCFullYear(),
-    utcNow.getUTCMonth(),
-    utcNow.getUTCDate()
-  ));
-  const currentHourUtc = utcNow.getUTCHours();
-
-  console.log("Decrementing hourly active user for UTC hour:", currentHourUtc);
-
-  await DailyUserStats.updateOne(
-    { date: todayUtc },
-    {
-      $inc: { [`hourlyCounts.${currentHourUtc}`]: -1 },
-      $setOnInsert: { hourlyCounts: Array(24).fill(0) }
-    },
-    { upsert: true }
-  );
-};
-
+exports.incrementHourlyActiveUser = () => updateHourlyActiveUser(1);
+exports.decrementHourlyActiveUser = () => updateHourlyActiveUser(-1);
 
 

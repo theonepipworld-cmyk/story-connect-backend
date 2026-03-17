@@ -3,34 +3,38 @@ const DailyUserStats = require("../models/dailyUserStats.model");
 
 const resetDailyStats = async () => {
   try {
-    const today = new Date();
-    const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    await DailyUserStats.deleteMany({
-      date: { $lt: currentDay }
-    });
+    const now = new Date();
 
-    const result = await DailyUserStats.updateOne(
-      { date: currentDay },
-      { $set: { hourlyCounts: Array(24).fill(0) } }
+    const todayUtc = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate()
+    ));
+
+    await DailyUserStats.deleteMany({ date: { $lt: todayUtc } });
+    await DailyUserStats.updateOne(
+      { date: todayUtc },
+      {
+        $setOnInsert: {
+          date: todayUtc,
+          hourlyCounts: Array(24).fill(0)
+        }
+      },
+      { upsert: true }
     );
 
-    if (result.matchedCount === 0) {
-      console.log("No record for today — creating new...");
-      await DailyUserStats.create({
-        date: currentDay,
-        hourlyCounts: Array(24).fill(0),
-      });
-    }
-
-    console.log(" Daily stats reset for:", currentDay.toDateString());
+    console.log("Daily stats reset for:", todayUtc.toISOString());
   } catch (err) {
-    console.error(" Error resetting daily stats:", err);
+    console.error("Error resetting daily stats:", err);
   }
 };
+
 
 cron.schedule("0 0 * * *", async () => {
   console.log("Running daily stats reset cron...");
   await resetDailyStats();
+}, {
+  timezone: "UTC"
 });
 
 module.exports = resetDailyStats;

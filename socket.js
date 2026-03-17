@@ -24,35 +24,38 @@ function initIo(server) {
     });
 
     socket.on("offline", async (data) => {
-      console.log("offline event received:", data);
       try {
         if (data?.userId) {
-          onlineUsers.delete(data.userId.toString());
-          await User.findByIdAndUpdate(data.userId, { isOnline: false });
-          await decrementHourlyActiveUser();
-          console.log(` offline status updated for user ${data.userId}`);
+          const userId = data.userId.toString();
+          if (onlineUsers.has(userId)) {
+            onlineUsers.delete(userId);
+            await User.findByIdAndUpdate(userId, { isOnline: false });
+            await decrementHourlyActiveUser();
+            console.log(`offline status updated for user ${userId}`);
+          }
         }
       } catch (error) {
-        console.error(" Error updating offline status:", error);
+        console.error("Error updating offline status:", error);
       }
     });
 
     socket.on("logout", async (data) => {
-      console.log("Logout event received:", data);
       try {
         if (data?.userId) {
-          onlineUsers.delete(data.userId.toString());
-          const updatedUser = await User.findByIdAndUpdate(
-            data.userId,
-            { $set: { isOnline: false, device_token: null } },
-            { new: true }
-          );
-          await decrementHourlyActiveUser();
-          console.log(` Cleared token & set offline for user ${data.userId}`);
-          console.log("Updated user:", updatedUser);
+          const userId = data.userId.toString();
+          if (onlineUsers.has(userId)) {
+            onlineUsers.delete(userId);
+            await User.findByIdAndUpdate(
+              userId,
+              { $set: { isOnline: false, device_token: null } },
+              { new: true }
+            );
+            await decrementHourlyActiveUser();
+            console.log(`Cleared token & set offline for user ${userId}`);
+          }
         }
       } catch (error) {
-        console.error(" Error clearing device token:", error);
+        console.error("Error clearing device token:", error);
       }
     });
 
@@ -62,13 +65,14 @@ function initIo(server) {
           if (sockId === socket.id) {
             onlineUsers.delete(userId);
             await User.findByIdAndUpdate(userId, { isOnline: false });
-            console.log(` User ${userId} disconnected`);
+            await decrementHourlyActiveUser();
+            console.log(`User ${userId} disconnected`);
             break;
           }
         }
         console.log("Socket disconnected:", socket.id);
       } catch (err) {
-        console.error(" Error updating disconnect:", err);
+        console.error("Error updating disconnect:", err);
       }
     });
   });

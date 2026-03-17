@@ -21,7 +21,7 @@ const faqRoutes = require("./routes/v1/user/faq.routes.js");
 const connectDB = require("./config/db.js")
 const fileUpload = require("express-fileupload")
 const cors = require("cors")
-const {languageMiddleware} =require("./middlewares/requestValidations/user/lang.middleware.js")
+const { languageMiddleware } = require("./middlewares/requestValidations/user/lang.middleware.js")
 
 //admin routes
 const adminPostRoutes = require("./routes/v1/admin/post.routes.js")
@@ -65,19 +65,19 @@ app.use("/api/v1/user/block", blockRoutes);
 app.use("/api/v1/user/chat", chatRoutes);
 app.use("/api/v1/user/report", reportRoutes);
 app.use("/api/v1/user/notification", notificationRoutes);
-app.use('/api/v1/user/faq',faqRoutes);
+app.use('/api/v1/user/faq', faqRoutes);
 
 
 //adminRoutes
-app.use('/api/v1/admin/post',adminPostRoutes);
-app.use('/api/v1/admin/dashboard',dashboardRoutes);
-app.use('/api/v1/admin/report',adminReportRoutes)
-app.use('/api/v1/admin/setting',adminSettingRoutes);
+app.use('/api/v1/admin/post', adminPostRoutes);
+app.use('/api/v1/admin/dashboard', dashboardRoutes);
+app.use('/api/v1/admin/report', adminReportRoutes)
+app.use('/api/v1/admin/setting', adminSettingRoutes);
 app.use('/api/v1/admin/auth', adminAuthRoutes)
 
 
 //public routes
-app.use('/api/v1/post',commonPublicRoutes)
+app.use('/api/v1/post', commonPublicRoutes)
 
 
 // Global 404 handler (for unknown routes)
@@ -99,7 +99,7 @@ const server = http.createServer(app);
 const io = initIo(server);
 
 const PORT = secretVariables.port;
- server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-module.exports = { app ,server};
+server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+module.exports = { app, server };
 
 

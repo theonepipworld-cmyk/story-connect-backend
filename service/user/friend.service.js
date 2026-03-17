@@ -61,12 +61,12 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
 
-    
+
         if (userId.toString() === friendReqId.toString()) {
             throw createError(400, "notSendReqYourself", "customError");
         }
 
-    
+
         const [user, recipient] = await Promise.all([
             isUserExist(userId),
             isUserExist(friendReqId)
@@ -88,7 +88,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         if (isBlocked) {
             throw createError(403, "userBlocked", "validation");
         }
-
+     
         const existing = await Friend.findOne({
             $or: [
                 { requester: userId, recipient: friendReqId },
@@ -96,6 +96,8 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             ]
         });
 
+
+        
         if (existing) {
             if (existing.status === enums.friend_Request_status.PENDING) {
                 throw createError(400, "friendReqSent", "customError");
@@ -127,8 +129,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                     "friend_request",
                     { senderId: userId.toString(), type: "friend_request" }
                 );
-
-            
                 return { result: existing, isRequested: true };
             }
         }
@@ -174,7 +174,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
 
-      
+
         if (userId.toString() === friendReqId.toString()) {
             throw createError(400, "idIsSame", "validation");
         }
@@ -226,11 +226,11 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             data: existing
         });
 
- 
+
         await Notification.findOneAndUpdate(
             {
-                user: existing.requester,       
-                sender: user._id,               
+                user: existing.requester,
+                sender: user._id,
                 type: enums.notification_Types.FRIEND_REQUEST
             },
             {
@@ -245,10 +245,10 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
                 }
             },
             { new: true }
-           
+
         );
 
-    
+
         await Notification.create({
             user: existing.requester,
             sender: userId,
@@ -260,7 +260,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
                 : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
             postId: null
         });
-    
+
         await sendPush(
             requester,
             isAccepted
@@ -292,7 +292,7 @@ exports.getAllpendingReqService = async (userId) => {
             throw createError(400, "userNotFound", "notFound");
         }
 
-      
+
         const blockedUsers = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
         });
@@ -309,7 +309,7 @@ exports.getAllpendingReqService = async (userId) => {
         }).populate({
             path: "requester",
             select: "username email avatarUrl currentCountry",
-          
+
             match: {
                 _id: { $nin: blockedIds }
             }
@@ -328,7 +328,7 @@ exports.getAllpendingReqService = async (userId) => {
 
 exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) => {
     try {
-     
+
         page = parseInt(page);
         limit = parseInt(limit);
 
@@ -341,7 +341,7 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
             throw createError(400, "userNotFound", "notFound");
         }
 
-      
+
         const [allUserFriends, allLoginUserFriends, loginUserSendingRequests, blockedUsers] =
             await Promise.all([
                 getAllFriends(userId),
@@ -381,7 +381,7 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
                 };
             });
 
-       
+
         const total = filteredFriends.length;
         const skip = (page - 1) * limit;
         const paginated = filteredFriends.slice(skip, skip + limit);
@@ -405,7 +405,7 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
 
 exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
     try {
-   
+
         page = parseInt(page);
         limit = parseInt(limit);
         const skip = (page - 1) * limit;
@@ -414,7 +414,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
 
-     
+
         if (loginUserId.toString() === otherUserId.toString()) {
             throw createError(400, "sameUser", "validation");
         }
@@ -428,7 +428,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
             throw createError(400, "userNotFound", "notFound");
         }
 
-       
+
         const [loginUserFriends, profileUserFriends] = await Promise.all([
             getAllFriends(user._id),
             getAllFriends(recipient._id)
@@ -464,7 +464,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
 
 exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userId) => {
     try {
-      
+
         page = parseInt(page);
         limit = parseInt(limit);
 
@@ -503,7 +503,7 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
 
         const excludedIds = new Set([...allFriendIds, ...blockedIds]);
 
-     
+
         const [fofRequesterIds, fofRecipientIds] = await Promise.all([
             Friend.find({
                 requester: { $in: allFriendIds },
@@ -548,11 +548,11 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             ...communityUserIds.map((id) => id.toString())
         ]);
 
-     
+
         if (suggestionIds.size < limit) {
             const fullyExcluded = new Set([...excludedIds, ...suggestionIds]);
 
-         
+
             const additionalUsers = await User.find({
                 _id: { $nin: Array.from(fullyExcluded) },
                 ...(search ? { username: { $regex: search, $options: "i" } } : {})
@@ -610,7 +610,6 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
             throw createError(400, "userNotFound", "notFound");
         }
 
-     
         if (!unfriendUserId) {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
@@ -628,6 +627,7 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
             ]
         });
 
+        console.log(result)
         if (result.deletedCount === 0) {
             throw createError(404, "noFriends", "customError");
         }

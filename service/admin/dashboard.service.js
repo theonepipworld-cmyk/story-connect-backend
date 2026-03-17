@@ -151,17 +151,22 @@ const monthlyUserGrowth = async () => {
 
 const dailyUserPattern = async () => {
     try {
-        const records = await DailyUserStats.find();
+
+        const records = await DailyUserStats.find().sort({ date: 1 });
         const formatted = records.map((record) => {
-            const hourlyData = record.hourlyCounts.map((count, index) => {
-                const hour = index.toString().padStart(2, "0") + ":00";
-                return { hour, count };
-            });
+            const counts = Array.isArray(record.hourlyCounts)
+                ? record.hourlyCounts
+                : Array(24).fill(0);
+
+            const hourlyData = counts.map((count, index) => ({
+                hour: index.toString().padStart(2, "0") + ":00",
+                count: count ?? 0
+            }));
 
             return {
                 _id: record._id,
                 date: record.date,
-                hourlyData,
+                hourlyData
             };
         });
 
@@ -230,7 +235,7 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
         delete: null,
     };
 
- 
+
 
     if (!(action in VALID_ACTIONS)) {
         throw createError(400, "invalidUserAction", "validation");
