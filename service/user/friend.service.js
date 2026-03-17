@@ -464,7 +464,7 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
 
 exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userId) => {
     try {
-        // FIX: parse at top
+      
         page = parseInt(page);
         limit = parseInt(limit);
 
@@ -610,7 +610,7 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
             throw createError(400, "userNotFound", "notFound");
         }
 
-        // FIX: validate unfriendUserId as well — was never checked in original
+     
         if (!unfriendUserId) {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
