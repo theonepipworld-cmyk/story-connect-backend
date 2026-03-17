@@ -13,29 +13,30 @@ exports.blockedUser = async (req, res) => {
             successResponse(getMessage(lang, 'success', 'blockedSuccessfully'), blocked)
         );
     } catch (err) {
-         const lang = getLang(req);
-            const statusCode = err.statusCode || err.status || 500;
-            const category = err.category || 'error';
-            const finalMessage = getMessage(lang, category, err.message) || err.message;
-            return res.status(statusCode).json(errorResponse(finalMessage));
-          }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 
 exports.UnblockUser = async (req, res) => {
     try {
         const lang = getLang(req);
+        console.log(req.params.id)
         const unblocked = await unblockUserService(req.user.id, req.params.id);
         return res.status(200).json(
             successResponse(getMessage(lang, 'success', 'unBlockSuccessfully'), unblocked)
         );
     } catch (err) {
-           const lang = getLang(req);
-              const statusCode = err.statusCode || err.status || 500;
-              const category = err.category || 'error';
-              const finalMessage = getMessage(lang, category, err.message) || err.message;
-              return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 exports.getBlockUsers = async (req, res) => {
@@ -50,11 +51,11 @@ exports.getBlockUsers = async (req, res) => {
         );
     } catch (err) {
         const lang = getLang(req);
-           const statusCode = err.statusCode || err.status || 500;
-           const category = err.category || 'error';
-           const finalMessage = getMessage(lang, category, err.message) || err.message;
-           return res.status(statusCode).json(errorResponse(finalMessage));
-          }
-    };
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+};
 
 

@@ -44,18 +44,37 @@ const sendPush = async (user, title, type, data) => {
 };
 
 
+const safeEmit = (room, event, payload) => {
+    try {
+        const io = getIo();
+        if (io) io.to(room).emit(event, payload);
+    } catch (err) {
+        console.error(`Socket emit failed [${event}]:`, err.message);
+    }
+};
+
+
 
 exports.sendFriendReqService = async (userId, friendReqId) => {
     try {
         if (!userId || !friendReqId) {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
+
+    
         if (userId.toString() === friendReqId.toString()) {
             throw createError(400, "notSendReqYourself", "customError");
         }
 
-        const user = await isUserExist(userId);
-        const recipient = await isUserExist(friendReqId);
+    
+        const [user, recipient] = await Promise.all([
+            isUserExist(userId),
+            isUserExist(friendReqId)
+        ]);
+
+        if (!user) {
+            throw createError(400, "userNotFound", "notFound");
+        }
         if (!recipient) {
             throw createError(400, "ReqUser", "notFound");
         }
@@ -70,8 +89,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             throw createError(403, "userBlocked", "validation");
         }
 
-        let isRequested = false;
-
         const existing = await Friend.findOne({
             $or: [
                 { requester: userId, recipient: friendReqId },
@@ -81,7 +98,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 
         if (existing) {
             if (existing.status === enums.friend_Request_status.PENDING) {
-                isRequested = true;
                 throw createError(400, "friendReqSent", "customError");
             }
             if (existing.status === enums.friend_Request_status.ACCEPTED) {
@@ -90,6 +106,29 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             if (existing.status === enums.friend_Request_status.REJECTED) {
                 existing.status = enums.friend_Request_status.PENDING;
                 await existing.save();
+
+                safeEmit(friendReqId.toString(), "friend_request_received", {
+                    from: userId,
+                    to: friendReqId,
+                    data: existing
+                });
+
+                await Notification.create({
+                    user: friendReqId,
+                    sender: userId,
+                    type: enums.notification_Types.FRIEND_REQUEST,
+                    message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                    postId: null
+                });
+
+                await sendPush(
+                    recipient,
+                    `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                    "friend_request",
+                    { senderId: userId.toString(), type: "friend_request" }
+                );
+
+            
                 return { result: existing, isRequested: true };
             }
         }
@@ -100,34 +139,28 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             status: enums.friend_Request_status.PENDING
         });
 
-        if (result) {
-            isRequested = true;
+        safeEmit(friendReqId.toString(), "friend_request_received", {
+            from: userId,
+            to: friendReqId,
+            data: result
+        });
 
-          
-            const io = getIo();
-            io.to(friendReqId.toString()).emit("friend_request_received", {
-                from: userId,
-                to: friendReqId,
-                data: result
-            });
+        await Notification.create({
+            user: friendReqId,
+            sender: userId,
+            type: enums.notification_Types.FRIEND_REQUEST,
+            message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
+            postId: null
+        });
 
-            await Notification.create({
-                user: friendReqId,
-                sender: userId,
-                type: enums.notification_Types.FRIEND_REQUEST,
-                message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
-                postId: null
-            });
+        await sendPush(
+            recipient,
+            `${user.username} ${resMessages.notifications.sendFriendReq}`,
+            "friend_request",
+            { senderId: userId.toString(), type: "friend_request" }
+        );
 
-            await sendPush(
-                recipient,
-                `${user.username} ${resMessages.notifications.sendFriendReq}`,
-                "friend_request",
-                { senderId: userId.toString(), type: "friend_request" }
-            );
-        }
-
-        return { result, isRequested };
+        return { result, isRequested: true };
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, "serverError", "error");
@@ -135,18 +168,23 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 };
 
 
-
 exports.respondFriendReqService = async (userId, friendReqId, action) => {
     try {
         if (!userId || !friendReqId) {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
-        if (userId === friendReqId) {
+
+      
+        if (userId.toString() === friendReqId.toString()) {
             throw createError(400, "idIsSame", "validation");
         }
 
-        const user = await isUserExist(userId);
-        const requester = await isUserExist(friendReqId);
+        const [user, requester] = await Promise.all([
+            isUserExist(userId),
+            isUserExist(friendReqId)
+        ]);
+
+        if (!user) throw createError(400, "userNotFound", "notFound");
         if (!requester) throw createError(400, "userNotFound", "notFound");
 
         const existing = await Friend.findOne({
@@ -182,19 +220,17 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
 
         const isAccepted = existing.status === enums.friend_Request_status.ACCEPTED;
 
-   
-        const io = getIo();
-        io.to(friendReqId.toString()).emit("friend_request_responded", {
+        safeEmit(friendReqId.toString(), "friend_request_responded", {
             from: userId,
             to: friendReqId,
             data: existing
         });
 
-       
+ 
         await Notification.findOneAndUpdate(
             {
-                user: existing.requester,
-                sender: userId,
+                user: existing.requester,       
+                sender: user._id,               
                 type: enums.notification_Types.FRIEND_REQUEST
             },
             {
@@ -208,29 +244,33 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
                     isRead: true
                 }
             },
-            { new: true, upsert: true }
+            { new: true }
+           
         );
 
+    
         await Notification.create({
-            user: userId,
-            sender: existing.requester,
+            user: existing.requester,
+            sender: userId,
             type: isAccepted
                 ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
                 : enums.notification_Types.FRIEND_REQUEST_REJECTED,
             message: isAccepted
-                ? `You accepted ${requester.username}'s friend request`
-                : `You rejected ${requester.username}'s friend request`,
+                ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
+                : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
             postId: null
         });
-
- 
+    
         await sendPush(
             requester,
             isAccepted
                 ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
                 : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
             isAccepted ? "friend_request_accepted" : "friend_request_rejected",
-            { responderId: userId.toString(), type: isAccepted ? "friend_request_accepted" : "friend_request_rejected" }
+            {
+                responderId: userId.toString(),
+                type: isAccepted ? "friend_request_accepted" : "friend_request_rejected"
+            }
         );
 
         return existing;
@@ -252,18 +292,30 @@ exports.getAllpendingReqService = async (userId) => {
             throw createError(400, "userNotFound", "notFound");
         }
 
+      
+        const blockedUsers = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        });
+
+        const blockedIds = blockedUsers.map((b) =>
+            b.blocker.toString() === userId.toString()
+                ? b.blocked.toString()
+                : b.blocker.toString()
+        );
+
         const pendingReq = await Friend.find({
             recipient: userId,
             status: enums.friend_Request_status.PENDING
         }).populate({
             path: "requester",
             select: "username email avatarUrl currentCountry",
+          
             match: {
-                _id: { $nin: await Block.distinct("blocked", { blocker: userId }) }
+                _id: { $nin: blockedIds }
             }
         });
 
-      
+
         const filtered = pendingReq.filter((r) => r.requester !== null);
         return filtered;
     } catch (error) {
@@ -276,6 +328,10 @@ exports.getAllpendingReqService = async (userId) => {
 
 exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) => {
     try {
+     
+        page = parseInt(page);
+        limit = parseInt(limit);
+
         if (!userId || !loginUserId) {
             throw createError(400, "userNotFound", "notFound");
         }
@@ -285,51 +341,37 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
             throw createError(400, "userNotFound", "notFound");
         }
 
-        const total = await Friend.countDocuments({
-            status: enums.friend_Request_status.ACCEPTED,
-            $or: [{ requester: userId }, { recipient: userId }]
-        });
+      
+        const [allUserFriends, allLoginUserFriends, loginUserSendingRequests, blockedUsers] =
+            await Promise.all([
+                getAllFriends(userId),
+                getAllFriends(loginUserId),
+                Friend.find({ requester: loginUserId, status: enums.friend_Request_status.PENDING }),
+                Block.find({ $or: [{ blocker: loginUser._id }, { blocked: loginUser._id }] })
+            ]);
 
-        // FIX: return empty result instead of throwing 404
-        const allUserFriends = await getAllFriends(userId);
         if (!allUserFriends || allUserFriends.length === 0) {
             return {
                 allFriends: [],
-                pagination: {
-                    total: 0,
-                    totalPages: 0,
-                    currentPage: parseInt(page),
-                    limit: parseInt(limit)
-                }
+                pagination: { total: 0, totalPages: 0, currentPage: page, limit }
             };
         }
 
-        const alLoginUserFriends = await getAllFriends(loginUserId);
-        const LoginUserSendingRequest = await Friend.find({
-            requester: loginUserId,
-            status: enums.friend_Request_status.PENDING
-        });
+        const loginUserSenderIds = new Set(loginUserSendingRequests.map((f) => f.recipient.toString()));
+        const allLoginUserFriendsId = new Set(allLoginUserFriends.map((f) => f._id.toString()));
 
-        const loginUserSenderIds = new Set(LoginUserSendingRequest.map((f) => f.recipient.toString()));
-        const allLoginUserFriendsId = new Set(alLoginUserFriends.map((f) => f._id.toString()));
-
-        const blockedUsers = await Block.find({
-            $or: [{ blocker: loginUser._id }, { blocked: loginUser._id }]
-        });
-
-        const blockedIds = blockedUsers
-            .map((b) => {
-                if (b.blocker.toString() === loginUserId.toString()) return b.blocked.toString();
-                if (b.blocked.toString() === loginUserId.toString()) return b.blocker.toString();
-                return null;
-            })
-            .filter(Boolean);
+        const blockedIds = new Set(
+            blockedUsers
+                .map((b) => {
+                    if (b.blocker.toString() === loginUserId.toString()) return b.blocked.toString();
+                    if (b.blocked.toString() === loginUserId.toString()) return b.blocker.toString();
+                    return null;
+                })
+                .filter(Boolean)
+        );
 
         const filteredFriends = allUserFriends
-            .filter((f) => {
-                if (!f || !f._id) return false;
-                return !blockedIds.includes(f._id.toString());
-            })
+            .filter((f) => f?._id && !blockedIds.has(f._id.toString()))
             .map((f) => {
                 const id = f._id?.toString() ?? null;
                 return {
@@ -339,17 +381,18 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
                 };
             });
 
-     
+       
+        const total = filteredFriends.length;
         const skip = (page - 1) * limit;
-        const paginated = filteredFriends.slice(skip, skip + parseInt(limit));
+        const paginated = filteredFriends.slice(skip, skip + limit);
 
         return {
             allFriends: paginated,
             pagination: {
                 total,
                 totalPages: Math.ceil(total / limit),
-                currentPage: parseInt(page),
-                limit: parseInt(limit)
+                currentPage: page,
+                limit
             }
         };
     } catch (error) {
@@ -362,48 +405,53 @@ exports.getAllFriendService = async (userId, page = 1, limit = 10, loginUserId) 
 
 exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
     try {
+   
+        page = parseInt(page);
+        limit = parseInt(limit);
         const skip = (page - 1) * limit;
 
         if (!loginUserId || !otherUserId) {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
+
+     
         if (loginUserId.toString() === otherUserId.toString()) {
-            throw createError(400, "noMutualFriend", "notFound");
+            throw createError(400, "sameUser", "validation");
         }
 
-        const user = await isUserExist(loginUserId);
-        const recipient = await isUserExist(otherUserId);
+        const [user, recipient] = await Promise.all([
+            isUserExist(loginUserId),
+            isUserExist(otherUserId)
+        ]);
+
         if (!user || !recipient) {
             throw createError(400, "userNotFound", "notFound");
         }
 
-        let mutualFriends = [];
-        let total = 0;
+       
+        const [loginUserFriends, profileUserFriends] = await Promise.all([
+            getAllFriends(user._id),
+            getAllFriends(recipient._id)
+        ]);
 
- 
-        if (user._id.toString() !== recipient._id.toString()) {
-            const loginUserFriend = await getAllFriends(user._id);
-            const profileUserFriend = await getAllFriends(recipient._id);
+        const loginFriendIds = loginUserFriends.map((f) => f._id.toString());
+        const profileFriendIds = new Set(profileUserFriends.map((f) => f._id.toString()));
 
-            const loginFriendIds = loginUserFriend.map((f) => f._id.toString());
-            const profileFriendIds = new Set(profileUserFriend.map((f) => f._id.toString()));
+        const mutualFriendIds = loginFriendIds.filter((id) => profileFriendIds.has(id));
+        const total = mutualFriendIds.length;
 
-            const mutualFriendIds = loginFriendIds.filter((id) => profileFriendIds.has(id));
-
-            total = mutualFriendIds.length;
-            mutualFriends = await User.find({ _id: { $in: mutualFriendIds } })
-                .select("username email avatarUrl currentCountry bio")
-                .skip(skip)
-                .limit(limit);
-        }
+        const mutualFriends = await User.find({ _id: { $in: mutualFriendIds } })
+            .select("username email avatarUrl currentCountry bio")
+            .skip(skip)
+            .limit(limit);
 
         return {
             mutualFriends,
             pagination: {
                 total,
                 totalPages: Math.ceil(total / limit),
-                currentPage: parseInt(page),
-                limit: parseInt(limit)
+                currentPage: page,
+                limit
             }
         };
     } catch (error) {
@@ -416,6 +464,10 @@ exports.getAllMutualservice = async (loginUserId, otherUserId, page, limit) => {
 
 exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userId) => {
     try {
+        // FIX: parse at top
+        page = parseInt(page);
+        limit = parseInt(limit);
+
         if (!userId) throw createError(400, "userNotFound", "notFound");
 
         const user = await isUserExist(userId);
@@ -425,10 +477,16 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         const allFriendIds = allFriends.map((f) => f._id.toString());
         allFriendIds.push(user._id.toString());
 
-        const pendingRequests = await Friend.find({
-            status: enums.friend_Request_status.PENDING,
-            $or: [{ requester: user._id }, { recipient: user._id }]
-        });
+        const [pendingRequests, blockedUsers] = await Promise.all([
+            Friend.find({
+                status: enums.friend_Request_status.PENDING,
+                $or: [{ requester: user._id }, { recipient: user._id }]
+            }),
+            Block.find({
+                $or: [{ blocker: userId }, { blocked: userId }]
+            })
+        ]);
+
         const pendingUserIds = new Set(
             pendingRequests.map((req) =>
                 req.requester.toString() === user._id.toString()
@@ -437,44 +495,51 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             )
         );
 
-        const blockedUsers = await Block.find({
-            $or: [{ blocker: userId }, { blocked: userId }]
-        });
         const blockedIds = blockedUsers.map((b) =>
             b.blocker.toString() === userId.toString()
                 ? b.blocked.toString()
                 : b.blocker.toString()
         );
 
-        const fof = await Friend.find({
-            $or: [
-                { requester: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED },
-                { recipient: { $in: allFriendIds }, status: enums.friend_Request_status.ACCEPTED }
-            ]
-        }).distinct("requester recipient");
+        const excludedIds = new Set([...allFriendIds, ...blockedIds]);
 
-        const fofIds = fof
-            .map((id) => id.toString())
-            .filter((id) => !allFriendIds.includes(id) && !blockedIds.includes(id));
+     
+        const [fofRequesterIds, fofRecipientIds] = await Promise.all([
+            Friend.find({
+                requester: { $in: allFriendIds },
+                status: enums.friend_Request_status.ACCEPTED
+            }).distinct("recipient"),
+            Friend.find({
+                recipient: { $in: allFriendIds },
+                status: enums.friend_Request_status.ACCEPTED
+            }).distinct("requester")
+        ]);
 
-        // Count mutual friends per suggestion
-        const fofCountMap = fofIds.reduce((acc, id) => {
-            acc[id] = (acc[id] || 0) + 1;
-            return acc;
-        }, {});
+        const fofRaw = [...fofRequesterIds, ...fofRecipientIds].map((id) => id.toString());
 
-        const sameLocationIds = await User.find(
-            {
-                "currentCountry.code": user.currentCountry?.code,
-                _id: { $nin: [...allFriendIds, ...blockedIds] }
-            },
-            "_id"
-        ).distinct("_id");
+        const fofCountMap = {};
+        for (const id of fofRaw) {
+            if (!excludedIds.has(id)) {
+                fofCountMap[id] = (fofCountMap[id] || 0) + 1;
+            }
+        }
 
-        const communityIds = await CommunityMember.find({ userId: user._id }).distinct("communityId");
+        const fofIds = Object.keys(fofCountMap);
+
+        const [sameLocationIds, communityIds] = await Promise.all([
+            User.find(
+                {
+                    "currentCountry.code": user.currentCountry?.code,
+                    _id: { $nin: Array.from(excludedIds) }
+                },
+                "_id"
+            ).distinct("_id"),
+            CommunityMember.find({ userId: user._id }).distinct("communityId")
+        ]);
+
         const communityUserIds = await CommunityMember.find({
             communityId: { $in: communityIds },
-            userId: { $nin: [...allFriendIds, ...blockedIds] }
+            userId: { $nin: Array.from(excludedIds) }
         }).distinct("userId");
 
         let suggestionIds = new Set([
@@ -483,10 +548,13 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             ...communityUserIds.map((id) => id.toString())
         ]);
 
+     
         if (suggestionIds.size < limit) {
-            const excludedIds = new Set([...allFriendIds, ...blockedIds, ...suggestionIds]);
+            const fullyExcluded = new Set([...excludedIds, ...suggestionIds]);
+
+         
             const additionalUsers = await User.find({
-                _id: { $nin: Array.from(excludedIds) },
+                _id: { $nin: Array.from(fullyExcluded) },
                 ...(search ? { username: { $regex: search, $options: "i" } } : {})
             })
                 .limit(limit - suggestionIds.size)
@@ -495,19 +563,20 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             additionalUsers.forEach((u) => suggestionIds.add(u._id.toString()));
         }
 
-        suggestionIds = Array.from(suggestionIds);
+        let suggestionIdsArr = Array.from(suggestionIds);
 
-        // FIX: sort by mutualFriendsCount descending for stable pagination
-        // instead of random shuffle which breaks page 2+
-        suggestionIds.sort((a, b) => (fofCountMap[b] || 0) - (fofCountMap[a] || 0));
+        suggestionIdsArr.sort((a, b) => (fofCountMap[b] || 0) - (fofCountMap[a] || 0));
 
-        const total = suggestionIds.length;
+        const total = suggestionIdsArr.length;
         const totalPages = Math.ceil(total / limit);
         const skip = (page - 1) * limit;
-        const paginatedSuggestions = suggestionIds.slice(skip, skip + parseInt(limit));
+        const paginatedIds = suggestionIdsArr.slice(skip, skip + limit);
 
         const suggestions = await User.find(
-            { _id: { $in: paginatedSuggestions } },
+            {
+                _id: { $in: paginatedIds },
+                ...(search ? { username: { $regex: search, $options: "i" } } : {})
+            },
             "username email avatarUrl currentCountry bio profession"
         );
 
@@ -523,8 +592,8 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             pagination: {
                 total,
                 totalPages,
-                currentPage: parseInt(page),
-                limit: parseInt(limit)
+                currentPage: page,
+                limit
             }
         };
     } catch (error) {
@@ -540,6 +609,12 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
         if (!loginUserId) {
             throw createError(400, "userNotFound", "notFound");
         }
+
+        // FIX: validate unfriendUserId as well — was never checked in original
+        if (!unfriendUserId) {
+            throw createError(400, "userOrFriendIdNotFound", "notFound");
+        }
+
         const user = await isUserExist(loginUserId);
         if (!user) {
             throw createError(400, "userNotFound", "notFound");
@@ -553,7 +628,6 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
             ]
         });
 
-        // FIX: consistent createError signature (key, type)
         if (result.deletedCount === 0) {
             throw createError(404, "noFriends", "customError");
         }
@@ -571,6 +645,10 @@ exports.cancelFriendReqService = async (userId, friendId) => {
     try {
         if (!userId || !friendId) {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
+        }
+
+        if (userId.toString() === friendId.toString()) {
+            throw createError(400, "notSendReqYourself", "customError");
         }
 
         const request = await Friend.findOne({

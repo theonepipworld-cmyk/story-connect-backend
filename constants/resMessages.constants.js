@@ -100,7 +100,8 @@ module.exports = {
         reportIdRequired:"report ID is required",
         faqAlreadyExists:"faq already exit.",
         missingFaqFields:"either title or content is missing",
-        invalidFaqStatus:"invalid faq status"
+        invalidFaqStatus:"invalid faq status",
+        notFound:"user not found"
 
     },
     auth: {

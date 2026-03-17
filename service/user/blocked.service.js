@@ -50,6 +50,7 @@ exports.unblockUserService = async (userId, unblockUserId) => {
   try {
     if (!userId || !unblockUserId) throw createError(400, 'missingFields', 'validation');
     const user = await isUserExist(userId);
+    console.log(unblockUserId)
     if (!user) throw createError(404, 'userNotFound', 'notFound');
 
     const isBlocked = await Block.findOne({ blocker: userId, blocked: unblockUserId });
