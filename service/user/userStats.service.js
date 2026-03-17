@@ -1,15 +1,24 @@
 const userStats = require("../../models/userActivityStats.model.js");
-const Comment = require('../../models/Comments.model')
-const { toggleCommentStats, togglePostLike } = require("../../helpers/dbHelpers.js")
-const userActivityStats = require("../../constants/variables.constants.js")
-const { isPostExist, validateComment, createError, isUserExist } = require("../../helpers/dbHelpers.js")
+const Comment = require('../../models/Comments.model');
+const { toggleCommentStats, togglePostLike } = require("../../helpers/dbHelpers.js");
+const userActivityStats = require("../../constants/variables.constants.js");
+const { isPostExist, validateComment, createError, isUserExist } = require("../../helpers/dbHelpers.js");
 const resMessages = require("../../constants/resMessages.constants.js");
 const Block = require("../../models/block.model.js");
-const { getIo, getUserSocketId } = require("../../socket"); 
+const { getIo, getUserSocketId } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
-const User = require("../../models/user.model.js")
-const enums = require("../../constants/enum.constants.js")
-const pushNotification = require("../../utils/pushNotification.js")
+const User = require("../../models/user.model.js");
+const enums = require("../../constants/enum.constants.js");
+const pushNotification = require("../../utils/pushNotification.js");
+
+const safeEmit = (socketId, event, payload) => {
+    try {
+        const io = getIo();
+        if (io && socketId) io.to(socketId).emit(event, payload);
+    } catch (err) {
+        console.error(`Socket emit failed [${event}]:`, err.message);
+    }
+};
 
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
@@ -18,14 +27,10 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         }
 
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(400, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(400, 'userNotFound', 'notFound');
 
         const post = await isPostExist(postId);
-        if (!post) {
-            throw createError(400, 'postNotFound', 'notFound');
-        }
+        if (!post) throw createError(400, 'postNotFound', 'notFound');
 
         const blocked = await Block.findOne({
             $or: [
@@ -33,10 +38,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 { blocker: userId, blocked: post.userId }
             ]
         });
-
-        if (blocked) {
-            throw createError(403, 'userNotLikedorView', 'validation');
-        }
+        if (blocked) throw createError(403, 'userNotLikedorView', 'validation');
 
         if (type === userActivityStats.userStats.CommentLikes) {
             if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
@@ -48,23 +50,29 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             await validateComment(postId, commentId, parentCommentId, true);
         }
 
-        let stats = await userStats.findOne({ postId });
-        if (!stats) {
-            stats = await userStats.create({
-                postId,
-                likes: [],
-                views: [],
-                commentLikes: [],
-                totalLikes: 0,
-                totalViews: 0
-            });
-        }
+        let stats = await userStats.findOneAndUpdate(
+            { postId },
+            {
+                $setOnInsert: {
+                    postId,
+                    likes: [],
+                    views: [],
+                    commentLikes: [],
+                    totalLikes: 0,
+                    totalViews: 0
+                }
+            },
+            { upsert: true, new: true }
+        );
 
         if (type === userActivityStats.userStats.Likes) {
+        
             const liked = togglePostLike(stats, user);
+
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
-                if (postOwner && postOwner.device_token) {
+
+                if (postOwner?.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
                             postOwner.device_token,
@@ -73,10 +81,12 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                             { postId: postId.toString(), senderId: userId.toString() }
                         );
                     } catch (error) {
-                        if (error.code === 'messaging/invalid-argument' ||
-                            error.code === 'messaging/registration-token-not-registered') {
+                        console.error(`Failed to send like push to user ${postOwner._id}:`, error.message);
+                        if (
+                            error.code === 'messaging/invalid-argument' ||
+                            error.code === 'messaging/registration-token-not-registered'
+                        ) {
                             await User.findByIdAndUpdate(postOwner._id, { device_token: null });
-                            console.log(`Cleared invalid device token for user ${postOwner._id}`);
                         }
                     }
                 }
@@ -89,12 +99,8 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
-             
-                const io = getIo();
                 const postOwnerSocketId = getUserSocketId(post.userId.toString());
-                if (postOwnerSocketId) {
-                    io.to(postOwnerSocketId).emit("post_liked", { postId, userId, username });
-                }
+                safeEmit(postOwnerSocketId, "post_liked", { postId, userId, username });
             }
 
         } else if (type === userActivityStats.userStats.Views) {
@@ -104,14 +110,16 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
         } else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
-            const comment = await Comment.findById(commentId).populate("userId", "username");
-            console.log(userId);
+
+            const comment = await Comment.findById(commentId).populate("userId", "_id username");
+
             if (comment && comment.userId?._id.toString() !== userId.toString()) {
-                const commentOwner = comment.userId;
-                if (commentOwner && user.device_token) {
+                const commentOwnerFull = await User.findById(comment.userId._id).select("device_token username");
+
+                if (commentOwnerFull?.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
-                            commentOwner.device_token,
+                            commentOwnerFull.device_token,
                             `${user.username} ${resMessages.notifications.commentLike}`,
                             "commentLike",
                             {
@@ -122,30 +130,29 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                             }
                         );
                     } catch (error) {
-                        console.error(`Failed to send comment push to user ${commentOwner._id}:`, error.message);
-                        if (error.code === 'messaging/invalid-argument' ||
+                        console.error(`Failed to send comment push to user ${commentOwnerFull._id}:`, error.message);
+                        if (
+                            error.code === 'messaging/invalid-argument' ||
                             error.code === 'messaging/registration-token-not-registered' ||
                             error.code === 'messaging/invalid-registration-token' ||
-                            error.code === 'messaging/invalid-payload') {
-                            await User.findByIdAndUpdate(commentOwner._id, { device_token: null });
-                            console.log(`Cleared invalid device token for user ${commentOwner._id}`);
+                            error.code === 'messaging/invalid-payload'
+                        ) {
+                            await User.findByIdAndUpdate(commentOwnerFull._id, { device_token: null });
                         }
                     }
                 }
 
                 await Notification.create({
-                    user: comment.userId,
+                    user: comment.userId._id,
                     sender: userId,
                     type: enums.notification_Types.LIKE,
                     message: `${username} ${resMessages.notifications.commentLike}`,
                     postId
                 });
 
-                const io = getIo();
-                const commentOwnerSocketId = getUserSocketId(commentOwner._id.toString());
-                if (commentOwnerSocketId) {
-                    io.to(commentOwnerSocketId).emit("comment_liked", { postId, commentId, userId, username });
-                }
+             
+                const commentOwnerSocketId = getUserSocketId(comment.userId._id.toString());
+                safeEmit(commentOwnerSocketId, "comment_liked", { postId, commentId, userId, username });
             }
         }
 
@@ -161,17 +168,15 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 exports.getAllLikedUserService = async (postId, type, userId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
-        if (!isPostIdExist) {
-            throw createError(400, 'postNotFound', 'notFound');
-        }
+        if (!isPostIdExist) throw createError(400, 'postNotFound', 'notFound');
 
         const blocked = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
         });
 
-        const blockedUserIds = (blocked || []).map(b =>
-            b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
-        ).filter(Boolean);
+        const blockedUserIds = (blocked || [])
+            .map(b => b.blocker.toString() === userId.toString() ? b.blocked : b.blocker)
+            .filter(Boolean);
 
         let stats;
         if (type === userActivityStats.userStats.Likes) {
@@ -180,12 +185,13 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
             stats = await userStats.findOne({ postId }).select("views");
         }
 
-        if (!stats) {
-            throw new Error(400, 'noUserStatsFound', 'customError');
-        }
+    
+        if (!stats) throw createError(400, 'noUserStatsFound', 'customError');
 
         let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
-        resultArr = resultArr.filter(u => !blockedUserIds.some(bid => bid.toString() === u.userId.toString()));
+        resultArr = resultArr.filter(u =>
+            !blockedUserIds.some(bid => bid.toString() === u.userId.toString())
+        );
 
         return resultArr;
     } catch (error) {

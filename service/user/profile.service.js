@@ -12,44 +12,13 @@ const Conversation = require("../../models/conversations.model.js")
 
 exports.getProfile = async (userId) => {
 
-    // let isBlocked = null;
-    // if (loginUserId) {
-    //     isBlocked = await Block.findOne({
-    //         $or: [
-    //             { blocker: userId, blocked: loginUserId },
-    //             { blocker: loginUserId, blocked: userId }
-    //         ]
-    //     });
-    // }
-
-    // if (isBlocked) {
-    //     throw new Error(resMessages.validation.userBlocked);
-    // }
-
-
     const user = await User.findById(userId)
         .select("-passwordHash -resetPasswordExpires -resetPasswordToken")
         .lean();
 
-
     if (!user) {
         throw createError(400, 'userNotFound', 'notFound');
     }
-
-
-    // let mutualFriendsCount = 0;
-    // if (loginUserId && loginUserId.toString() !== user._id.toString()) {
-    //     const loginUserFriend = await getAllFriends(loginUserId);
-    //     const profileUserFriend = await getAllFriends(user._id);
-
-    //     const loginFriendIds = new Set(loginUserFriend.map(f => f._id.toString()));
-    //     const mutualFriendIds = profileUserFriend
-    //         .map(f => f._id.toString())
-    //         .filter(id => loginFriendIds.has(id));
-
-    //     mutualFriendsCount = mutualFriendIds.length;
-    // }
-
 
     const totalFriends = await Friend.countDocuments({
         status: "accepted",

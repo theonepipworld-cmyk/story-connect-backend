@@ -5,7 +5,7 @@ const { io } = require("socket.io-client");
 const SOCKET_URL = "http://localhost:4000";
 
 // Simulate a test user
-const testUserId = "68e8f8b034d87c51dd85f5ef"; // 👈 Replace with a valid userId from your DB
+const testUserId = "68e8f8b034d87c51dd85f5ef";
 
 // Connect client
 const socket = io(SOCKET_URL, {

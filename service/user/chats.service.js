@@ -77,7 +77,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const savedPostMessage = await postMessage.save();
             messages.push(savedPostMessage);
 
-            emitToParticipants("newMessage", savedPostMessage); // ← io.emit replace kiya
+            emitToParticipants("newMessage", savedPostMessage);
 
             conversation.lastMessage = {
                 _id: savedPostMessage._id,

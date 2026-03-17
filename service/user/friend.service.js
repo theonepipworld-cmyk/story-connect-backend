@@ -61,23 +61,17 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             throw createError(400, "userOrFriendIdNotFound", "notFound");
         }
 
-
         if (userId.toString() === friendReqId.toString()) {
             throw createError(400, "notSendReqYourself", "customError");
         }
-
 
         const [user, recipient] = await Promise.all([
             isUserExist(userId),
             isUserExist(friendReqId)
         ]);
 
-        if (!user) {
-            throw createError(400, "userNotFound", "notFound");
-        }
-        if (!recipient) {
-            throw createError(400, "ReqUser", "notFound");
-        }
+        if (!user) throw createError(400, "userNotFound", "notFound");
+        if (!recipient) throw createError(400, "ReqUser", "notFound");
 
         const isBlocked = await Block.findOne({
             $or: [
@@ -85,34 +79,46 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 { blocker: friendReqId, blocked: userId }
             ]
         });
-        if (isBlocked) {
-            throw createError(403, "userBlocked", "validation");
-        }
-     
-        const existing = await Friend.findOne({
-            $or: [
-                { requester: userId, recipient: friendReqId },
-                { requester: friendReqId, recipient: userId }
-            ]
-        });
+        if (isBlocked) throw createError(403, "userBlocked", "validation");
 
+        const result = await Friend.findOneAndUpdate(
+            {
+                $or: [
+                    { requester: userId, recipient: friendReqId },
+                    { requester: friendReqId, recipient: userId }
+                ]
+            },
+            {
+                $setOnInsert: {
+                    requester: userId,
+                    recipient: friendReqId,
+                    status: enums.friend_Request_status.PENDING
+                }
+            },
+            { upsert: true, new: true, rawResult: true }
+        );
 
-        
-        if (existing) {
-            if (existing.status === enums.friend_Request_status.PENDING) {
+        const friendDoc = result.value;
+        const wasInserted = !!result.lastErrorObject?.upserted;
+
+      
+        if (!wasInserted) {
+            if (friendDoc.status === enums.friend_Request_status.PENDING) {
                 throw createError(400, "friendReqSent", "customError");
             }
-            if (existing.status === enums.friend_Request_status.ACCEPTED) {
+            if (friendDoc.status === enums.friend_Request_status.ACCEPTED) {
                 throw createError(400, "alreadyFriend", "customError");
             }
-            if (existing.status === enums.friend_Request_status.REJECTED) {
-                existing.status = enums.friend_Request_status.PENDING;
-                await existing.save();
+          
+            if (friendDoc.status === enums.friend_Request_status.REJECTED) {
+                friendDoc.status = enums.friend_Request_status.PENDING;
+                await friendDoc.save();
 
+              
                 safeEmit(friendReqId.toString(), "friend_request_received", {
                     from: userId,
                     to: friendReqId,
-                    data: existing
+                    data: friendDoc
                 });
 
                 await Notification.create({
@@ -129,20 +135,16 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                     "friend_request",
                     { senderId: userId.toString(), type: "friend_request" }
                 );
-                return { result: existing, isRequested: true };
+
+                return { result: friendDoc, isRequested: true };
             }
         }
 
-        const result = await Friend.create({
-            requester: userId,
-            recipient: friendReqId,
-            status: enums.friend_Request_status.PENDING
-        });
-
+     
         safeEmit(friendReqId.toString(), "friend_request_received", {
             from: userId,
             to: friendReqId,
-            data: result
+            data: friendDoc
         });
 
         await Notification.create({
@@ -160,7 +162,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             { senderId: userId.toString(), type: "friend_request" }
         );
 
-        return { result, isRequested: true };
+        return { result: friendDoc, isRequested: true };
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, "serverError", "error");
