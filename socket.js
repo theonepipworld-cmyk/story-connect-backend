@@ -91,6 +91,8 @@ function getOnlineUsers() {
 
 
 function getUserSocketId(userId) {
+  console.log("onlineUsers--------", onlineUsers)
+  console.log("userId--------", userId)
   return onlineUsers.get(userId.toString()) || null;
 }
 
