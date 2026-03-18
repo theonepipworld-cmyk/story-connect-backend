@@ -65,7 +65,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             throw createError(400, "notSendReqYourself", "customError");
         }
 
-       
+
         const [user, recipient] = await Promise.all([
             isUserExist(userId),
             isUserExist(friendReqId)
@@ -82,7 +82,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         });
         if (isBlocked) throw createError(403, "userBlocked", "validation");
 
-      
+
         const existingFriend = await Friend.findOne({
             $or: [
                 { requester: userId, recipient: friendReqId },
@@ -100,12 +100,12 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             }
 
             if (existingFriend.status === enums.friend_Request_status.REJECTED) {
-               
+
                 existingFriend.requester = userId;
                 existingFriend.recipient = friendReqId;
                 existingFriend.status = enums.friend_Request_status.PENDING;
 
-               
+
                 await existingFriend.save();
 
                 safeEmit(friendReqId.toString(), "friend_request_received", {
@@ -114,7 +114,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                     data: existingFriend
                 });
 
-             
+
                 await Promise.all([
                     Notification.create({
                         user: friendReqId,
@@ -135,7 +135,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             }
         }
 
-  
+
         const newFriendDoc = await Friend.create({
             requester: userId,
             recipient: friendReqId,
@@ -150,7 +150,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             data: newFriendDoc
         });
 
-        
+
         await Promise.all([
             Notification.create({
                 user: friendReqId,
@@ -182,7 +182,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             throw createError(404, "userOrFriendIdNotFound", "notFound");
         }
 
-
         if (userId.toString() === friendReqId.toString()) {
             throw createError(400, "idIsSame", "validation");
         }
@@ -195,18 +194,20 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         if (!user) throw createError(404, "userNotFound", "notFound");
         if (!requester) throw createError(404, "userNotFound", "notFound");
 
-        const existing = await Friend.findOne({
-            requester: new mongoose.Types.ObjectId(friendReqId),
-            recipient: user._id
-        });
-        if (!existing) throw createError(404, "noFriendFound", "notFound");
+        const [existing, isBlocked] = await Promise.all([
+            Friend.findOne({
+                requester: new mongoose.Types.ObjectId(friendReqId),
+                recipient: user._id
+            }),
+            Block.findOne({
+                $or: [
+                    { blocker: userId, blocked: friendReqId },
+                    { blocker: friendReqId, blocked: userId }
+                ]
+            })
+        ]);
 
-        const isBlocked = await Block.findOne({
-            $or: [
-                { blocker: userId, blocked: friendReqId },
-                { blocker: friendReqId, blocked: userId }
-            ]
-        });
+        if (!existing) throw createError(404, "noFriendFound", "notFound");
         if (isBlocked) throw createError(403, "userBlocked", "validation");
 
         if (existing.status === enums.friend_Request_status.ACCEPTED) {
@@ -227,53 +228,46 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         await existing.save();
 
         const isAccepted = existing.status === enums.friend_Request_status.ACCEPTED;
+        const notifMessage = isAccepted
+            ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
+            : `${user.username} ${resMessages.notifications.rejectedFriendReq}`;
+        const notifType = isAccepted
+            ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
+            : enums.notification_Types.FRIEND_REQUEST_REJECTED;
 
+        await Promise.all([
+           
+            Notification.findOneAndDelete({
+                user: userId,
+                sender: friendReqId,
+                type: enums.notification_Types.FRIEND_REQUEST
+            }),
+      
+            Notification.create({
+                user: existing.requester,
+                sender: userId,
+                type: notifType,
+                message: notifMessage,
+                postId: null
+            })
+        ]);
+
+      
         safeEmit(friendReqId.toString(), "friend_request_responded", {
             from: userId,
             to: friendReqId,
             data: existing
         });
 
-
-        await Notification.findOneAndUpdate(
-            {
-                user: existing.requester,
-                sender: user._id,
-                type: enums.notification_Types.FRIEND_REQUEST
-            },
-            {
-                $set: {
-                    type: isAccepted
-                        ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
-                        : enums.notification_Types.FRIEND_REQUEST_REJECTED,
-                    message: isAccepted
-                        ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
-                        : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
-                    isRead: true
-                }
-            },
-            { new: true }
-
-        );
-
-
-        await Notification.create({
-            user: existing.requester,
-            sender: userId,
-            type: isAccepted
-                ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
-                : enums.notification_Types.FRIEND_REQUEST_REJECTED,
-            message: isAccepted
-                ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
-                : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
-            postId: null
+    
+        safeEmit(userId.toString(), "notification_deleted", {
+            type: enums.notification_Types.FRIEND_REQUEST,
+            sender: friendReqId
         });
 
         await sendPush(
             requester,
-            isAccepted
-                ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
-                : `${user.username} ${resMessages.notifications.rejectedFriendReq}`,
+            notifMessage,
             isAccepted ? "friend_request_accepted" : "friend_request_rejected",
             {
                 responderId: userId.toString(),
@@ -282,6 +276,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         );
 
         return existing;
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, "serverError", "error");
