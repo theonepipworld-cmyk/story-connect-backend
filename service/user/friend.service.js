@@ -65,6 +65,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             throw createError(400, "notSendReqYourself", "customError");
         }
 
+       
         const [user, recipient] = await Promise.all([
             isUserExist(userId),
             isUserExist(friendReqId)
@@ -81,88 +82,93 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         });
         if (isBlocked) throw createError(403, "userBlocked", "validation");
 
-        const result = await Friend.findOneAndUpdate(
-            {
-                $or: [
-                    { requester: userId, recipient: friendReqId },
-                    { requester: friendReqId, recipient: userId }
-                ]
-            },
-            {
-                $setOnInsert: {
-                    requester: userId,
-                    recipient: friendReqId,
-                    status: enums.friend_Request_status.PENDING
-                }
-            },
-            { upsert: true, new: true, rawResult: true }
-        );
-
-        const friendDoc = result.value;
-        const wasInserted = !!result.lastErrorObject?.upserted;
-
       
-        if (!wasInserted) {
-            if (friendDoc.status === enums.friend_Request_status.PENDING) {
+        const existingFriend = await Friend.findOne({
+            $or: [
+                { requester: userId, recipient: friendReqId },
+                { requester: friendReqId, recipient: userId }
+            ]
+        });
+
+        if (existingFriend) {
+            if (existingFriend.status === enums.friend_Request_status.PENDING) {
                 throw createError(400, "friendReqSent", "customError");
             }
-            if (friendDoc.status === enums.friend_Request_status.ACCEPTED) {
+
+            if (existingFriend.status === enums.friend_Request_status.ACCEPTED) {
                 throw createError(400, "alreadyFriend", "customError");
             }
-          
-            if (friendDoc.status === enums.friend_Request_status.REJECTED) {
-                friendDoc.status = enums.friend_Request_status.PENDING;
-                await friendDoc.save();
 
-              
+            if (existingFriend.status === enums.friend_Request_status.REJECTED) {
+               
+                existingFriend.requester = userId;
+                existingFriend.recipient = friendReqId;
+                existingFriend.status = enums.friend_Request_status.PENDING;
+
+               
+                await existingFriend.save();
+
                 safeEmit(friendReqId.toString(), "friend_request_received", {
                     from: userId,
                     to: friendReqId,
-                    data: friendDoc
+                    data: existingFriend
                 });
 
-                await Notification.create({
-                    user: friendReqId,
-                    sender: userId,
-                    type: enums.notification_Types.FRIEND_REQUEST,
-                    message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
-                    postId: null
-                });
+             
+                await Promise.all([
+                    Notification.create({
+                        user: friendReqId,
+                        sender: userId,
+                        type: enums.notification_Types.FRIEND_REQUEST,
+                        message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                        postId: null
+                    }),
+                    sendPush(
+                        recipient,
+                        `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                        "friend_request",
+                        { senderId: userId.toString(), type: "friend_request" }
+                    )
+                ]);
 
-                await sendPush(
-                    recipient,
-                    `${user.username} ${resMessages.notifications.sendFriendReq}`,
-                    "friend_request",
-                    { senderId: userId.toString(), type: "friend_request" }
-                );
-
-                return { result: friendDoc, isRequested: true };
+                return { result: existingFriend, isRequested: true };
             }
         }
 
-     
+  
+        const newFriendDoc = await Friend.create({
+            requester: userId,
+            recipient: friendReqId,
+            status: enums.friend_Request_status.PENDING
+        });
+
+        if (!newFriendDoc) throw createError(500, "serverError", "error");
+
         safeEmit(friendReqId.toString(), "friend_request_received", {
             from: userId,
             to: friendReqId,
-            data: friendDoc
+            data: newFriendDoc
         });
 
-        await Notification.create({
-            user: friendReqId,
-            sender: userId,
-            type: enums.notification_Types.FRIEND_REQUEST,
-            message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
-            postId: null
-        });
+        
+        await Promise.all([
+            Notification.create({
+                user: friendReqId,
+                sender: userId,
+                type: enums.notification_Types.FRIEND_REQUEST,
+                message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                postId: null
+            }),
+            sendPush(
+                recipient,
+                `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                "friend_request",
+                { senderId: userId.toString(), type: "friend_request" }
+            )
+        ]);
 
-        await sendPush(
-            recipient,
-            `${user.username} ${resMessages.notifications.sendFriendReq}`,
-            "friend_request",
-            { senderId: userId.toString(), type: "friend_request" }
-        );
+        return { result: newFriendDoc, isRequested: true };
 
-        return { result: friendDoc, isRequested: true };
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, "serverError", "error");
