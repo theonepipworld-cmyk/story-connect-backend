@@ -46,10 +46,10 @@ exports.createPost = async (data, cleanHashTags) => {
 
 exports.getUserFeedPostsService = async (page, limit, userId) => {
   try {
-   
+
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
-   
+
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
 
@@ -275,7 +275,7 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
 
 exports.getPostById = async (id, userId) => {
   try {
-  
+
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
 
@@ -407,10 +407,10 @@ exports.getPostById = async (id, userId) => {
 
 exports.updatePost = async (id, updateData, userId) => {
   try {
-    
+
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
- 
+
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) throw createError(404, "postNotFound", "notFound");
 
@@ -465,15 +465,15 @@ exports.updatePost = async (id, updateData, userId) => {
 
 exports.deletePost = async (id, userId) => {
   try {
-   
+
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
-  
+
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) throw createError(404, "postNotFound", "notFound");
 
     if (isPostIdExist.userId.toString() !== userId.toString()) {
-     
+
       throw createError(403, "NotAuthorized", "customError");
     }
 
@@ -494,9 +494,8 @@ exports.deletePost = async (id, userId) => {
   }
 };
 
-exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
+exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search = "") => {
   try {
- 
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
     const user = await isUserExist(userId);
@@ -514,11 +513,31 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
     const allCommunityIds = joinedCommunities.map(c => c.communityId).filter(Boolean);
 
     const skip = (page - 1) * limit;
+
+   
+    const searchFilter = search
+      ? {
+        $or: [
+          { postHeading: { $regex: search, $options: "i" } },
+          { postDescription: { $regex: search, $options: "i" } },
+          { hashtags: { $regex: search, $options: "i" } }
+        ]
+      }
+      : {};
+
     let matchStage = {};
     if (type === "profile") {
-      matchStage = { userId: new mongoose.Types.ObjectId(id), postType: type };
+      matchStage = {
+        userId: new mongoose.Types.ObjectId(id),
+        postType: type,
+        ...searchFilter  
+      };
     } else if (type === "community") {
-      matchStage = { userId: new mongoose.Types.ObjectId(id), postType: type };
+      matchStage = {
+        userId: new mongoose.Types.ObjectId(id),
+        postType: type,
+        ...searchFilter 
+      };
     }
 
     const pipeline = [
@@ -653,13 +672,14 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type) => {
   }
 };
 
+
 exports.getTrendingTagsService = async () => {
   try {
     const result = await HashTag.find({ usageCount: { $gt: 10 } })
       .sort({ usageCount: -1 })
       .limit(4);
 
-   
+
     if (!result || result.length === 0) return [];
 
     return result;
@@ -671,10 +691,10 @@ exports.getTrendingTagsService = async () => {
 
 exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
-    
+
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
-   
+
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
 
@@ -902,10 +922,10 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
 exports.getHighlightedPostsService = async (userId) => {
   try {
-   
+
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
-   
+
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
 
