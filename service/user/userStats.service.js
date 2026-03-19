@@ -10,6 +10,7 @@ const Notification = require("../../models/notification.model.js");
 const User = require("../../models/user.model.js");
 const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
+const Conversation = require("../../models/conversations.model.js");
 
 const safeEmit = (socketId, event, payload) => {
     try {
@@ -22,12 +23,12 @@ const safeEmit = (socketId, event, payload) => {
 
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
-    
+
         if (!userId || !username) {
             throw createError(400, 'userNotFound', 'notFound');
         }
 
-       
+
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
@@ -43,13 +44,13 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         if (blocked) throw createError(403, 'userNotLikedorView', 'validation');
 
         if (type === userActivityStats.userStats.CommentLikes) {
-            
+
             if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId);
         }
 
         if (type === userActivityStats.userStats.CommentReplyLike) {
-         
+
             if (!parentCommentId || !commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId, true);
         }
@@ -169,7 +170,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
 exports.getAllLikedUserService = async (postId, type, userId) => {
     try {
-    
+
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
 
@@ -188,7 +189,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
             stats = await userStats.findOne({ postId }).select("views");
         }
 
-     
+
         if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
 
         let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
@@ -197,6 +198,42 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
         );
 
         return resultArr;
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};
+
+
+exports.getBadgeCountsService = async (userId) => {
+    try {
+        if (!userId) throw createError(400, 'missingFields', 'validation');
+
+        const user = await isUserExist(userId);
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
+
+
+        const [conversations, notificationUnread] = await Promise.all([
+            Conversation.find({
+                participants: new mongoose.Types.ObjectId(userId)
+            }).select('unseenCount'),
+
+            Notification.countDocuments({
+                receiver: userId,
+                isRead: false
+            })
+        ]);
+
+
+        const chatUnread = conversations.reduce((total, conv) => {
+            const entry = conv.unseenCount.find(
+                u => u.userId.toString() === userId.toString()
+            );
+            return total + (entry?.count || 0);
+        }, 0);
+
+        return { chatUnread, notificationUnread };
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
