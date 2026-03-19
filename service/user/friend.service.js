@@ -236,13 +236,13 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             : enums.notification_Types.FRIEND_REQUEST_REJECTED;
 
         await Promise.all([
-           
+
             Notification.findOneAndDelete({
                 user: userId,
                 sender: friendReqId,
                 type: enums.notification_Types.FRIEND_REQUEST
             }),
-      
+
             Notification.create({
                 user: existing.requester,
                 sender: userId,
@@ -252,14 +252,14 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             })
         ]);
 
-      
+
         safeEmit(friendReqId.toString(), "friend_request_responded", {
             from: userId,
             to: friendReqId,
             data: existing
         });
 
-    
+
         safeEmit(userId.toString(), "notification_deleted", {
             type: enums.notification_Types.FRIEND_REQUEST,
             sender: friendReqId
@@ -664,7 +664,14 @@ exports.cancelFriendReqService = async (userId, friendId) => {
             throw createError(404, "friendReqNotFound", "notFound");
         }
 
-        await request.deleteOne();
+        await Promise.all([
+            request.deleteOne(),
+            Notification.deleteOne({
+                sender: userId,
+                receiver: friendId,
+                type: enums.notification_Types.FRIEND_REQUEST  
+            })
+        ]);
 
         return {
             success: true,

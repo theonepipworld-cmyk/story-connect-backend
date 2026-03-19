@@ -488,7 +488,6 @@ exports.deletePost = async (id, userId) => {
     if (!isPostIdExist) throw createError(404, "postNotFound", "notFound");
 
     if (isPostIdExist.userId.toString() !== userId.toString()) {
-
       throw createError(403, "NotAuthorized", "customError");
     }
 
