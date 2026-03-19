@@ -46,21 +46,35 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
-        const emitToParticipants = (event, payload) => {
+        const emitToParticipants = (event, savedMessage) => {
             const io = getIo();
             const senderSocketId = getUserSocketId(senderId.toString());
             const receiverSocketId = getUserSocketId(receiverId.toString());
-            if (senderSocketId) io.to(senderSocketId).emit(event, payload);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit(event, payload);
 
+            const basePayload = savedMessage.toObject();
+            if (senderSocketId) {
+                io.to(senderSocketId).emit(event, {
+                    ...basePayload,
+                    senderName: sender.username,
+                    senderAvatar: sender.avatarUrl,
+                    isFromMe: true
+                });
+            }
+
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit(event, {
+                    ...basePayload,
+                    senderName: sender.username,
+                    senderAvatar: sender.avatarUrl,
+                    isFromMe: false
+                });
 
                 const currentUnseenCount = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
 
                 io.to(receiverSocketId).emit("badgeCountUpdate", {
-                    chatUnread: currentUnseenCount + 1
+                    chatUnread: currentUnseenCount + 1,
                 });
             }
         };
@@ -383,12 +397,12 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             )
         ]);
 
-      
+
         conversation.unseenCount = conversation.unseenCount.map(u =>
             u.userId.toString() === receiverId.toString() ? { ...u, count: 0 } : u
         );
 
-       
+
         getIo().emit("messages_seen", { conversationId, seenBy: receiverId, data: result });
         const receiverSocketId = getUserSocketId(receiverId.toString());
         if (receiverSocketId) {
