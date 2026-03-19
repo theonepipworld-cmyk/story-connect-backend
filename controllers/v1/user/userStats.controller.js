@@ -51,12 +51,11 @@ exports.getBadgeCounts = async (req, res) => {
   try {
     const lang = getLang(req);
     const userId = req.user.id;
-
-    const { chatUnread, notificationUnread } = await getBadgeCountsService(userId);
+    const result = await getBadgeCountsService(userId);
 
     return res.status(200).json(successResponse(
       getMessage(lang, 'success', 'fetchSuccessfully'),
-      { chatUnread, notificationUnread }
+      result
     ));
   } catch (err) {
     const lang = getLang(req);

@@ -1,4 +1,5 @@
 const userStats = require("../../models/userActivityStats.model.js");
+const mongoose = require('mongoose')
 const Comment = require('../../models/Comments.model');
 const { toggleCommentStats, togglePostLike } = require("../../helpers/dbHelpers.js");
 const userActivityStats = require("../../constants/variables.constants.js");
@@ -223,7 +224,7 @@ exports.getBadgeCountsService = async (userId) => {
                 isRead: false
             })
         ]);
-
+       
 
         const chatUnread = conversations.reduce((total, conv) => {
             const entry = conv.unseenCount.find(
