@@ -8,5 +8,5 @@ const userStatsMiddleware = require("../../../middlewares/requestValidations/use
 
 router.post("/user-stats", isAuthenticated, authorizeRoles('user'), userStatsMiddleware.userStatsValidator, userStatsController.addUserStats)
 router.get("/users-like-views-stats", isAuthenticated, authorizeRoles('user'), userStatsController.getAllLikeOrViewUser);
-router.get("/badge-counts", isAuthenticated, authorizeRoles('user'), chatController.getBadgeCounts);
+router.get("/badge-counts", isAuthenticated, authorizeRoles('user'), userStatsController.getBadgeCounts);
 module.exports = router;
