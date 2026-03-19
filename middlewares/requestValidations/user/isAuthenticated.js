@@ -15,7 +15,7 @@ exports.isAuthenticated = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, jwt_secret);
     req.user = decoded;
-    const userFromDB =  User.findById(decoded.id).select('language');
+    const userFromDB = User.findById(decoded.id).select('language');
     req.lang = userFromDB?.language || 'en';
     next();
   } catch (err) {

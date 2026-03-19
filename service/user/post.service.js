@@ -416,7 +416,7 @@ exports.updatePost = async (id, updateData, userId) => {
       throw createError(403, "NotAuthorized", "error");
     }
 
-  
+
     let cleanHashtags = [];
     if (updateData.hashtags && Array.isArray(updateData.hashtags)) {
       cleanHashtags = updateData.hashtags
@@ -428,26 +428,26 @@ exports.updatePost = async (id, updateData, userId) => {
       cleanHashtags = isPostIdExist.hashtags;
     }
 
-   
+
     if (updateData.mediaUrls && Array.isArray(updateData.mediaUrls)) {
       const oldUrls = isPostIdExist.mediaUrls || [];
       const newUrls = updateData.mediaUrls;
 
-    
+
       const urlsToDelete = oldUrls.filter(url => !newUrls.includes(url));
 
       if (urlsToDelete.length > 0) {
-        await Promise.allSettled(      
+        await Promise.allSettled(
           urlsToDelete.map(url => deleteFileFromS3(url))
         );
       }
     }
 
-    
+
     const post = await Post.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!post) throw createError(404, "postNotFound", "notFound");
 
-  
+
     const oldTags = isPostIdExist.hashtags;
     const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag));
     const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag));
@@ -687,22 +687,29 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
 };
 
 
+// service
 exports.getTrendingTagsService = async () => {
   try {
-    const result = await HashTag.find({ usageCount: { $gt: 10 } })
+    let result = await HashTag.find({ usageCount: { $gt: 10 } })
       .sort({ usageCount: -1 })
-      .limit(4);
+      .limit(4)
+      .select('tag usageCount');   
 
+   
+    if (!result || result.length === 0) {
+      result = await HashTag.find({ usageCount: { $gt: 0 } })
+        .sort({ usageCount: -1 })
+        .limit(4)
+        .select('tag usageCount');
+    }
 
-    if (!result || result.length === 0) return [];
+    return result || [];
 
-    return result;
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, "serverError", "error");
   }
 };
-
 exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
 
