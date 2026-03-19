@@ -57,7 +57,6 @@ exports.makeAllUserNotificationReadService = async (userId) => {
         }
 
         return result;
-
     }
     catch (error) {
         if (error.statusCode) throw error;

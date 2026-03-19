@@ -52,12 +52,33 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const receiverSocketId = getUserSocketId(receiverId.toString());
 
             const basePayload = savedMessage.toObject();
+
+
+            const conversationUpdate = {
+                conversationId: conversation._id.toString(),
+                lastMessage: savedMessage.text,
+                lastMessageType: savedMessage.type,
+                lastMessageAt: savedMessage.createdAt,
+                lastMessageStatus: savedMessage.status,
+                participant: {
+                    _id: sender._id,
+                    username: sender.username,
+                    avatarUrl: sender.avatarUrl,
+                }
+            };
+
             if (senderSocketId) {
                 io.to(senderSocketId).emit(event, {
                     ...basePayload,
                     senderName: sender.username,
                     senderAvatar: sender.avatarUrl,
                     isFromMe: true
+                });
+
+
+                io.to(senderSocketId).emit("conversationUpdated", {
+                    ...conversationUpdate,
+                    unseenCount: 0
                 });
             }
 
@@ -72,6 +93,12 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const currentUnseenCount = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
+
+
+                io.to(receiverSocketId).emit("conversationUpdated", {
+                    ...conversationUpdate,
+                    unseenCount: currentUnseenCount + 1
+                });
 
                 io.to(receiverSocketId).emit("badgeCountUpdate", {
                     chatUnread: currentUnseenCount + 1,
@@ -397,15 +424,37 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             )
         ]);
 
-
         conversation.unseenCount = conversation.unseenCount.map(u =>
             u.userId.toString() === receiverId.toString() ? { ...u, count: 0 } : u
         );
 
+      
+        const senderId = conversation.participants.find(
+            p => p.toString() !== receiverId.toString()
+        );
 
-        getIo().emit("messages_seen", { conversationId, seenBy: receiverId, data: result });
+        const io = getIo();
         const receiverSocketId = getUserSocketId(receiverId.toString());
+        const senderSocketId = getUserSocketId(senderId?.toString());
+
+       
+        io.emit("messages_seen", { conversationId, seenBy: receiverId, data: result });
+
+       
+        const conversationUpdate = {
+            conversationId: conversation._id.toString(),
+            lastMessageStatus: "seen",
+            unseenCount: 0
+        };
+
+        if (senderSocketId) {
+            io.to(senderSocketId).emit("conversationUpdated", conversationUpdate);
+        }
+
         if (receiverSocketId) {
+            io.to(receiverSocketId).emit("conversationUpdated", conversationUpdate);
+
+           
             const allConversations = await Conversation.find({
                 participants: new mongoose.Types.ObjectId(receiverId)
             }).select('unseenCount');
@@ -417,7 +466,7 @@ exports.seenMessageService = async (conversationId, receiverId) => {
                 return total + (entry?.count || 0);
             }, 0);
 
-            getIo().to(receiverSocketId).emit("badgeCountUpdate", {
+            io.to(receiverSocketId).emit("badgeCountUpdate", {
                 chatUnread: totalChatUnread
             });
         }
