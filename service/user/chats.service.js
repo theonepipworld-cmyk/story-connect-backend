@@ -5,10 +5,10 @@ const { createError, isUserExist, isConversationExist } = require("../../helpers
 const Block = require("../../models/block.model.js");
 const Message = require("../../models/message.model.js");
 const Conversation = require("../../models/conversations.model.js");
-const { getIo, getOnlineUsers, getUserSocketId } = require("../../socket"); 
+const { getIo, getOnlineUsers, getUserSocketId } = require("../../socket");
 const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
-const resMessages = require("../../constants/resMessages.constants.js"); 
+const resMessages = require("../../constants/resMessages.constants.js");
 
 
 // SEND MESSAGE
@@ -46,7 +46,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
-
         const emitToParticipants = (event, payload) => {
             const io = getIo();
             const senderSocketId = getUserSocketId(senderId.toString());
@@ -55,15 +54,47 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             if (receiverSocketId) io.to(receiverSocketId).emit(event, payload);
         };
 
+        const sendPushNotification = async (token, body, data) => {
+            if (!token) return;
+            try {
+                await pushNotification.androidPushNotification(token, body, "message", data);
+            } catch (error) {
+                if (
+                    error.code === 'messaging/invalid-argument' ||
+                    error.code === 'messaging/registration-token-not-registered'
+                ) {
+                    await User.findByIdAndUpdate(receiver._id, { device_token: null });
+                }
+            }
+        };
+
+     
+        const updateConversation = (savedMessage) => {
+            conversation.lastMessage = {
+                _id: savedMessage._id,
+                text: savedMessage.text,
+                type: savedMessage.type,
+                status: savedMessage.status,
+                sender: savedMessage.sender
+            };
+            const unseen = conversation.unseenCount.find(
+                u => u.userId.toString() === receiverId.toString()
+            );
+            unseen
+                ? unseen.count++
+                : conversation.unseenCount.push({ userId: receiverId, count: 1 });
+        };
+
         let messages = [];
 
-   
+    
         if (messageText && Array.isArray(files) && files.length > 0) {
-            const uploadedFiles = [];
-            for (const file of files) {
-                const uploaded = await uploadFileToS3(file, `messages/${conversation._id}`);
-                uploadedFiles.push({ url: uploaded.Location, mimeType: file.mimetype });
-            }
+
+      
+            const uploadedFiles = files.map(file => ({
+                url: file.location,          
+                mimeType: file.mimetype  
+            }));
 
             const postMessage = new Message({
                 conversationId: conversation._id,
@@ -76,46 +107,23 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
             const savedPostMessage = await postMessage.save();
             messages.push(savedPostMessage);
-
             emitToParticipants("newMessage", savedPostMessage);
+            updateConversation(savedPostMessage);
 
-            conversation.lastMessage = {
-                _id: savedPostMessage._id,
-                text: savedPostMessage.text,
-                type: savedPostMessage.type,
-                status: savedPostMessage.status,
-                sender: savedPostMessage.sender
-            };
-
-            let unseen = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
-            unseen ? unseen.count++ : conversation.unseenCount.push({ userId: receiverId, count: 1 });
-
-            if (receiver.device_token) {
-                try {
-                    await pushNotification.androidPushNotification(
-                        receiver.device_token, messageText, "message",
-                        {
-                            conversationId: conversation._id.toString(),
-                            senderId: senderId.toString(),
-                            senderName: sender.username?.toString(),
-                            senderImage: sender.avatarUrl?.toString(),
-                            type: "post"
-                        }
-                    );
-                } catch (error) {
-                    if (error.code === 'messaging/invalid-argument' ||
-                        error.code === 'messaging/registration-token-not-registered') {
-                        await User.findByIdAndUpdate(receiver._id, { device_token: null });
-                    }
-                }
-            }
+            await sendPushNotification(receiver.device_token, messageText, {
+                conversationId: conversation._id.toString(),
+                senderId: senderId.toString(),
+                senderName: sender.username?.toString(),
+                senderImage: sender.avatarUrl?.toString(),
+                type: "post"
+            });
 
             conversation.updatedAt = new Date();
             await conversation.save();
             return messages;
         }
 
-     
+      
         if (messageText && (!files || files.length === 0)) {
             const textMessage = new Message({
                 conversationId: conversation._id,
@@ -127,42 +135,18 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
             const savedTextMessage = await textMessage.save();
             messages.push(savedTextMessage);
+            emitToParticipants("newMessage", savedTextMessage);
+            updateConversation(savedTextMessage);
 
-            emitToParticipants("newMessage", savedTextMessage); 
-
-            conversation.lastMessage = {
-                _id: savedTextMessage._id,
-                text: savedTextMessage.text,
-                type: savedTextMessage.type,
-                status: savedTextMessage.status,
-                sender: savedTextMessage.sender
-            };
-
-            let unseen = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
-            unseen ? unseen.count++ : conversation.unseenCount.push({ userId: receiverId, count: 1 });
-
-            if (receiver.device_token) {
-                try {
-                    await pushNotification.androidPushNotification(
-                        receiver.device_token, messageText, "message",
-                        {
-                            conversationId: conversation._id.toString(),
-                            senderId: senderId.toString()
-                        }
-                    );
-                } catch (error) {
-                    if (error.code === 'messaging/invalid-argument' ||
-                        error.code === 'messaging/registration-token-not-registered') {
-                        await User.findByIdAndUpdate(receiver._id, { device_token: null });
-                    }
-                }
-            }
+            await sendPushNotification(receiver.device_token, messageText, {
+                conversationId: conversation._id.toString(),
+                senderId: senderId.toString()
+            });
         }
 
-     
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
-                const uploaded = await uploadFileToS3(file, `messages/${conversation._id}`);
+
                 const fileType = file.mimetype.startsWith("image/")
                     ? "image"
                     : file.mimetype.startsWith("video/") ? "video" : "file";
@@ -170,43 +154,20 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const fileMessage = new Message({
                     conversationId: conversation._id,
                     sender: senderId,
-                    text: uploaded.Location,
+                    text: file.location,    
                     type: fileType,
                     status: messageStatus
                 });
 
                 const savedFileMessage = await fileMessage.save();
                 messages.push(savedFileMessage);
+                emitToParticipants("newMessage", savedFileMessage);
+                updateConversation(savedFileMessage);
 
-                emitToParticipants("newMessage", savedFileMessage); 
-
-                conversation.lastMessage = {
-                    _id: savedFileMessage._id,
-                    text: savedFileMessage.text,
-                    type: savedFileMessage.type,
-                    status: savedFileMessage.status,
-                    sender: savedFileMessage.sender
-                };
-
-                let unseen = conversation.unseenCount.find(u => u.userId.toString() === receiverId.toString());
-                unseen ? unseen.count++ : conversation.unseenCount.push({ userId: receiverId, count: 1 });
-
-                if (receiver.device_token) {
-                    try {
-                        await pushNotification.androidPushNotification(
-                            receiver.device_token, `Sent a ${fileType}`, "message",
-                            {
-                                conversationId: conversation._id.toString(),
-                                senderId: senderId.toString()
-                            }
-                        );
-                    } catch (error) {
-                        if (error.code === 'messaging/invalid-argument' ||
-                            error.code === 'messaging/registration-token-not-registered') {
-                            await User.findByIdAndUpdate(receiver._id, { device_token: null });
-                        }
-                    }
-                }
+                await sendPushNotification(receiver.device_token, `Sent a ${fileType}`, {
+                    conversationId: conversation._id.toString(),
+                    senderId: senderId.toString()
+                });
             }
         }
 
@@ -219,7 +180,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 // GET USER CONVERSATIONS
 exports.getUserConversationService = async (userId, page = 1, limit = 10, search = "") => {

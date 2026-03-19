@@ -535,6 +535,8 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         const blocked = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
         }) || [];
+
+        
         const blockedUserIds = (blocked || []).map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         ).filter(Boolean)

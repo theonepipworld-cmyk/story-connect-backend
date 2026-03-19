@@ -4,10 +4,10 @@ const { isAuthenticated } = require('../../../middlewares/requestValidations/use
 const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
 const chatController = require("../../../controllers/v1/user/chats.controller.js");
 const chatMiddleware = require("../../../middlewares/requestValidations/user/chat.middleware.js");
-const { mediaUploadHandler } = require("../../../middlewares/requestValidations/user/mediaUploadHandler.js");
+const { chatUploadHandler } = require("../../../middlewares/requestValidations/user/mediaUploadHandler.js");
 
 
-router.post("/send-message", isAuthenticated, authorizeRoles('user'),mediaUploadHandler,chatMiddleware.sendMessageValidator,chatController.sendMessageToUser);
+router.post("/send-message", isAuthenticated, authorizeRoles('user'),chatUploadHandler,chatMiddleware.sendMessageValidator,chatController.sendMessageToUser);
 router.get("/converations", isAuthenticated, authorizeRoles('user'),chatController.getConversations);
 router.get("/chat-history", isAuthenticated, authorizeRoles('user'),chatController.getloadMoreMessages);
 router.put("/update-message", isAuthenticated, authorizeRoles('user'),chatMiddleware.updateMessageValidator,chatController.updateMessage)

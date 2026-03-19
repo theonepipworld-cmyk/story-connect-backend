@@ -7,16 +7,16 @@ const { param } = require("express-validator");
 const { query } = require("express-validator");
 const mongoose = require("mongoose")
 
-exports.validateUser =[
-     param("id")
-            .notEmpty().withMessage(`${resMessages.validation.missingFields}: userId`)
-            .isMongoId().withMessage(`${resMessages.validation.invalidId}: userId`)
-            .custom(async (value) => {
-                const User = await isUserExist(value);
-                if (!User) {
-                    throw new Error(`${resMessages.validation.notFound}: userId`);
-                }
-                return true;
-            }),
-        validate
+exports.validateUser = [
+    param("id")
+        .notEmpty().withMessage(`${resMessages.validation.missingFields}: userId`)
+        .isMongoId().withMessage(`${resMessages.validation.invalidId}: userId`)
+        .custom(async (value) => {
+            const User = await isUserExist(value);
+            if (!User) {
+                throw new Error(`${resMessages.validation.notFound}`);
+            }
+            return true;
+        }),
+    validate
 ]

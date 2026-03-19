@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Comment = require("../../models/Comments.model")
 const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js")
-const { uploadFileToS3, deleteFileFromS3 } = require("../../utils/s3.util.js")
+
 const ReportCategory = require("../../models/reportCategories.js")
 const User = require("../../models/user.model.js")
 const enums = require("../../constants/enum.constants.js")

@@ -407,9 +407,7 @@ exports.getPostById = async (id, userId) => {
 
 exports.updatePost = async (id, updateData, userId) => {
   try {
-
     if (!userId) throw createError(400, "userNotFound", "notFound");
-
 
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) throw createError(404, "postNotFound", "notFound");
@@ -418,6 +416,7 @@ exports.updatePost = async (id, updateData, userId) => {
       throw createError(403, "NotAuthorized", "error");
     }
 
+  
     let cleanHashtags = [];
     if (updateData.hashtags && Array.isArray(updateData.hashtags)) {
       cleanHashtags = updateData.hashtags
@@ -429,12 +428,29 @@ exports.updatePost = async (id, updateData, userId) => {
       cleanHashtags = isPostIdExist.hashtags;
     }
 
+   
+    if (updateData.mediaUrls && Array.isArray(updateData.mediaUrls)) {
+      const oldUrls = isPostIdExist.mediaUrls || [];
+      const newUrls = updateData.mediaUrls;
+
+    
+      const urlsToDelete = oldUrls.filter(url => !newUrls.includes(url));
+
+      if (urlsToDelete.length > 0) {
+        await Promise.allSettled(      
+          urlsToDelete.map(url => deleteFileFromS3(url))
+        );
+      }
+    }
+
+    
+    const post = await Post.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    if (!post) throw createError(404, "postNotFound", "notFound");
+
+  
     const oldTags = isPostIdExist.hashtags;
     const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag));
     const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag));
-
-    const post = await Post.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
-    if (!post) throw createError(404, "postNotFound", "notFound");
 
     await Promise.all([
       ...addTags.map(tag =>
@@ -462,7 +478,6 @@ exports.updatePost = async (id, updateData, userId) => {
     throw createError(500, "serverError", "error");
   }
 };
-
 exports.deletePost = async (id, userId) => {
   try {
 
@@ -514,7 +529,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
 
     const skip = (page - 1) * limit;
 
-   
+
     const searchFilter = search
       ? {
         $or: [
@@ -530,13 +545,13 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
       matchStage = {
         userId: new mongoose.Types.ObjectId(id),
         postType: type,
-        ...searchFilter  
+        ...searchFilter
       };
     } else if (type === "community") {
       matchStage = {
         userId: new mongoose.Types.ObjectId(id),
         postType: type,
-        ...searchFilter 
+        ...searchFilter
       };
     }
 

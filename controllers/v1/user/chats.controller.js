@@ -28,7 +28,7 @@ exports.sendMessageToUser = async (req, res) => {
             receiverId,
             message,
             type || "text",
-            files || null
+            files || [] 
         );
 
         return res
@@ -36,11 +36,11 @@ exports.sendMessageToUser = async (req, res) => {
             .json(successResponse(getMessage(lang, 'success', 'messageSent'), sendMessage));
     } catch (err) {
         const lang = getLang(req);
-           const statusCode = err.statusCode || err.status || 500;
-           const category = err.category || 'error';
-           const finalMessage = getMessage(lang, category, err.message) || err.message;
-           return res.status(statusCode).json(errorResponse(finalMessage));
-          }
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 
@@ -57,12 +57,12 @@ exports.getConversations = async (req, res) => {
 
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));
     } catch (err) {
-         const lang = getLang(req);
-            const statusCode = err.statusCode || err.status || 500;
-            const category = err.category || 'error';
-            const finalMessage = getMessage(lang, category, err.message) || err.message;
-            return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 exports.getloadMoreMessages = async (req, res) => {
@@ -77,12 +77,12 @@ exports.getloadMoreMessages = async (req, res) => {
 
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));
     } catch (err) {
-           const lang = getLang(req);
-              const statusCode = err.statusCode || err.status || 500;
-              const category = err.category || 'error';
-              const finalMessage = getMessage(lang, category, err.message) || err.message;
-              return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 exports.seenMessage = async (req, res) => {
@@ -93,12 +93,12 @@ exports.seenMessage = async (req, res) => {
 
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'messageSeen')));
     } catch (err) {
-          const lang = getLang(req);
-             const statusCode = err.statusCode || err.status || 500;
-             const category = err.category || 'error';
-             const finalMessage = getMessage(lang, category, err.message) || err.message;
-             return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 exports.deliveredMessage = async (req, res) => {
@@ -108,12 +108,12 @@ exports.deliveredMessage = async (req, res) => {
 
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'messagedelivered')));
     } catch (err) {
-          const lang = getLang(req);
-             const statusCode = err.statusCode || err.status || 500;
-             const category = err.category || 'error';
-             const finalMessage = getMessage(lang, category, err.message) || err.message;
-             return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 exports.updateMessage = async (req, res) => {
@@ -123,12 +123,12 @@ exports.updateMessage = async (req, res) => {
 
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful')));
     } catch (err) {
-         const lang = getLang(req);
-            const statusCode = err.statusCode || err.status || 500;
-            const category = err.category || 'error';
-            const finalMessage = getMessage(lang, category, err.message) || err.message;
-            return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 exports.deleteMessage = async (req, res) => {
@@ -139,11 +139,11 @@ exports.deleteMessage = async (req, res) => {
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful')));
     } catch (err) {
         const lang = getLang(req);
-           const statusCode = err.statusCode || err.status || 500;
-           const category = err.category || 'error';
-           const finalMessage = getMessage(lang, category, err.message) || err.message;
-           return res.status(statusCode).json(errorResponse(finalMessage));
-          }
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };
 
 exports.deleteConversation = async (req, res) => {
@@ -153,10 +153,10 @@ exports.deleteConversation = async (req, res) => {
 
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful')));
     } catch (err) {
-         const lang = getLang(req);
-            const statusCode = err.statusCode || err.status || 500;
-            const category = err.category || 'error';
-            const finalMessage = getMessage(lang, category, err.message) || err.message;
-            return res.status(statusCode).json(errorResponse(finalMessage));
-           }
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
 };

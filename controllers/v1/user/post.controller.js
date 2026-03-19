@@ -1,34 +1,34 @@
 const postService = require("../../../service/user/post.service.js");
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const { getMessage } = require("../../../constants/locales/index.js");
-const { uploadFileToS3 } = require('../../../utils/s3.util.js');
+
 
 
 const getLang = (req) => req.lang || 'en';
 
-
 exports.createPost = async (req, res) => {
   const lang = getLang(req);
   try {
-    req.body.userId = req.user.id;
-    let mediaUrls = [];
-    if (req.files?.length) {
-      const uploadResults = await Promise.all(
-        req.files.map(file => uploadFileToS3(file, "posts"))
-      );
-      mediaUrls = uploadResults.map(r => r.Location);
-    }
 
+    req.body.userId = req.user.id;
+    const mediaUrls = req.files?.length
+      ? req.files.map((f) => f.location)
+      : [];
+
+   
     const cleanHashtags = Array.isArray(req.body.hashTags)
-      ? [...new Set(
-        req.body.hashTags
-          .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
-          .filter(Boolean)
-      )]
+      ? [
+        ...new Set(
+          req.body.hashTags
+            .map((tag) => tag.trim().toLowerCase().replace(/^#/, ""))
+            .filter(Boolean)
+        ),
+      ]
       : [];
 
     const { hashTags: _, ...restBody } = req.body;
     const postData = { ...restBody, mediaUrls, hashtags: cleanHashtags };
+
     const post = await postService.createPost(postData, cleanHashtags);
 
     return res.status(200).json(
@@ -82,8 +82,6 @@ exports.updatePost = async (req, res) => {
   try {
     const lang = getLang(req);
     const userId = req.user.id;
-    console.log(req.body)
-    console.log(req.params.id)
     const post = await postService.updatePost(req.params.id, req.body, userId);
 
     if (!post) {
