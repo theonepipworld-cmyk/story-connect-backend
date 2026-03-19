@@ -1,5 +1,5 @@
 const userStats = require("../../models/userActivityStats.model.js");
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 const Comment = require('../../models/Comments.model');
 const { toggleCommentStats, togglePostLike } = require("../../helpers/dbHelpers.js");
 const userActivityStats = require("../../constants/variables.constants.js");
@@ -13,6 +13,8 @@ const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
 const Conversation = require("../../models/conversations.model.js");
 
+
+
 const safeEmit = (socketId, event, payload) => {
     try {
         const io = getIo();
@@ -22,13 +24,30 @@ const safeEmit = (socketId, event, payload) => {
     }
 };
 
+
+const emitBellBadge = async (userId) => {
+    try {
+        const socketId = getUserSocketId(userId.toString());
+        if (!socketId) return;
+
+        const notificationUnread = await Notification.countDocuments({
+            user: userId,
+            isRead: false
+        });
+
+        safeEmit(socketId, "badgeCountUpdate", { notificationUnread });
+    } catch (err) {
+        console.error("emitBellBadge failed:", err.message);
+    }
+};
+
+
+
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
-
         if (!userId || !username) {
             throw createError(400, 'userNotFound', 'notFound');
         }
-
 
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
@@ -45,13 +64,11 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         if (blocked) throw createError(403, 'userNotLikedorView', 'validation');
 
         if (type === userActivityStats.userStats.CommentLikes) {
-
             if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId);
         }
 
         if (type === userActivityStats.userStats.CommentReplyLike) {
-
             if (!parentCommentId || !commentId) throw createError(400, 'commentNotFound', 'notFound');
             await validateComment(postId, commentId, parentCommentId, true);
         }
@@ -71,12 +88,14 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             { upsert: true, new: true }
         );
 
+    
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
 
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
 
+                // Push notification
                 if (postOwner?.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
@@ -96,6 +115,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     }
                 }
 
+              
                 await Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -104,23 +124,29 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
+               
                 const postOwnerSocketId = getUserSocketId(post.userId.toString());
                 safeEmit(postOwnerSocketId, "post_liked", { postId, userId, username });
+                await emitBellBadge(post.userId);
             }
 
+     
         } else if (type === userActivityStats.userStats.Views) {
             const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
             if (!alreadyView) stats.views.push({ userId, userName: username });
             stats.totalViews = stats.views.length;
 
+        
         } else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
 
             const comment = await Comment.findById(commentId).populate("userId", "_id username");
 
             if (comment && comment.userId?._id.toString() !== userId.toString()) {
-                const commentOwnerFull = await User.findById(comment.userId._id).select("device_token username");
+                const commentOwnerFull = await User.findById(comment.userId._id)
+                    .select("device_token username");
 
+                // Push notification
                 if (commentOwnerFull?.device_token) {
                     try {
                         await pushNotification.androidPushNotification(
@@ -147,6 +173,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     }
                 }
 
+              
                 await Notification.create({
                     user: comment.userId._id,
                     sender: userId,
@@ -155,13 +182,16 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
+         
                 const commentOwnerSocketId = getUserSocketId(comment.userId._id.toString());
                 safeEmit(commentOwnerSocketId, "comment_liked", { postId, commentId, userId, username });
+                await emitBellBadge(comment.userId._id);  
             }
         }
 
         await stats.save();
         return stats;
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
@@ -169,9 +199,9 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 };
 
 
+
 exports.getAllLikedUserService = async (postId, type, userId) => {
     try {
-
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
 
@@ -190,7 +220,6 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
             stats = await userStats.findOne({ postId }).select("views");
         }
 
-
         if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
 
         let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
@@ -206,6 +235,7 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
 };
 
 
+
 exports.getBadgeCountsService = async (userId) => {
     try {
         if (!userId) throw createError(400, 'missingFields', 'validation');
@@ -213,18 +243,16 @@ exports.getBadgeCountsService = async (userId) => {
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
-
         const [conversations, notificationUnread] = await Promise.all([
             Conversation.find({
                 participants: new mongoose.Types.ObjectId(userId)
             }).select('unseenCount'),
 
             Notification.countDocuments({
-                receiver: userId,
+                user: userId,
                 isRead: false
             })
         ]);
-       
 
         const chatUnread = conversations.reduce((total, conv) => {
             const entry = conv.unseenCount.find(

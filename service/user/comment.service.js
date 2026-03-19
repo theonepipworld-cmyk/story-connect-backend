@@ -26,7 +26,21 @@ const safeEmit = (socketId, event, payload) => {
     }
 };
 
+const emitBellBadge = async (userId) => {
+    try {
+        const socketId = getUserSocketId(userId.toString());
+        if (!socketId) return;
 
+        const notificationUnread = await Notification.countDocuments({
+            user: userId,
+            isRead: false
+        });
+
+        safeEmit(socketId, "badgeCountUpdate", { notificationUnread });
+    } catch (err) {
+        console.error("emitBellBadge failed:", err.message);
+    }
+};
 
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
     try {
@@ -57,7 +71,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             content: commentString
         });
 
-      
+
         if (parentCommentId) {
             await Comment.findByIdAndUpdate(parentCommentId, { $inc: { replyCount: 1 } });
         }
@@ -65,9 +79,9 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
         if (post.userId.toString() !== userId.toString()) {
             const postOwner = await User.findById(post.userId);
 
-       
+
             await Promise.all([
-               
+
                 (async () => {
                     if (!postOwner?.device_token) return;
                     try {
@@ -94,7 +108,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                     }
                 })(),
 
-           
+
                 Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -104,7 +118,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 })
             ]);
 
-         
+
             const postOwnerSocketId = getUserSocketId(post.userId.toString());
             safeEmit(postOwnerSocketId, "new_comment", {
                 postId,
@@ -113,6 +127,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 senderUsername: user.username,
                 parentCommentId: parentCommentId || null
             });
+            await emitBellBadge(post.userId);  
         }
 
         return comment;
@@ -133,7 +148,7 @@ exports.updateCommentService = async (postId, commentId, parentCommentId, conten
         const comment = await Comment.findById(commentId);
         if (!comment) throw createError(404, 'commentNotFound', 'notFound');
 
-      
+
         if (comment.userId.toString() !== userId.toString()) {
             throw createError(403, 'NotAuthorized', 'customError');
         }
@@ -145,16 +160,16 @@ exports.updateCommentService = async (postId, commentId, parentCommentId, conten
                 !comment.parentCommentId ||
                 comment.parentCommentId.toString() !== parentCommentId.toString()
             ) {
-             
+
                 throw createError(400, 'commentIdNotMatch', 'customError');
             }
             filter.parentCommentId = parentCommentId;
         } else {
             if (comment.parentCommentId) {
-             
+
                 throw createError(400, 'parentCommentIdInvalid', 'customError');
             }
-         
+
             filter.parentCommentId = null;
         }
 
@@ -191,7 +206,7 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
         const isCommentOwner = comment.userId._id.toString() === userId.toString();
         const isPostOwner = comment.postId.userId.toString() === userId.toString();
 
-    
+
         if (!isCommentOwner && !isPostOwner) {
             throw createError(403, 'NotAuthorized', 'customError');
         }
@@ -201,7 +216,7 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
 
         const isTopLevel = !comment.parentCommentId;
         if (isTopLevel) {
-           
+
             const replyIds = await Comment.find(
                 { parentCommentId: commentId },
                 "_id"
@@ -209,16 +224,16 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
             const replyIdStrings = replyIds.map((r) => r._id.toString());
 
             await Promise.all([
-            
+
                 Comment.deleteMany({
                     $or: [{ _id: commentId }, { parentCommentId: commentId }]
                 }),
-              
+
                 UserStats.updateOne(
                     { "commentLikes.commentId": commentId.toString() },
                     { $pull: { commentLikes: { commentId: commentId.toString() } } }
                 ),
-           
+
                 replyIdStrings.length > 0
                     ? UserStats.updateMany(
                         { "commentLikes.commentId": { $in: replyIdStrings } },
@@ -227,10 +242,10 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
                     : Promise.resolve()
             ]);
         } else {
-        
+
             const deleteResult = await Comment.deleteOne(filter);
 
-       
+
             if (deleteResult.deletedCount === 0) {
                 throw createError(400, 'commentNotDeleted', 'customError');
             }
@@ -255,7 +270,7 @@ exports.deleteCommentService = async (postId, commentId, parentCommentId, userId
 
 exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
     try {
-     
+
         page = parseInt(page);
         limit = parseInt(limit);
 
@@ -409,7 +424,7 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
 
 exports.getReplyCommentService = async (postId, page, limit, parentCommentId, userId) => {
     try {
-      
+
         page = parseInt(page);
         limit = parseInt(limit);
 
@@ -470,7 +485,7 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                                             postId: new mongoose.Types.ObjectId(postId)
                                         }
                                     },
-                                  
+
                                     {
                                         $unwind: {
                                             path: "$commentLikes",

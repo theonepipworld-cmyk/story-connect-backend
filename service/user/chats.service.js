@@ -51,7 +51,18 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const senderSocketId = getUserSocketId(senderId.toString());
             const receiverSocketId = getUserSocketId(receiverId.toString());
             if (senderSocketId) io.to(senderSocketId).emit(event, payload);
-            if (receiverSocketId) io.to(receiverSocketId).emit(event, payload);
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit(event, payload);
+
+
+                const currentUnseenCount = conversation.unseenCount.find(
+                    u => u.userId.toString() === receiverId.toString()
+                )?.count || 0;
+
+                io.to(receiverSocketId).emit("badgeCountUpdate", {
+                    chatUnread: currentUnseenCount + 1
+                });
+            }
         };
 
         const sendPushNotification = async (token, body, data) => {
@@ -68,7 +79,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }
         };
 
-     
+
         const updateConversation = (savedMessage) => {
             conversation.lastMessage = {
                 _id: savedMessage._id,
@@ -87,13 +98,13 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         let messages = [];
 
-    
+
         if (messageText && Array.isArray(files) && files.length > 0) {
 
-      
+
             const uploadedFiles = files.map(file => ({
-                url: file.location,          
-                mimeType: file.mimetype  
+                url: file.location,
+                mimeType: file.mimetype
             }));
 
             const postMessage = new Message({
@@ -123,7 +134,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             return messages;
         }
 
-      
+
         if (messageText && (!files || files.length === 0)) {
             const textMessage = new Message({
                 conversationId: conversation._id,
@@ -154,7 +165,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const fileMessage = new Message({
                     conversationId: conversation._id,
                     sender: senderId,
-                    text: file.location,    
+                    text: file.location,
                     type: fileType,
                     status: messageStatus
                 });
@@ -360,17 +371,43 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             throw createError(404, 'receiverNotPart', 'notFound');
         }
 
-        const result = await Message.updateMany(
-            { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
-            { $set: { status: "seen" } }
-        );
+        const [result] = await Promise.all([
+            Message.updateMany(
+                { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
+                { $set: { status: "seen" } }
+            ),
+            Conversation.updateOne(
+                { _id: conversationId, "unseenCount.userId": receiverId },
+                { $set: { "unseenCount.$.count": 0 } },
+                { timestamps: false }
+            )
+        ]);
 
+      
         conversation.unseenCount = conversation.unseenCount.map(u =>
             u.userId.toString() === receiverId.toString() ? { ...u, count: 0 } : u
         );
-        await conversation.save();
 
+       
         getIo().emit("messages_seen", { conversationId, seenBy: receiverId, data: result });
+        const receiverSocketId = getUserSocketId(receiverId.toString());
+        if (receiverSocketId) {
+            const allConversations = await Conversation.find({
+                participants: new mongoose.Types.ObjectId(receiverId)
+            }).select('unseenCount');
+
+            const totalChatUnread = allConversations.reduce((total, conv) => {
+                const entry = conv.unseenCount.find(
+                    u => u.userId.toString() === receiverId.toString()
+                );
+                return total + (entry?.count || 0);
+            }, 0);
+
+            getIo().to(receiverSocketId).emit("badgeCountUpdate", {
+                chatUnread: totalChatUnread
+            });
+        }
+
         return result;
     } catch (error) {
         if (error.statusCode) throw error;

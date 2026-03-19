@@ -7,7 +7,7 @@ const User = require("../../models/user.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
 const Block = require("../../models/block.model");
-const { getIo } = require("../../socket");
+const { getIo, getUserSocketId } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
 
 
@@ -27,7 +27,7 @@ exports.getUserNotificationService = async (userId) => {
 
         const result = await Notification.find({
             user: user._id,
-            createdAt: { $gte: lastMonth } 
+            createdAt: { $gte: lastMonth }
         })
             .populate("sender", "username avatarUrl")
             .populate("postId", "mediaUrls")
@@ -48,6 +48,14 @@ exports.makeAllUserNotificationReadService = async (userId) => {
             { user: userId, isRead: false },
             { $set: { isRead: true } }
         );
+
+        const userSocketId = getUserSocketId(userId.toString());
+        if (userSocketId) {
+            getIo().to(userSocketId).emit("badgeCountUpdate", {
+                notificationUnread: 0
+            });
+        }
+
         return result;
 
     }
