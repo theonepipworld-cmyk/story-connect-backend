@@ -207,16 +207,13 @@ exports.searchUser = async (loginUserId, search) => {
         if (!search) return [];
 
         const users = await User.find({
-            _id: { $ne: loginUserId },
+            _id: { $ne: new mongoose.Types.ObjectId(loginUserId) },  
             status: "active",
             $or: [
                 { username: { $regex: search, $options: "i" } },
                 { email: { $regex: search, $options: "i" } }
             ]
         })
-            .select("username email avatarUrl bio profession currentCountry")
-            .lean();
-
         if (users.length === 0) return [];
 
         const userIds = users.map(u => u._id);

@@ -323,11 +323,12 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     isOnline: { $ifNull: ["$otherParticipant.isOnline", false] },
                                 },
                                 isBlocked: 1,
-                                isBlockedByMe:1,
+                                isBlockedByMe: 1,
                                 lastMessage: "$lastMessageInfo.text",
                                 lastMessageId: "$lastMessageInfo._id",
                                 lastMessageAt: "$lastMessageInfo.createdAt",
                                 lastMessageStatus: "$lastMessageInfo.status",
+                                lastMessageType: "$lastMessageInfo.type",
                                 unseenCount: { $ifNull: ["$unseenCountForUser", 0] },
                                 updatedAt: 1,
                             }
