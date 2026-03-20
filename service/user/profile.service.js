@@ -205,7 +205,10 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
 exports.searchUser = async (loginUserId, search) => {
     try {
         if (!search) return [];
-      
+
+        const user = await isUserExist(loginUserId);
+        if (!user) throw createError(404, "userNotFound", "notFound");
+
         const users = await User.find({
             _id: { $ne: loginUserId },
             status: "active",
@@ -239,6 +242,7 @@ exports.searchUser = async (loginUserId, search) => {
 
         const loginFriendIds = new Set(loginUserFriends.map(f => f._id.toString()));
 
+
         const blockedSet = new Set(
             blockedList.map(b =>
                 b.blocker.toString() === loginUserId.toString()
@@ -246,6 +250,7 @@ exports.searchUser = async (loginUserId, search) => {
                     : b.blocker.toString()
             )
         );
+
 
         const friendshipMap = {};
         for (const f of friendships) {
@@ -255,17 +260,18 @@ exports.searchUser = async (loginUserId, search) => {
             friendshipMap[otherId] = f.status;
         }
 
-        const profileFriendsMap = {};
-        await Promise.all(
-            userIds.map(async (id) => {
-                const friends = await getAllFriends(id);
-                profileFriendsMap[id.toString()] = friends;
-            })
+
+        const allProfileFriends = await Promise.all(
+            userIds.map(id => getAllFriends(id))
         );
+        const profileFriendsMap = {};
+        userIds.forEach((id, i) => {
+            profileFriendsMap[id.toString()] = allProfileFriends[i];
+        });
 
         const result = [];
-        for (const user of users) {
-            const uid = user._id.toString();
+        for (const u of users) {
+            const uid = u._id.toString();
             if (blockedSet.has(uid)) continue;
 
             const mutualFriendsCount = (profileFriendsMap[uid] || []).filter(f =>
@@ -273,9 +279,10 @@ exports.searchUser = async (loginUserId, search) => {
             ).length;
 
             result.push({
-                ...user,
-                isThisUserFriend: friendshipMap[uid] === "accepted",
-                isreqPending: friendshipMap[uid] === "pending",
+                ...u,
+
+                isThisUserFriend: friendshipMap[uid] === enums.friend_Request_status.ACCEPTED,
+                isreqPending: friendshipMap[uid] === enums.friend_Request_status.PENDING,
                 mutualFriendsCount
             });
         }
@@ -286,7 +293,6 @@ exports.searchUser = async (loginUserId, search) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
 exports.changeLanguageService = async (userId, newLang) => {
     try {
         if (!userId) throw createError(400, 'userNotFound', 'notFound');
