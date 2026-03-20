@@ -15,7 +15,7 @@ exports.createPost = async (req, res) => {
       ? req.files.map((f) => f.location)
       : [];
 
-   
+
     const cleanHashtags = Array.isArray(req.body.hashTags)
       ? [
         ...new Set(
@@ -128,10 +128,13 @@ exports.getPostsOfProfile = async (req, res) => {
     const type = req.query.type;
     const search = req.query.search || "";
     const userId = req.user.id;
-    const { posts, pagination } = await postService.getProfilePost(req.params.id, page, limit, userId, type, search);
+    const { posts, pagination, message } = await postService.getProfilePost(req.params.id, page, limit, userId, type, search);
 
     if (!posts) {
       return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
+    }
+    if (message) {
+      return res.status(200).json(successResponse(message, posts, pagination));
     }
 
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), posts, pagination));

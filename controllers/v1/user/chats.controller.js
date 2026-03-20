@@ -28,8 +28,12 @@ exports.sendMessageToUser = async (req, res) => {
             receiverId,
             message,
             type || "text",
-            files || [] 
+            files || []
         );
+        
+        if (sendMessage[0]?.blocked) {
+            return res.status(403).json(errorResponse(sendMessage[0].message));
+        }
 
         return res
             .status(200)
