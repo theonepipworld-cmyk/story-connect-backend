@@ -144,7 +144,7 @@ exports.changeLanguage = async (req, res) => {
 exports.getSearchUser = async (req, res) => {
   try {
     const lang = getLang(req);
-
+    
     const result = await profileService.searchUser(req.user?.id, req.query.search);
     return res
       .status(200)
