@@ -55,7 +55,7 @@
     "faqNotFound": "FAQ not found.",
     "reportedUserNotFound": "Reported user not found.",
     "actionRequired": "Action is required.",
-    "friendReqNotFound":"No friend found"
+    "friendReqNotFound": "No friend found"
   },
   "validation": {
     "missingFields": "Missing required fields.",
@@ -116,7 +116,8 @@
     "accountDeleted": "This account has been deleted.",
     "registrationIncomplete": "Registration is incomplete. Please complete your registration.",
     "invalidOrExpiredToken": "Reset token is invalid or has expired.",
-    "invalidLanguage":"invalid language code"
+    "invalidLanguage": "invalid language code",
+    "sameUser": "You cannot view mutual friends with yourself"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",
