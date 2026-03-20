@@ -115,7 +115,12 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 safeEmit(friendReqId.toString(), "friend_request_received", {
                     from: userId,
                     to: friendReqId,
-                    data: existingFriend
+                    sender: {
+                        _id: user._id,
+                        username: user.username,
+                        avatarUrl: user.avatarUrl || null,
+                    },
+                    data: newFriendDoc
                 });
 
 
@@ -148,10 +153,15 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 
         if (!newFriendDoc) throw createError(500, "serverError", "error");
 
-        safeEmit(friendReqId.toString(), "friend_request_received", {
+        safeEmit(friendReqId.toString(), "friend_request_responded", {
             from: userId,
             to: friendReqId,
-            data: newFriendDoc
+            responder: {
+                _id: user._id,
+                username: user.username,
+                avatarUrl: user.avatarUrl || null,
+            },
+            data: existing
         });
 
 
@@ -260,9 +270,13 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         safeEmit(friendReqId.toString(), "friend_request_responded", {
             from: userId,
             to: friendReqId,
+            responder: {                 
+                _id: user._id,
+                username: user.username,
+                avatarUrl: user.avatarUrl || null,
+            },
             data: existing
         });
-
 
         safeEmit(userId.toString(), "notification_deleted", {
             type: enums.notification_Types.FRIEND_REQUEST,
