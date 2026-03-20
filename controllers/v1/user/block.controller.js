@@ -25,7 +25,6 @@ exports.blockedUser = async (req, res) => {
 exports.UnblockUser = async (req, res) => {
     try {
         const lang = getLang(req);
-        console.log(req.params.id)
         const unblocked = await unblockUserService(req.user.id, req.params.id);
         return res.status(200).json(
             successResponse(getMessage(lang, 'success', 'unBlockSuccessfully'), unblocked)

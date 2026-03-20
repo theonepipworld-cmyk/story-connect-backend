@@ -217,7 +217,10 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                     "categoryInfo.name": 1,
                     "categoryInfo._id": 1,
                     membersPreview: 1,
-                    createdAt: 1
+                    createdAt: 1,
+                    isOwner: {
+                        $eq: ["$userId", new mongoose.Types.ObjectId(user._id)]
+                    }
 
                 }
             },
