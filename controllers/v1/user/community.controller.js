@@ -117,8 +117,9 @@ exports.getCommunityMembers = async (req, res) => {
   try {
     const lang = getLang(req);
     const page = parseInt(req.query.page) || 1;
+    const search = req.query.search || ""
     const limit = parseInt(req.query.limit) || 10;
-    const { data, pagination } = await getCommunityMemberService(req.params.id, req.user.id, page, limit);
+    const { data, pagination } = await getCommunityMemberService(req.params.id, req.user.id, page, limit,search);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));
   } catch (err) {
     const lang = getLang(req);

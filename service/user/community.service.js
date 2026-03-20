@@ -387,6 +387,9 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                                 "categoryInfo._id": 1,
                                 isJoinedByMe: 1,
                                 membersPreview: 1,
+                                isOwner: {
+                                    $eq: ["$userId", new mongoose.Types.ObjectId(user._id)]
+                                },
                                 createdAt: 1
                             }
                         }
@@ -425,18 +428,21 @@ exports.getCommunityDetailService = async (communityId, userId) => {
         if (!user) {
             throw createError(404, 'userNotFound', 'notFound');
         }
-        const community = await isCommunityExist(communityId)
-        const communityUserId = community.userId
+
+        const community = await isCommunityExist(communityId);
+        const communityUserId = community.userId;
+
         const blocked = await Block.findOne({
             $or: [
                 { blocker: communityUserId, blocked: userId },
                 { blocker: userId, blocked: communityUserId }
             ]
-        })
+        });
 
         if (blocked) {
-            throw new Error(404, 'userBlocked', 'validation');
+            throw createError(403, 'userBlocked', 'validation');
         }
+
         const result = await Community.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(communityId) } },
             {
@@ -477,6 +483,38 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 }
             },
             {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$communityId", "$$communityIdObj"] }
+                            }
+                        },
+                        { $sort: { createdAt: -1 } },
+                        { $limit: 3 },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
+                            }
+                        },
+                        { $unwind: "$userInfo" },
+                        {
+                            $project: {
+                                _id: 0,
+                                "userInfo._id": 1,
+                                "userInfo.avatarUrl": 1
+                            }
+                        }
+                    ],
+                    as: "membersPreview"
+                }
+            },
+            {
                 $addFields: {
                     isJoinedByMe: {
                         $gt: [
@@ -501,6 +539,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                     "categoryInfo._id": 1,
                     "userInfo.currentCountry": 1,
                     isJoinedByMe: 1,
+                    membersPreview: 1,
                     createdAt: 1
                 }
             }
@@ -513,7 +552,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
     }
 };
 
-exports.getCommunityMemberService = async (communityId, userId, page = 1, limit = 10) => {
+exports.getCommunityMemberService = async (communityId, userId, page = 1, limit = 10, search) => {
     try {
         if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
@@ -547,26 +586,30 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         ).filter(Boolean)
 
         const offset = (page - 1) * limit;
-
         const result = await CommunityMember.aggregate([
             {
                 $match: {
                     communityId: communityId,
-                    userId: { $nin: blockedUserIds }
+                    userId: { $nin: blockedUserIds.map(id => new mongoose.Types.ObjectId(id)) }
                 }
             },
             {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "userInfo"
+                }
+            },
+            { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+            ...(search ? [{
+                $match: {
+                    "userInfo.username": { $regex: search, $options: "i" }
+                }
+            }] : []),
+            {
                 $facet: {
                     data: [
-                        {
-                            $lookup: {
-                                from: "users",
-                                localField: "userId",
-                                foreignField: "_id",
-                                as: "userInfo"
-                            }
-                        },
-                        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
                         {
                             $project: {
                                 role: 1,
