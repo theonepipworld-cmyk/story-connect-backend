@@ -112,8 +112,10 @@ exports.joinCommunityService = async (userId, data) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-
-        if (blocked) throw createError(403, 'userBlocked', 'validation');
+        if (blocked) {
+            const blockedByThem = blocked.blocker.toString() === community.userId.toString();
+            throw createError(403, blockedByThem ? 'You have been blocked by this user' : 'You have blocked this user', 'validation');
+        }
         const joined = await CommunityMember.create({
             userId: user._id,
             communityId: communityId,
@@ -536,7 +538,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             $or: [{ blocker: userId }, { blocked: userId }]
         }) || [];
 
-        
+
         const blockedUserIds = (blocked || []).map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
         ).filter(Boolean)

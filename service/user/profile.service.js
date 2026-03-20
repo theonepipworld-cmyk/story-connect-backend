@@ -155,14 +155,6 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             throw createError(400, 'userNotFound', 'notFound');
         }
 
-        const isBlocked = await Block.findOne({
-            $or: [
-                { blocker: otherUserId, blocked: loginUserId },
-                { blocker: loginUserId, blocked: otherUserId }
-            ]
-        });
-        if (isBlocked) throw createError(403, 'userBlocked', 'validation');
-
         const user = await User.findById(otherUserId)
             .select("-passwordHash -resetPasswordExpires -resetPasswordToken")
             .lean();
@@ -210,7 +202,6 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
 exports.searchUser = async (loginUserId, search) => {
     try {
         if (!search) return [];

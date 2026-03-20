@@ -88,7 +88,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             { upsert: true, new: true }
         );
 
-    
+
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
 
@@ -96,7 +96,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 const postOwner = await isUserExist(post.userId);
 
                 // Push notification
-                if (postOwner?.device_token) {
+                if (postOwner?.device_token && postOwner?.isPushNotification) {
                     try {
                         await pushNotification.androidPushNotification(
                             postOwner.device_token,
@@ -115,7 +115,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     }
                 }
 
-              
+
                 await Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -124,19 +124,19 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
-               
+
                 const postOwnerSocketId = getUserSocketId(post.userId.toString());
                 safeEmit(postOwnerSocketId, "post_liked", { postId, userId, username });
                 await emitBellBadge(post.userId);
             }
 
-     
+
         } else if (type === userActivityStats.userStats.Views) {
             const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
             if (!alreadyView) stats.views.push({ userId, userName: username });
             stats.totalViews = stats.views.length;
 
-        
+
         } else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
 
@@ -144,10 +144,10 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
             if (comment && comment.userId?._id.toString() !== userId.toString()) {
                 const commentOwnerFull = await User.findById(comment.userId._id)
-                    .select("device_token username");
+                    .select("device_token username isPushNotification");
 
                 // Push notification
-                if (commentOwnerFull?.device_token) {
+                if (commentOwnerFull?.device_token && commentOwnerFull?.isPushNotification) {
                     try {
                         await pushNotification.androidPushNotification(
                             commentOwnerFull.device_token,
@@ -173,7 +173,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     }
                 }
 
-              
+
                 await Notification.create({
                     user: comment.userId._id,
                     sender: userId,
@@ -182,10 +182,10 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
-         
+
                 const commentOwnerSocketId = getUserSocketId(comment.userId._id.toString());
                 safeEmit(commentOwnerSocketId, "comment_liked", { postId, commentId, userId, username });
-                await emitBellBadge(comment.userId._id);  
+                await emitBellBadge(comment.userId._id);
             }
         }
 

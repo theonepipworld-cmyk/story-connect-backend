@@ -76,11 +76,15 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 
         const isBlocked = await Block.findOne({
             $or: [
-                { blocker: userId, blocked: friendReqId },
-                { blocker: friendReqId, blocked: userId }
+                { blocker: friendReqId, blocked: userId },
+                { blocker: userId, blocked: friendReqId }
             ]
         });
-        if (isBlocked) throw createError(403, "userBlocked", "validation");
+
+        if (isBlocked) {
+            const blockedByThem = isBlocked.blocker.toString() === friendReqId.toString();
+            throw createError(403, blockedByThem ? 'You have been blocked by this user' : 'You have blocked this user', 'validation');
+        }
 
 
         const existingFriend = await Friend.findOne({
@@ -669,7 +673,7 @@ exports.cancelFriendReqService = async (userId, friendId) => {
             Notification.deleteOne({
                 sender: userId,
                 receiver: friendId,
-                type: enums.notification_Types.FRIEND_REQUEST  
+                type: enums.notification_Types.FRIEND_REQUEST
             })
         ]);
 

@@ -515,13 +515,22 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
 
+
     const isBlocked = await Block.findOne({
       $or: [
         { blocker: id, blocked: userId },
         { blocker: userId, blocked: id }
       ]
     });
-    if (isBlocked) throw createError(403, "userBlocked", "validation");
+
+    if (isBlocked) {
+      const blockedByThem = isBlocked.blocker.toString() === id.toString();
+      return {
+        posts: [],
+        pagination: { totalPosts: 0, totalPages: 0, currentPage: parseInt(page), limit: parseInt(limit) },
+        message: blockedByThem ? "You have been blocked by this user" : "You have blocked this user"
+      };
+    }
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
     const allCommunityIds = joinedCommunities.map(c => c.communityId).filter(Boolean);
@@ -693,9 +702,9 @@ exports.getTrendingTagsService = async () => {
     let result = await HashTag.find({ usageCount: { $gt: 10 } })
       .sort({ usageCount: -1 })
       .limit(4)
-      .select('tag usageCount');   
+      .select('tag usageCount');
 
-   
+
     if (!result || result.length === 0) {
       result = await HashTag.find({ usageCount: { $gt: 0 } })
         .sort({ usageCount: -1 })
@@ -710,6 +719,7 @@ exports.getTrendingTagsService = async () => {
     throw createError(500, "serverError", "error");
   }
 };
+
 exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
 

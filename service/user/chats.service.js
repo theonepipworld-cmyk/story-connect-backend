@@ -24,9 +24,19 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!sender || !receiver) throw createError(404, 'invalidUser', 'validation');
         if (senderId.toString() === receiverId.toString()) throw createError(400, 'cannotMessageYourself', 'validation');
 
-        const isBlocked = await Block.findOne({ blocker: receiverId, blocked: senderId });
-        if (isBlocked) throw createError(403, 'userBlocked', 'validation');
-
+        const isBlocked = await Block.findOne({
+            $or: [
+                { blocker: receiverId, blocked: senderId },
+                { blocker: senderId, blocked: receiverId }
+            ]
+        });
+        if (isBlocked) {
+            const blockedByThem = isBlocked.blocker.toString() === receiverId.toString();
+            return [{
+                blocked: true,
+                message: blockedByThem ? "You have been blocked by this user" : "You have blocked this user"
+            }];
+        }
         const messageStatus = onlineUsers.has(receiverId.toString())
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
@@ -53,7 +63,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
             const basePayload = savedMessage.toObject();
 
-
             const conversationUpdate = {
                 conversationId: conversation._id.toString(),
                 lastMessage: savedMessage.text,
@@ -75,7 +84,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     isFromMe: true
                 });
 
-
                 io.to(senderSocketId).emit("conversationUpdated", {
                     ...conversationUpdate,
                     unseenCount: 0
@@ -94,7 +102,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
 
-
                 io.to(receiverSocketId).emit("conversationUpdated", {
                     ...conversationUpdate,
                     unseenCount: currentUnseenCount + 1
@@ -107,7 +114,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         };
 
         const sendPushNotification = async (token, body, data) => {
-            if (!token) return;
+            if (!token || !receiver?.isPushNotification) return;
             try {
                 await pushNotification.androidPushNotification(token, body, "message", data);
             } catch (error) {
@@ -119,7 +126,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }
             }
         };
-
 
         const updateConversation = (savedMessage) => {
             conversation.lastMessage = {
@@ -139,10 +145,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         let messages = [];
 
-
         if (messageText && Array.isArray(files) && files.length > 0) {
-
-
             const uploadedFiles = files.map(file => ({
                 url: file.location,
                 mimeType: file.mimetype
@@ -175,7 +178,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             return messages;
         }
 
-
         if (messageText && (!files || files.length === 0)) {
             const textMessage = new Message({
                 conversationId: conversation._id,
@@ -198,7 +200,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
-
                 const fileType = file.mimetype.startsWith("image/")
                     ? "image"
                     : file.mimetype.startsWith("video/") ? "video" : "file";
@@ -232,6 +233,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         throw createError(500, 'serverError', 'error');
     }
 };
+
 
 // GET USER CONVERSATIONS
 exports.getUserConversationService = async (userId, page = 1, limit = 10, search = "") => {
@@ -428,7 +430,6 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             u.userId.toString() === receiverId.toString() ? { ...u, count: 0 } : u
         );
 
-      
         const senderId = conversation.participants.find(
             p => p.toString() !== receiverId.toString()
         );
@@ -437,10 +438,8 @@ exports.seenMessageService = async (conversationId, receiverId) => {
         const receiverSocketId = getUserSocketId(receiverId.toString());
         const senderSocketId = getUserSocketId(senderId?.toString());
 
-       
         io.emit("messages_seen", { conversationId, seenBy: receiverId, data: result });
 
-       
         const conversationUpdate = {
             conversationId: conversation._id.toString(),
             lastMessageStatus: "seen",
@@ -454,7 +453,6 @@ exports.seenMessageService = async (conversationId, receiverId) => {
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("conversationUpdated", conversationUpdate);
 
-           
             const allConversations = await Conversation.find({
                 participants: new mongoose.Types.ObjectId(receiverId)
             }).select('unseenCount');
@@ -557,7 +555,6 @@ exports.deleteConversationService = async (conversationId, userId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 
 const validateMessageAction = async (conversationId, messageId, userId) => {
