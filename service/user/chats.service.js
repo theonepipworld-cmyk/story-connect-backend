@@ -298,6 +298,12 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                 $addFields: {
                     isBlocked: {
                         $in: ["$otherParticipant._id", blockedUserIds.map(id => new mongoose.Types.ObjectId(id))]
+                    },
+                    isBlockedByMe: {
+                        $in: ["$otherParticipant._id", blockedUsers
+                            .filter(b => b.blocker.toString() === userId.toString())
+                            .map(b => new mongoose.Types.ObjectId(b.blocked))
+                        ]
                     }
                 }
             },
@@ -317,6 +323,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     isOnline: { $ifNull: ["$otherParticipant.isOnline", false] },
                                 },
                                 isBlocked: 1,
+                                isBlockedByMe:1,
                                 lastMessage: "$lastMessageInfo.text",
                                 lastMessageId: "$lastMessageInfo._id",
                                 lastMessageAt: "$lastMessageInfo.createdAt",
