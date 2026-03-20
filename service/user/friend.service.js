@@ -65,7 +65,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             throw createError(400, "notSendReqYourself", "customError");
         }
 
-
         const [user, recipient] = await Promise.all([
             isUserExist(userId),
             isUserExist(friendReqId)
@@ -86,7 +85,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             throw createError(403, blockedByThem ? 'You have been blocked by this user' : 'You have blocked this user', 'validation');
         }
 
-
         const existingFriend = await Friend.findOne({
             $or: [
                 { requester: userId, recipient: friendReqId },
@@ -104,14 +102,12 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             }
 
             if (existingFriend.status === enums.friend_Request_status.REJECTED) {
-
                 existingFriend.requester = userId;
                 existingFriend.recipient = friendReqId;
                 existingFriend.status = enums.friend_Request_status.PENDING;
-
-
                 await existingFriend.save();
 
+              
                 safeEmit(friendReqId.toString(), "friend_request_received", {
                     from: userId,
                     to: friendReqId,
@@ -120,9 +116,8 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                         username: user.username,
                         avatarUrl: user.avatarUrl || null,
                     },
-                    data: newFriendDoc
+                    data: existingFriend
                 });
-
 
                 await Promise.all([
                     Notification.create({
@@ -144,7 +139,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
             }
         }
 
-
         const newFriendDoc = await Friend.create({
             requester: userId,
             recipient: friendReqId,
@@ -153,17 +147,17 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
 
         if (!newFriendDoc) throw createError(500, "serverError", "error");
 
-        safeEmit(friendReqId.toString(), "friend_request_responded", {
+      
+        safeEmit(friendReqId.toString(), "friend_request_received", {
             from: userId,
             to: friendReqId,
-            responder: {
+            sender: {
                 _id: user._id,
                 username: user.username,
                 avatarUrl: user.avatarUrl || null,
             },
-            data: existing
+            data: newFriendDoc
         });
-
 
         await Promise.all([
             Notification.create({
@@ -188,7 +182,6 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         throw createError(500, "serverError", "error");
     }
 };
-
 
 exports.respondFriendReqService = async (userId, friendReqId, action) => {
     try {
@@ -270,7 +263,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         safeEmit(friendReqId.toString(), "friend_request_responded", {
             from: userId,
             to: friendReqId,
-            responder: {                 
+            responder: {
                 _id: user._id,
                 username: user.username,
                 avatarUrl: user.avatarUrl || null,
