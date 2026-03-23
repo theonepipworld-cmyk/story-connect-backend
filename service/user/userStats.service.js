@@ -189,7 +189,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 };
 
 
-exports.getAllLikedUserService = async (postId, type, userId) => {
+exports.getAllLikedUserService = async (postId, type, userId, commentId) => {
     try {
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
@@ -202,21 +202,47 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
             .map(b => b.blocker.toString() === userId.toString() ? b.blocked : b.blocker)
             .filter(Boolean);
 
-        let stats;
+        let resultArr = [];
+
         if (type === userActivityStats.userStats.Likes) {
-            stats = await userStats.findOne({ postId }).select("likes");
+            const stats = await userStats.findOne({ postId }).select("likes");
+            if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+            resultArr = stats.likes;
+
         } else if (type === userActivityStats.userStats.Views) {
-            stats = await userStats.findOne({ postId }).select("views");
+            const stats = await userStats.findOne({ postId }).select("views");
+            if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+            resultArr = stats.views;
+
+        } else if (type === userActivityStats.userStats.CommentLikes) {
+            if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
+
+            const stats = await userStats.findOne({ postId }).select("commentLikes");
+            if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+
+            const commentStat = stats.commentLikes.find(
+                c => c.commentId === commentId.toString()
+            );
+
+            if (!commentStat) return [];
+            const users = await User.find(
+                { _id: { $in: commentStat.userIds } },
+                "username avatarUrl currentCountry"
+            ).lean();
+
+            resultArr = users.map(u => ({ userId: u._id, ...u }));
+
+        } else {
+            throw createError(400, 'invalidType', 'validation');
         }
 
-        if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
-
-        let resultArr = type === userActivityStats.userStats.Likes ? stats.likes : stats.views;
+        // blocked filter
         resultArr = resultArr.filter(u =>
             !blockedUserIds.some(bid => bid.toString() === u.userId.toString())
         );
 
         return resultArr;
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');

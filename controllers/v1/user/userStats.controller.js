@@ -31,12 +31,11 @@ exports.addUserStats = async (req, res) => {
   }
 };
 
-
 exports.getAllLikeOrViewUser = async (req, res) => {
   try {
     const lang = getLang(req);
-    const { postId, type } = req.query;
-    const getAllLikedUser = await getAllLikedUserService(postId, type);
+    const { postId, type, commentId } = req.query; 
+    const getAllLikedUser = await getAllLikedUserService(postId, type, req.user._id, commentId);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), getAllLikedUser));
   } catch (err) {
     const lang = getLang(req);
