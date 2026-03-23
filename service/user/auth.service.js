@@ -31,6 +31,15 @@ exports.signup = async (data) => {
 
     const newUser = new User(newUserData);
     await newUser.save();
+    await sendEmail({
+      to: email,
+      subject: 'Welcome to Our Platform 🎉',
+      template: 'welcome',
+      context: {
+        username: username,
+        email: email,
+      }
+    });
 
     const token = await getJWT(email, newUser._id, newUser.role, newUser.username);
 
@@ -65,12 +74,17 @@ exports.login = async ({ email, password, device_token }) => {
     throw createError(500, 'serverError', 'error');
   }
 };
+
 exports.forgotPassword = async ({ email }) => {
   try {
     const user = await checkFieldExists('email', email, true);
     if (!user) throw createError(404, 'emailNotFound', 'notFound');
 
     if (user.status === 'banned') throw createError(403, 'accountBanned', 'forbidden');
+    if (user.status === 'suspended') throw createError(403, 'accountSuspended', 'forbidden');
+
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
@@ -79,7 +93,7 @@ exports.forgotPassword = async ({ email }) => {
     user.resetPasswordExpires = Date.now() + 1000 * 60 * 15;
     await user.save();
 
-    const resetLink = `${RESET_PASS_LINK}/${resetToken}`;
+    const resetLink = `${RESET_PASS_LINK}/${resetToken}?email=${encodeURIComponent(user.email)}`;
 
     await sendEmail({
       to: email,
@@ -109,8 +123,7 @@ exports.resetPassword = async ({ token, newPassword }) => {
     user.resetPasswordToken = "";
     user.resetPasswordExpires = "";
     await user.save();
-
-    return { message: 'Password reset successful.' };
+    return { message: 'ResetPassword.' };
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, 'serverError', 'error');

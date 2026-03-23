@@ -14,22 +14,13 @@ const Friend = require("../../models/friends.model.js")
 const enums = require("../../constants/enum.constants.js")
 
 
-
-
-
 exports.createCommunityService = async (communityDetails, userId, file) => {
     try {
-        // Validate userId
-        if (!userId) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
-        // Check for duplicate community name
         const existingCommunity = await Community.findOne({ name: communityDetails.name });
         if (existingCommunity) {
             throw createError(400, 'AlreadyExist', 'validation', {
@@ -38,27 +29,21 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
             });
         }
 
-        // Upload community image if provided
         let communityImageUrl = "";
         if (file) {
             const uploaded = await uploadFileToS3(file, "community/coverImage");
             communityImageUrl = uploaded?.Location;
         }
 
-        // Handle manual category name if category is "Others"
-        let manualCategoryName = undefined;
         const communityCategory = await CommunityCategory.findById(communityDetails.category);
-        if (!communityCategory) {
-            throw createError(404, 'communityCategoryNotFound', 'notFound');
-        }
+        if (!communityCategory) throw createError(404, 'communityCategoryNotFound', 'notFound');
+
+        let manualCategoryName = undefined;
         if (communityCategory.name === "Others") {
-            if (!communityDetails.categoryName) {
-                throw createError(400, 'CategoryRequired', 'validation');
-            }
+            if (!communityDetails.categoryName) throw createError(400, 'CategoryRequired', 'validation');
             manualCategoryName = communityDetails.categoryName;
         }
 
-        // Create new community
         const newCommunity = new Community({
             name: communityDetails.name,
             description: communityDetails.description,
@@ -71,7 +56,6 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
 
         const savedCommunity = await newCommunity.save();
 
-        // Add creator as admin member
         await CommunityMember.create({
             userId: user._id,
             communityId: newCommunity._id,
@@ -89,23 +73,18 @@ exports.createCommunityService = async (communityDetails, userId, file) => {
 
 exports.joinCommunityService = async (userId, data) => {
     try {
-        const { communityId } = data
-        if (!userId) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        const { communityId } = data;
+
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
+
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
-        const isAlreadyMember = await CommunityMember.findOne({
-            userId: user._id,
-            communityId: communityId,
-        })
-        if (isAlreadyMember) {
-            throw createError(400, 'alreadyCommunityMember', 'validation');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
+
+        const isAlreadyMember = await CommunityMember.findOne({ userId: user._id, communityId });
+        if (isAlreadyMember) throw createError(400, 'alreadyCommunityMember', 'validation');
 
         const community = await isCommunityExist(communityId);
+
         const blocked = await Block.findOne({
             $or: [
                 { blocker: community.userId, blocked: userId },
@@ -116,51 +95,40 @@ exports.joinCommunityService = async (userId, data) => {
             const blockedByThem = blocked.blocker.toString() === community.userId.toString();
             throw createError(403, blockedByThem ? 'You have been blocked by this user' : 'You have blocked this user', 'validation');
         }
+
         const joined = await CommunityMember.create({
             userId: user._id,
-            communityId: communityId,
+            communityId,
             role: "member"
         });
 
-        await Community.findByIdAndUpdate(
-            { _id: communityId },
-            { $inc: { memberCount: 1 } },
-        );
+        await Community.findByIdAndUpdate(communityId, { $inc: { memberCount: 1 } });
+
         return joined;
-    }
-    catch (error) {
+
+    } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
 
+
 exports.userCommunityService = async (userId, search = "", page = 1, limit = 10) => {
-    if (!userId) {
-        throw createError(404, 'userNotFound', 'notFound');
-    }
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
     try {
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
-        const allUserCommunities = await CommunityMember.find({
-            userId: user._id
-        });
-
+        const allUserCommunities = await CommunityMember.find({ userId: user._id });
         const communityIds = allUserCommunities.map(c => new mongoose.Types.ObjectId(c.communityId));
 
         const offset = (page - 1) * limit;
 
         const result = await Community.aggregate([
-            {
-                $match: { _id: { $in: communityIds } }
-            },
-
-         
+            { $match: { _id: { $in: communityIds } } },
             {
                 $lookup: {
                     from: "communitycategories",
@@ -170,19 +138,14 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                 }
             },
             { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
-
-            ...(search
-                ? [{
-                    $match: {
-                        $or: [
-                            { name: { $regex: search, $options: "i" } },
-                            { "categoryInfo.name": { $regex: search, $options: "i" } },
-                        ]
-                    }
-                }]
-                : []),
-
-            
+            ...(search ? [{
+                $match: {
+                    $or: [
+                        { name: { $regex: search, $options: "i" } },
+                        { "categoryInfo.name": { $regex: search, $options: "i" } }
+                    ]
+                }
+            }] : []),
             {
                 $lookup: {
                     from: "communitymembers",
@@ -212,35 +175,23 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                     as: "membersPreview"
                 }
             },
-
-         
             {
                 $lookup: {
                     from: "communitymembers",
                     let: { communityIdObj: "$_id" },
                     pipeline: [
-                        {
-                            $match: {
-                                $expr: { $eq: ["$communityId", "$$communityIdObj"] }
-                            }
-                        },
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
                         { $count: "count" }
                     ],
                     as: "memberData"
                 }
             },
-
             {
                 $addFields: {
-                    memberCount: {
-                        $ifNull: [{ $arrayElemAt: ["$memberData.count", 0] }, 0]
-                    },
-                    isOwner: {
-                        $eq: ["$userId", userObjectId]
-                    }
+                    memberCount: { $ifNull: [{ $arrayElemAt: ["$memberData.count", 0] }, 0] },
+                    isOwner: { $eq: ["$userId", userObjectId] }
                 }
             },
-
             {
                 $project: {
                     name: 1,
@@ -256,7 +207,6 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                     isOwner: 1
                 }
             },
-
             {
                 $facet: {
                     paginatedResults: [
@@ -264,9 +214,7 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                         { $skip: offset },
                         { $limit: limit }
                     ],
-                    totalCount: [
-                        { $count: "count" }
-                    ]
+                    totalCount: [{ $count: "count" }]
                 }
             }
         ]);
@@ -280,7 +228,7 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
                 total,
                 totalPages: Math.ceil(total / limit),
                 currentPage: page,
-                limit,
+                limit
             }
         };
 
@@ -293,41 +241,31 @@ exports.userCommunityService = async (userId, search = "", page = 1, limit = 10)
 
 exports.categoryService = async () => {
     try {
-        const result = await CommunityCategory.find();
-        return result;
+        return await CommunityCategory.find();
     } catch (error) {
         throw createError(500, 'serverError', 'error');
     }
 };
 
+
 exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => {
-    if (!userId) {
-        throw createError(404, 'userNotFound', 'notFound');
-    }
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
     try {
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const userObjectId = new mongoose.Types.ObjectId(userId);
         const offset = (page - 1) * limit;
 
-        const Blocked = await Block.find({
-            $or: [{ blocker: userId }, { blocked: userId }]
-        });
-
-        const blockedUserIds = (Blocked || []).map(b =>
+        const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] });
+        const blockedUserIds = (blocked || []).map(b =>
             b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
         ).filter(Boolean);
-
         const blockedObjectIds = blockedUserIds.map(id => new mongoose.Types.ObjectId(id));
 
         const result = await Community.aggregate([
             { $match: { userId: { $nin: blockedObjectIds } } },
-
-
             {
                 $lookup: {
                     from: "communitycategories",
@@ -337,19 +275,14 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                 }
             },
             { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
-
-            ...(search
-                ? [{
-                    $match: {
-                        $or: [
-                            { "categoryInfo.name": { $regex: search, $options: "i" } },
-                            { name: { $regex: search, $options: "i" } }
-                        ]
-                    }
-                }]
-                : []),
-
-
+            ...(search ? [{
+                $match: {
+                    $or: [
+                        { "categoryInfo.name": { $regex: search, $options: "i" } },
+                        { name: { $regex: search, $options: "i" } }
+                    ]
+                }
+            }] : []),
             {
                 $lookup: {
                     from: "communitymembers",
@@ -369,8 +302,6 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                     as: "joinedInfo"
                 }
             },
-
-
             {
                 $lookup: {
                     from: "communitymembers",
@@ -409,38 +340,24 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
                     as: "membersPreview"
                 }
             },
-
-
             {
                 $lookup: {
                     from: "communitymembers",
                     let: { communityIdObj: "$_id" },
                     pipeline: [
-                        {
-                            $match: {
-                                $expr: { $eq: ["$communityId", "$$communityIdObj"] }
-                            }
-                        },
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
                         { $count: "count" }
                     ],
                     as: "memberData"
                 }
             },
-
             {
                 $addFields: {
-                    memberCount: {
-                        $ifNull: [{ $arrayElemAt: ["$memberData.count", 0] }, 0]
-                    },
-                    isJoinedByMe: {
-                        $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0]
-                    },
-                    isOwner: {
-                        $eq: ["$userId", userObjectId]
-                    }
+                    memberCount: { $ifNull: [{ $arrayElemAt: ["$memberData.count", 0] }, 0] },
+                    isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] },
+                    isOwner: { $eq: ["$userId", userObjectId] }
                 }
             },
-
             {
                 $facet: {
                     paginatedResults: [
@@ -489,43 +406,29 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
 };
 
 
-
 exports.getCommunityDetailService = async (communityId, userId) => {
-    if (!userId) {
-        throw createError(404, 'userNotFound', 'notFound');
-    }
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
     try {
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const community = await isCommunityExist(communityId);
-        if (!community) {
-            throw createError(404, 'communityNotFound', 'notFound');
-        }
-
-        const communityUserId = community.userId;
+        if (!community) throw createError(404, 'communityNotFound', 'notFound');
 
         const blocked = await Block.findOne({
             $or: [
-                { blocker: communityUserId, blocked: userId },
-                { blocker: userId, blocked: communityUserId }
+                { blocker: community.userId, blocked: userId },
+                { blocker: userId, blocked: community.userId }
             ]
         });
-
-        if (blocked) {
-            throw createError(403, 'userBlocked', 'validation');
-        }
+        if (blocked) throw createError(403, 'userBlocked', 'validation');
 
         const userObjectId = new mongoose.Types.ObjectId(userId);
         const communityObjectId = new mongoose.Types.ObjectId(communityId);
 
         const result = await Community.aggregate([
             { $match: { _id: communityObjectId } },
-
-
             {
                 $lookup: {
                     from: "users",
@@ -535,8 +438,6 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 }
             },
             { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-
-
             {
                 $lookup: {
                     from: "communitycategories",
@@ -546,8 +447,6 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 }
             },
             { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
-
-
             {
                 $lookup: {
                     from: "communitymembers",
@@ -567,18 +466,12 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                     as: "joinedInfo"
                 }
             },
-
-
             {
                 $lookup: {
                     from: "communitymembers",
                     let: { communityIdObj: "$_id" },
                     pipeline: [
-                        {
-                            $match: {
-                                $expr: { $eq: ["$communityId", "$$communityIdObj"] }
-                            }
-                        },
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
                         { $sort: { createdAt: -1 } },
                         { $limit: 3 },
                         {
@@ -595,46 +488,31 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                                 _id: 0,
                                 "userInfo._id": 1,
                                 "userInfo.avatarUrl": 1,
-                                "userInfo.username": 1,
+                                "userInfo.username": 1
                             }
                         }
                     ],
                     as: "membersPreview"
                 }
             },
-
-
             {
                 $lookup: {
                     from: "communitymembers",
                     let: { communityIdObj: "$_id" },
                     pipeline: [
-                        {
-                            $match: {
-                                $expr: { $eq: ["$communityId", "$$communityIdObj"] }
-                            }
-                        },
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
                         { $count: "count" }
                     ],
                     as: "memberData"
                 }
             },
-
             {
                 $addFields: {
-                    memberCount: {
-                        $ifNull: [{ $arrayElemAt: ["$memberData.count", 0] }, 0]
-                    },
-                    isJoinedByMe: {
-                        $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0]
-                    },
-                    isOwner: {
-                        $eq: ["$userId", userObjectId]
-                    }
+                    memberCount: { $ifNull: [{ $arrayElemAt: ["$memberData.count", 0] }, 0] },
+                    isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] },
+                    isOwner: { $eq: ["$userId", userObjectId] }
                 }
             },
-
-
             {
                 $project: {
                     name: 1,
@@ -643,15 +521,13 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                     isActive: 1,
                     manualCategoryName: 1,
                     memberCount: 1,
-
+                    "userInfo._id": 1,
                     "userInfo.username": 1,
                     "userInfo.email": 1,
                     "userInfo.avatarUrl": 1,
                     "userInfo.currentCountry": 1,
-
                     "categoryInfo.name": 1,
                     "categoryInfo._id": 1,
-
                     isJoinedByMe: 1,
                     isOwner: 1,
                     membersPreview: 1,
@@ -675,6 +551,7 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
 
         userId = new mongoose.Types.ObjectId(userId);
         communityId = new mongoose.Types.ObjectId(communityId);
+
         const loginUserFriends = await getAllFriends(userId);
         const loginUserSendedRequest = await Friend.find({
             requester: userId,
@@ -682,32 +559,28 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         });
 
         const loginUserFriendIds = new Set(
-            loginUserFriends
-                .map(f => f?._id ? f._id.toString() : null)
-                .filter(Boolean)
+            loginUserFriends.map(f => f?._id ? f._id.toString() : null).filter(Boolean)
         );
 
         const allPendingFriendIds = new Set(
-            loginUserSendedRequest
-                .map(f => f?.recipient ? f.recipient.toString() : null)
-                .filter(Boolean)
+            loginUserSendedRequest.map(f => f?.recipient ? f.recipient.toString() : null).filter(Boolean)
         );
 
-        const blocked = await Block.find({
-            $or: [{ blocker: userId }, { blocked: userId }]
-        }) || [];
+        const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] }) || [];
 
-
-        const blockedUserIds = (blocked || []).map(b =>
-            b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
-        ).filter(Boolean)
+        const blockedObjectIds = blocked.map(b =>
+            new mongoose.Types.ObjectId(
+                b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
+            )
+        ).filter(Boolean);
 
         const offset = (page - 1) * limit;
+
         const result = await CommunityMember.aggregate([
             {
                 $match: {
-                    communityId: communityId,
-                    userId: { $nin: blockedUserIds.map(id => new mongoose.Types.ObjectId(id)) }
+                    communityId,
+                    userId: { $nin: blockedObjectIds }
                 }
             },
             {
@@ -720,13 +593,14 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             },
             { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
             ...(search ? [{
-                $match: {
-                    "userInfo.username": { $regex: search, $options: "i" }
-                }
+                $match: { "userInfo.username": { $regex: search, $options: "i" } }
             }] : []),
             {
                 $facet: {
                     data: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: offset },
+                        { $limit: limit },
                         {
                             $project: {
                                 role: 1,
@@ -738,32 +612,25 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 profession: "$userInfo.profession",
                                 manualProfession: "$userInfo.manualProfession",
                                 bio: "$userInfo.bio",
-                                userId: "$userInfo._id",
+                                userId: "$userInfo._id"
                             }
-                        },
-                        { $sort: { createdAt: -1 } },
-                        { $skip: offset },
-                        { $limit: limit }
+                        }
                     ],
                     totalCount: [{ $count: "count" }]
                 }
             }
         ]);
 
-        const safeData = Array.isArray(result[0]?.data)
-            ? result[0].data
-            : [];
+        const safeData = Array.isArray(result[0]?.data) ? result[0].data : [];
 
         const data = safeData.map(f => {
             const uid = f?.userId ? f.userId.toString() : null;
-
             return {
                 ...f,
                 isThisUserFriend: uid ? loginUserFriendIds.has(uid) : false,
                 isReqPending: uid ? allPendingFriendIds.has(uid) : false
             };
         });
-
 
         const totalCount = result[0]?.totalCount[0]?.count || 0;
 
@@ -784,18 +651,15 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
 };
 
 
-
 exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
-    if (!userId) {
-        throw createError(404, 'userNotFound', 'notFound');
-    }
-    try {
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
+    try {
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
+
         const community = await isCommunityExist(communityId);
+
         const blocked = await Block.findOne({
             $or: [
                 { blocker: community.userId, blocked: userId },
@@ -804,25 +668,22 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
         });
         if (blocked) throw createError(403, 'userBlocked', 'validation');
 
-
         const allFriends = await getAllFriends(user._id);
         const allFriendIds = allFriends.map(f => f._id.toString());
 
         const pendingRequests = await Friend.find({
             status: enums.friend_Request_status.PENDING,
-            $or: [{ requester: user._id }, { recipient: user._id }],
+            $or: [{ requester: user._id }, { recipient: user._id }]
         });
 
         const pendingUserIds = pendingRequests.map(req =>
-            req.requester._id.toString() === user._id.toString()
-                ? req.recipient
-                : req.requester
+            req.requester._id.toString() === user._id.toString() ? req.recipient : req.requester
         );
-        const offSet = (page - 1) * limit
+
+        const offset = (page - 1) * limit;
+
         const result = await Post.aggregate([
-            {
-                $match: { communityId: new mongoose.Types.ObjectId(communityId) }
-            },
+            { $match: { communityId: new mongoose.Types.ObjectId(communityId) } },
             {
                 $facet: {
                     paginatedResults: [
@@ -834,20 +695,16 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 as: "userInfo"
                             }
                         },
-                        {
-                            $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true }
-                        },
+                        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
                         {
                             $lookup: {
                                 from: "userstats",
                                 localField: "_id",
                                 foreignField: "postId",
-                                as: "stats",
-                            },
+                                as: "stats"
+                            }
                         },
-                        {
-                            $unwind: { path: "$stats", preserveNullAndEmptyArrays: true }
-                        },
+                        { $unwind: { path: "$stats", preserveNullAndEmptyArrays: true } },
                         {
                             $addFields: {
                                 totalLikes: { $ifNull: ["$stats.totalLikes", 0] },
@@ -861,7 +718,6 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                         }
                                     }
                                 }
-
                             }
                         },
                         {
@@ -869,31 +725,20 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 from: "comments",
                                 localField: "_id",
                                 foreignField: "postId",
-                                as: "comments",
-                            },
+                                as: "comments"
+                            }
                         },
-                        {
-                            $addFields: {
-                                totalComments: { $size: "$comments" },
-                            },
-                        },
+                        { $addFields: { totalComments: { $size: "$comments" } } },
                         {
                             $addFields: {
                                 isFriend: {
-                                    $in: [
-                                        "$userId",
-                                        allFriendIds.map(id => new mongoose.Types.ObjectId(id)),
-                                    ],
+                                    $in: ["$userId", allFriendIds.map(id => new mongoose.Types.ObjectId(id))]
                                 },
                                 isPendingRequest: {
-                                    $in: [
-                                        "$userId",
-                                        pendingUserIds.map(id => new mongoose.Types.ObjectId(id)),
-                                    ],
-                                },
-                            },
+                                    $in: ["$userId", pendingUserIds.map(id => new mongoose.Types.ObjectId(id))]
+                                }
+                            }
                         },
-
                         {
                             $project: {
                                 _id: 1,
@@ -917,27 +762,19 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 totalComments: 1,
                                 isPostLikedByMe: 1,
                                 isFriend: 1,
-                                isPendingRequest: 1,
-                            },
+                                isPendingRequest: 1
+                            }
                         },
-                        {
-                            $sort: { createdAt: -1 },
-                        },
-                        {
-                            $skip: offSet
-                        },
-                        {
-                            $limit: limit
-                        }
+                        { $sort: { createdAt: -1 } },
+                        { $skip: offset },
+                        { $limit: limit }
                     ],
-                    totalCount: [
-                        { $count: "count" }
-                    ]
+                    totalCount: [{ $count: "count" }]
                 }
             }
-        ])
+        ]);
 
-        const communityPost = result[0]?.paginatedResults || []
+        const communityPost = result[0]?.paginatedResults || [];
         const total = result[0]?.totalCount[0]?.count || 0;
 
         return {
@@ -946,65 +783,32 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                 total,
                 totalPages: Math.ceil(total / limit),
                 currentPage: page,
-                limit,
+                limit
             }
         };
-    }
-    catch (error) {
+
+    } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
 
 
-// exports.getuserCommunitiesFeedService = async (userId, page, limit) => {
-//     if (!userId) {
-//         throw createError(400, resMessages.notFound.userNotFound);
-//     }
-//     try {
-//         const user = await isUserExist(userId);
-//         if (!user) {
-//             throw createError(400, resMessages.notFound.userNotFound);
-//         }
-//         const result = Post.aggregate([
-//             {
-//                 $match:{
-//                     userId : user._id ,
-//                     type:Community
-//                  }
-//             }
-//         ])
-//     }
-//     catch (error) {
-//         throw new Error(error.message);
-//     }
-// }
-
-
 exports.removeCommunityMemberService = async (data, userId) => {
-    if (!userId) {
-        throw createError(404, 'userNotFound', 'notFound');
-    }
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
     try {
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
-        const community = await Community.findById(data.communityId)
-        if (!community) {
-            throw createError(404, 'communityNotFound', 'notFound');
-        }
+        const community = await Community.findById(data.communityId);
+        if (!community) throw createError(404, 'communityNotFound', 'notFound');
 
         const isMemberExist = await CommunityMember.findOne({
             communityId: data.communityId,
             userId: data.userId
-        })
-
-        if (!isMemberExist) {
-            throw createError(404, 'memberNotFound', 'notFound');
-        }
+        });
+        if (!isMemberExist) throw createError(404, 'memberNotFound', 'notFound');
 
         if (community.userId.toString() !== userId.toString()) {
             throw createError(403, 'NotAuthorizedRemove', 'customError');
@@ -1016,14 +820,14 @@ exports.removeCommunityMemberService = async (data, userId) => {
         const result = await CommunityMember.findOneAndDelete({
             communityId: community._id,
             userId: data.userId
-        })
+        });
+
         if (community.memberCount > 0) {
-            await Community.findByIdAndUpdate(
-                community._id,
-                { $inc: { memberCount: -1 } },
-            );
+            await Community.findByIdAndUpdate(community._id, { $inc: { memberCount: -1 } });
         }
+
         return result;
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
@@ -1032,36 +836,29 @@ exports.removeCommunityMemberService = async (data, userId) => {
 
 
 exports.removeCommunityService = async (communityId, userId) => {
-    if (!userId) {
-        throw createError(404, 'userNotFound', 'notFound');
-    }
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
+
     try {
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
-        const community = await Community.findById(communityId)
-        if (!community) {
-            throw createError(404, 'communityNotFound', 'notFound');
-        }
+        const community = await Community.findById(communityId);
+        if (!community) throw createError(404, 'communityNotFound', 'notFound');
 
         if (community.userId.toString() !== userId.toString()) {
             throw createError(403, 'NotAuthorized', 'customError');
         }
 
-        const result = await Community.findByIdAndDelete(community._id)
+        const result = await Community.findByIdAndDelete(community._id);
 
         if (result) {
-            await CommunityMember.deleteMany({ communityId: community._id })
             const posts = await Post.find({ communityId: community._id });
-            const postIds = posts?.map((p) => p._id.toString());
+            const postIds = posts.map(p => p._id.toString());
             if (postIds.length > 0) {
-                await UserStats.deleteMany({
-                    postId: { $in: postIds }
-                });
+                await UserStats.deleteMany({ postId: { $in: postIds } });
             }
             await Post.deleteMany({ communityId: community._id });
+            await CommunityMember.deleteMany({ communityId: community._id });
         }
 
         return result;
@@ -1072,26 +869,29 @@ exports.removeCommunityService = async (communityId, userId) => {
     }
 };
 
+
 exports.updateCommunityService = async (communityId, userId, data, file) => {
     try {
         if (!userId) throw createError(404, 'userNotFound', 'notFound');
+
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
-        const community = await Community.findById(communityId)
+        const community = await Community.findById(communityId);
+        if (!community) throw createError(404, 'communityNotFound', 'notFound');
+
         if (community.userId.toString() !== userId.toString()) {
             throw createError(403, 'NotAuthorized', 'customError');
         }
 
         if (file) {
-            if (community.coverImage) {
-                await deleteFileFromS3(community.coverImage);
-            }
+            if (community.coverImage) await deleteFileFromS3(community.coverImage);
             const uploaded = await uploadFileToS3(file, "coverImage");
             data.coverImage = uploaded.Location;
         }
+
         if (data.category) {
-            const category = await CommunityCategory.findById(data.category)
+            const category = await CommunityCategory.findById(data.category);
             if (category.name === "Others") data.manualCategoryName = data.categoryName;
             else data.manualCategoryName = undefined;
         }
@@ -1101,66 +901,51 @@ exports.updateCommunityService = async (communityId, userId, data, file) => {
             { $set: data },
             { new: true }
         );
+
         return updatedCommunity;
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
+
 
 exports.listAllCommunityService = async (userId) => {
     try {
-
         const allUserCommunities = await CommunityMember.find({
-            userId: new mongoose.Types.ObjectId(userId),
+            userId: new mongoose.Types.ObjectId(userId)
         });
 
-        const allUserCommunitiesIds = allUserCommunities.map((c) => c.communityId);
+        const allUserCommunitiesIds = allUserCommunities.map(c => c.communityId);
+        if (!allUserCommunitiesIds.length) return [];
 
-        if (!allUserCommunitiesIds.length) {
-            return [];
-        }
-
-        const result = await Community.aggregate([
+        return await Community.aggregate([
             {
                 $match: {
-                    _id: { $in: allUserCommunitiesIds.map((id) => new mongoose.Types.ObjectId(id)) },
-                },
+                    _id: { $in: allUserCommunitiesIds.map(id => new mongoose.Types.ObjectId(id)) }
+                }
             },
-            {
-                $project: {
-                    _id: 1,
-                    name: 1,
-                },
-            },
-            { $sort: { createdAt: -1 } },
+            { $project: { _id: 1, name: 1 } },
+            { $sort: { createdAt: -1 } }
         ]);
 
-        return result;
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
 
+
 exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1, limit = 10) => {
     try {
-        if (!userId) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
-
-        if (!categoryId) {
-            throw createError(404, 'communityCategoryNotFound', 'notFound');
-        }
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
+        if (!categoryId) throw createError(404, 'communityCategoryNotFound', 'notFound');
 
         const offset = (page - 1) * limit;
 
         const result = await Community.aggregate([
-            {
-                $match: {
-                    category: new mongoose.Types.ObjectId(categoryId)
-                }
-            },
+            { $match: { category: new mongoose.Types.ObjectId(categoryId) } },
             {
                 $lookup: {
                     from: "communitycategories",
@@ -1210,14 +995,14 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
                             $project: {
                                 _id: 0,
                                 "userInfo._id": 1,
-                                "userInfo.avatarUrl": 1
+                                "userInfo.avatarUrl": 1,
+                                "userInfo.username": 1
                             }
                         }
                     ],
                     as: "membersPreview"
                 }
             },
-
             {
                 $addFields: {
                     isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] }
@@ -1252,10 +1037,7 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
 
         const communities = result[0]?.paginatedResults || [];
         const total = result[0]?.totalCount?.[0]?.count || 0;
-
-        const categoryName = communities.length > 0
-            ? communities[0].categoryInfo?.name
-            : null;
+        const categoryName = communities.length > 0 ? communities[0].categoryInfo?.name : null;
 
         return {
             communities,
@@ -1276,39 +1058,28 @@ exports.getCommunitiesByCategoriesService = async (userId, categoryId, page = 1,
 
 
 exports.leaveCommunityService = async (communityId, userId) => {
-    if (!userId) {
-        throw createError(404, 'userNotFound', 'notFound');
-    }
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
     try {
         const user = await isUserExist(userId);
-        console.log(communityId)
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
-        communityId = new mongoose.Types.ObjectId(communityId);
-
+        const communityObjectId = new mongoose.Types.ObjectId(communityId);
 
         const membership = await CommunityMember.findOne({
-            communityId: communityId,
+            communityId: communityObjectId,
             userId: user._id
         });
 
-        if (!membership) {
-            throw createError(404, 'communityNotFound', 'notFound');
-        }
-
-
-        if (membership.role === "admin") {
-            throw createError(400, 'ownerCantRemove', 'validation');
-        }
-
+        if (!membership) throw createError(404, 'communityNotFound', 'notFound');
+        if (membership.role === "admin") throw createError(400, 'ownerCantRemove', 'validation');
 
         const result = await CommunityMember.deleteOne({
-            communityId: communityId,
+            communityId: communityObjectId,
             userId: user._id
         });
+
+        await Community.findByIdAndUpdate(communityObjectId, { $inc: { memberCount: -1 } });
 
         return result;
 
@@ -1317,9 +1088,3 @@ exports.leaveCommunityService = async (communityId, userId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
-
-
-
-

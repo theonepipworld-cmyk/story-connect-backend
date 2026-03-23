@@ -243,7 +243,6 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
             : enums.notification_Types.FRIEND_REQUEST_REJECTED;
 
         await Promise.all([
-
             Notification.findOneAndDelete({
                 user: userId,
                 sender: friendReqId,

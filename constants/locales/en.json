@@ -24,7 +24,9 @@
     "addSuccessfully": "Added successfully.",
     "removeSuccessfully": "Removed successfully.",
     "ResetLink": "Password reset link sent to your email.",
-    "userUnsuspended": "User unsuspended successfully"
+    "userUnsuspended": "User unsuspended successfully",
+    "ResetPassword":"password reset successfully",
+    "registrationSuccessful":"Registration successful."
   },
   "notifications": {
     "acceptedFriendReq": "accepted your friend request.",
