@@ -10,14 +10,18 @@ const UserStats = require("../../models/userActivityStats.model");
 const Block = require("../../models/block.model.js");
 const Notification = require("../../models/notification.model.js");
 const pushNotification = require("../../utils/pushNotification.js");
-const { getIo, getUserSocketId } = require("../../socket");
+const { getIo, getAllUserSocketIds } = require("../../socket");
 const enums = require("../../constants/enum.constants.js");
 
 
-const safeEmit = (socketId, event, payload) => {
+const safeEmit = (socketIds, event, payload) => {
     try {
         const io = getIo();
-        if (io && socketId) io.to(socketId).emit(event, payload);
+        if (!io || !socketIds) return;
+        const ids = Array.isArray(socketIds) ? socketIds : [socketIds];
+        ids.forEach(socketId => {
+            if (socketId) io.to(socketId).emit(event, payload);
+        });
     } catch (err) {
         console.error(`Socket emit failed [${event}]:`, err.message);
     }
@@ -25,15 +29,15 @@ const safeEmit = (socketId, event, payload) => {
 
 const emitBellBadge = async (userId) => {
     try {
-        const socketId = getUserSocketId(userId.toString());
-        if (!socketId) return;
+        const socketIds = getAllUserSocketIds(userId.toString());
+        if (!socketIds.length) return;
 
         const notificationUnread = await Notification.countDocuments({
             user: userId,
             isRead: false
         });
 
-        safeEmit(socketId, "badgeCountUpdate", { notificationUnread });
+        safeEmit(socketIds, "badgeCountUpdate", { notificationUnread });
     } catch (err) {
         console.error("emitBellBadge failed:", err.message);
     }
@@ -41,9 +45,7 @@ const emitBellBadge = async (userId) => {
 
 exports.addCommentService = async (postId, userId, commentString, parentCommentId = null) => {
     try {
-        if (!userId) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
         const [post, user] = await Promise.all([
             isPostExist(postId),
@@ -76,9 +78,8 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             const postOwner = await User.findById(post.userId);
 
             await Promise.all([
-
                 (async () => {
-                    if (!postOwner?.device_token || !postOwner?.isPushNotification) return; // <-- change
+                    if (!postOwner?.device_token || !postOwner?.isPushNotification) return;
                     try {
                         await pushNotification.androidPushNotification(
                             postOwner.device_token,
@@ -98,7 +99,6 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                             error.code === 'messaging/registration-token-not-registered'
                         ) {
                             await User.findByIdAndUpdate(postOwner._id, { device_token: null });
-                            console.log(`Cleared invalid device token for user ${postOwner._id}`);
                         }
                     }
                 })(),
@@ -112,8 +112,8 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 })
             ]);
 
-            const postOwnerSocketId = getUserSocketId(post.userId.toString());
-            safeEmit(postOwnerSocketId, "new_comment", {
+            const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
+            safeEmit(postOwnerSocketIds, "new_comment", {
                 postId,
                 commentId: comment._id,
                 senderId: userId,
@@ -303,28 +303,11 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                         {
                             $lookup: {
                                 from: "userstats",
-                                let: {
-                                    commentIdStr: { $toString: "$_id" }
-                                },
+                                let: { commentIdStr: { $toString: "$_id" } },
                                 pipeline: [
-                                    {
-                                        $match: {
-                                            postId: new mongoose.Types.ObjectId(postId)
-                                        }
-                                    },
-                                    {
-                                        $unwind: {
-                                            path: "$commentLikes",
-                                            preserveNullAndEmptyArrays: true
-                                        }
-                                    },
-                                    {
-                                        $match: {
-                                            $expr: {
-                                                $eq: ["$commentLikes.commentId", "$$commentIdStr"]
-                                            }
-                                        }
-                                    },
+                                    { $match: { postId: new mongoose.Types.ObjectId(postId) } },
+                                    { $unwind: { path: "$commentLikes", preserveNullAndEmptyArrays: true } },
+                                    { $match: { $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] } } },
                                     {
                                         $project: {
                                             _id: 0,
@@ -364,13 +347,9 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                                 createdAt: 1,
                                 username: "$userInfo.username",
                                 profilePicture: "$userInfo.avatarUrl",
-                                currentCountry: {
-                                    $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }]
-                                },
+                                currentCountry: { $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }] },
                                 replyCount: 1,
-                                totalLikes: {
-                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
-                                },
+                                totalLikes: { $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0] },
                                 isCommentLikedByMe: 1
                             }
                         }
@@ -445,44 +424,20 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                                 as: "userInfo"
                             }
                         },
-                        {
-                            $unwind: {
-                                path: "$userInfo",
-                                preserveNullAndEmptyArrays: true
-                            }
-                        },
+                        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
                         {
                             $lookup: {
                                 from: "userstats",
                                 let: { commentIdStr: { $toString: "$_id" } },
                                 pipeline: [
-                                    {
-                                        $match: {
-                                            postId: new mongoose.Types.ObjectId(postId)
-                                        }
-                                    },
-                                    {
-                                        $unwind: {
-                                            path: "$commentLikes",
-                                            preserveNullAndEmptyArrays: true
-                                        }
-                                    },
-                                    {
-                                        $match: {
-                                            $expr: {
-                                                $eq: ["$commentLikes.commentId", "$$commentIdStr"]
-                                            }
-                                        }
-                                    },
+                                    { $match: { postId: new mongoose.Types.ObjectId(postId) } },
+                                    { $unwind: { path: "$commentLikes", preserveNullAndEmptyArrays: true } },
+                                    { $match: { $expr: { $eq: ["$commentLikes.commentId", "$$commentIdStr"] } } },
                                     {
                                         $project: {
                                             _id: 0,
-                                            totalLikes: {
-                                                $ifNull: ["$commentLikes.totalLikes", 0]
-                                            },
-                                            userIds: {
-                                                $ifNull: ["$commentLikes.userIds", []]
-                                            }
+                                            totalLikes: { $ifNull: ["$commentLikes.totalLikes", 0] },
+                                            userIds: { $ifNull: ["$commentLikes.userIds", []] }
                                         }
                                     }
                                 ],
@@ -518,9 +473,7 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                                 username: "$userInfo.username",
                                 profilePicture: "$userInfo.avatarUrl",
                                 currentCountry: "$userInfo.currentCountry",
-                                totalLikes: {
-                                    $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0]
-                                },
+                                totalLikes: { $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0] },
                                 replyCount: 1,
                                 isCommentLikedByMe: 1,
                                 parentCommentId: "$parentCommentId"

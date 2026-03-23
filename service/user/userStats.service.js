@@ -6,7 +6,7 @@ const userActivityStats = require("../../constants/variables.constants.js");
 const { isPostExist, validateComment, createError, isUserExist } = require("../../helpers/dbHelpers.js");
 const resMessages = require("../../constants/resMessages.constants.js");
 const Block = require("../../models/block.model.js");
-const { getIo, getUserSocketId } = require("../../socket");
+const { getIo, getAllUserSocketIds } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
 const User = require("../../models/user.model.js");
 const enums = require("../../constants/enum.constants.js");
@@ -14,40 +14,39 @@ const pushNotification = require("../../utils/pushNotification.js");
 const Conversation = require("../../models/conversations.model.js");
 
 
-
-const safeEmit = (socketId, event, payload) => {
+const safeEmit = (socketIds, event, payload) => {
     try {
         const io = getIo();
-        if (io && socketId) io.to(socketId).emit(event, payload);
+        if (!io || !socketIds) return;
+        const ids = Array.isArray(socketIds) ? socketIds : [socketIds];
+        ids.forEach(socketId => {
+            if (socketId) io.to(socketId).emit(event, payload);
+        });
     } catch (err) {
         console.error(`Socket emit failed [${event}]:`, err.message);
     }
 };
 
-
 const emitBellBadge = async (userId) => {
     try {
-        const socketId = getUserSocketId(userId.toString());
-        if (!socketId) return;
+        const socketIds = getAllUserSocketIds(userId.toString());
+        if (!socketIds.length) return;
 
         const notificationUnread = await Notification.countDocuments({
             user: userId,
             isRead: false
         });
 
-        safeEmit(socketId, "badgeCountUpdate", { notificationUnread });
+        safeEmit(socketIds, "badgeCountUpdate", { notificationUnread });
     } catch (err) {
         console.error("emitBellBadge failed:", err.message);
     }
 };
 
 
-
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
-        if (!userId || !username) {
-            throw createError(400, 'userNotFound', 'notFound');
-        }
+        if (!userId || !username) throw createError(400, 'userNotFound', 'notFound');
 
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
@@ -88,14 +87,12 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             { upsert: true, new: true }
         );
 
-
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
 
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
 
-                // Push notification
                 if (postOwner?.device_token && postOwner?.isPushNotification) {
                     try {
                         await pushNotification.androidPushNotification(
@@ -115,7 +112,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     }
                 }
 
-
                 await Notification.create({
                     user: post.userId,
                     sender: userId,
@@ -124,18 +120,15 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
-
-                const postOwnerSocketId = getUserSocketId(post.userId.toString());
-                safeEmit(postOwnerSocketId, "post_liked", { postId, userId, username });
+                const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
+                safeEmit(postOwnerSocketIds, "post_liked", { postId, userId, username });
                 await emitBellBadge(post.userId);
             }
-
 
         } else if (type === userActivityStats.userStats.Views) {
             const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
             if (!alreadyView) stats.views.push({ userId, userName: username });
             stats.totalViews = stats.views.length;
-
 
         } else if (type.startsWith("comment")) {
             toggleCommentStats(stats, userId, commentId, parentCommentId);
@@ -146,7 +139,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 const commentOwnerFull = await User.findById(comment.userId._id)
                     .select("device_token username isPushNotification");
 
-                // Push notification
                 if (commentOwnerFull?.device_token && commentOwnerFull?.isPushNotification) {
                     try {
                         await pushNotification.androidPushNotification(
@@ -173,7 +165,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     }
                 }
 
-
                 await Notification.create({
                     user: comment.userId._id,
                     sender: userId,
@@ -182,9 +173,8 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                     postId
                 });
 
-
-                const commentOwnerSocketId = getUserSocketId(comment.userId._id.toString());
-                safeEmit(commentOwnerSocketId, "comment_liked", { postId, commentId, userId, username });
+                const commentOwnerSocketIds = getAllUserSocketIds(comment.userId._id.toString());
+                safeEmit(commentOwnerSocketIds, "comment_liked", { postId, commentId, userId, username });
                 await emitBellBadge(comment.userId._id);
             }
         }
@@ -197,7 +187,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 
 exports.getAllLikedUserService = async (postId, type, userId) => {
@@ -233,7 +222,6 @@ exports.getAllLikedUserService = async (postId, type, userId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 
 exports.getBadgeCountsService = async (userId) => {

@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist, getAllFriends } = require("../../helpers/dbHelpers.js")
 const resMessages = require("../../constants/resMessages.constants.js");
@@ -7,20 +6,16 @@ const User = require("../../models/user.model.js")
 const CommunityMember = require("../../models/communityMember.model.js")
 const enums = require("../../constants/enum.constants.js")
 const Block = require("../../models/block.model");
-const { getIo, getUserSocketId } = require("../../socket");
+const { getIo, getAllUserSocketIds } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
-
 
 
 exports.getUserNotificationService = async (userId) => {
     try {
-        if (!userId) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!userId) throw createError(404, 'userNotFound', 'notFound');
+
         const user = await isUserExist(userId);
-        if (!user) {
-            throw createError(404, 'userNotFound', 'notFound');
-        }
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
@@ -49,20 +44,21 @@ exports.makeAllUserNotificationReadService = async (userId) => {
             { $set: { isRead: true } }
         );
 
-        const userSocketId = getUserSocketId(userId.toString());
-        if (userSocketId) {
-            getIo().to(userSocketId).emit("badgeCountUpdate", {
-                notificationUnread: 0
+        const socketIds = getAllUserSocketIds(userId.toString());
+        if (socketIds.length > 0) {
+            const io = getIo();
+            socketIds.forEach(socketId => {
+                io.to(socketId).emit("badgeCountUpdate", { notificationUnread: 0 });
             });
         }
 
         return result;
-    }
-    catch (error) {
+    } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
-}
+};
+
 
 exports.changeStatusPushNotificationService = async (userId, isPushNotification) => {
     try {

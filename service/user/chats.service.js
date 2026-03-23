@@ -5,7 +5,7 @@ const { createError, isUserExist, isConversationExist } = require("../../helpers
 const Block = require("../../models/block.model.js");
 const Message = require("../../models/message.model.js");
 const Conversation = require("../../models/conversations.model.js");
-const { getIo, getOnlineUsers, getUserSocketId } = require("../../socket");
+const { getIo, getOnlineUsers, getAllUserSocketIds } = require("../../socket");
 const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
 const resMessages = require("../../constants/resMessages.constants.js");
@@ -18,7 +18,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             throw createError(400, 'missingFields', 'validation');
         }
 
-        const onlineUsers = getOnlineUsers();
         const sender = await isUserExist(senderId);
         const receiver = await isUserExist(receiverId);
         if (!sender || !receiver) throw createError(404, 'invalidUser', 'validation');
@@ -37,7 +36,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 message: blockedByThem ? "You have been blocked by this user" : "You have blocked this user"
             }];
         }
-        const messageStatus = onlineUsers.has(receiverId.toString())
+
+        const receiverSocketIds = getAllUserSocketIds(receiverId.toString());
+        const messageStatus = receiverSocketIds.length > 0
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
 
@@ -58,8 +59,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         const emitToParticipants = (event, savedMessage) => {
             const io = getIo();
-            const senderSocketId = getUserSocketId(senderId.toString());
-            const receiverSocketId = getUserSocketId(receiverId.toString());
+            const senderSocketIds = getAllUserSocketIds(senderId.toString());
+            const receiverSocketIds = getAllUserSocketIds(receiverId.toString());
 
             const basePayload = savedMessage.toObject();
 
@@ -76,39 +77,43 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }
             };
 
-            if (senderSocketId) {
-                io.to(senderSocketId).emit(event, {
+            // Emit to all sender devices
+            senderSocketIds.forEach(socketId => {
+                io.to(socketId).emit(event, {
                     ...basePayload,
                     senderName: sender.username,
                     senderAvatar: sender.avatarUrl,
                     isFromMe: true
                 });
 
-                io.to(senderSocketId).emit("conversationUpdated", {
+                io.to(socketId).emit("conversationUpdated", {
                     ...conversationUpdate,
                     unseenCount: 0
                 });
-            }
+            });
 
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit(event, {
-                    ...basePayload,
-                    senderName: sender.username,
-                    senderAvatar: sender.avatarUrl,
-                    isFromMe: false
-                });
-
+            // Emit to all receiver devices
+            if (receiverSocketIds.length > 0) {
                 const currentUnseenCount = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
 
-                io.to(receiverSocketId).emit("conversationUpdated", {
-                    ...conversationUpdate,
-                    unseenCount: currentUnseenCount + 1
-                });
+                receiverSocketIds.forEach(socketId => {
+                    io.to(socketId).emit(event, {
+                        ...basePayload,
+                        senderName: sender.username,
+                        senderAvatar: sender.avatarUrl,
+                        isFromMe: false
+                    });
 
-                io.to(receiverSocketId).emit("badgeCountUpdate", {
-                    chatUnread: currentUnseenCount + 1,
+                    io.to(socketId).emit("conversationUpdated", {
+                        ...conversationUpdate,
+                        unseenCount: currentUnseenCount + 1
+                    });
+
+                    io.to(socketId).emit("badgeCountUpdate", {
+                        chatUnread: currentUnseenCount + 1,
+                    });
                 });
             }
         };
