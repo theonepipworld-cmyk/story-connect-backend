@@ -312,7 +312,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                     }
                 }
             },
-            { $sort: { updatedAt: -1 } },
+            { $sort: { "lastMessageInfo.createdAt": -1 } },
             {
                 $facet: {
                     data: [
