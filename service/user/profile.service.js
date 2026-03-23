@@ -172,7 +172,7 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             ).length;
         }
 
-        const [totalFriends, friendship, conversation] = await Promise.all([
+        const [totalFriends, friendship, conversation, blockByMe, blockedByHim] = await Promise.all([
             Friend.countDocuments({
                 status: enums.friend_Request_status.ACCEPTED,
                 $or: [{ requester: otherUserId }, { recipient: otherUserId }]
@@ -185,7 +185,9 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             }),
             Conversation.findOne({
                 participants: { $all: [otherUserId, loginUserId] }
-            })
+            }),
+            Block.findOne({ blocker: loginUserId, blocked: otherUserId }),
+            Block.findOne({ blocker: otherUserId, blocked: loginUserId })
         ]);
 
         return {
@@ -195,7 +197,9 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             isThisUserFriend: friendship?.status === enums.friend_Request_status.ACCEPTED,
             isreqPending: friendship?.status === enums.friend_Request_status.PENDING,
             conversationId: conversation ? conversation._id : null,
-            lastMessageId: conversation ? conversation.lastMessage : null
+            lastMessageId: conversation ? conversation.lastMessage : null,
+            isBlockedByMe: !!blockByMe,
+            isBlockedByOther: !!blockedByHim
         };
     } catch (error) {
         if (error.statusCode) throw error;

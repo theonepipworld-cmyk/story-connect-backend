@@ -78,9 +78,9 @@ exports.getOtherProfile = async (req, res) => {
     const lang = getLang(req);
     const otherUserId = req.params.userId;
     const { user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId,
-      lastMessageId } =
+      lastMessageId, isBlockedByMe, isBlockedByOther } =
       await profileService.getOtherProfileService(otherUserId, req.user.id);
-    const data = { ...user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId, lastMessageId };
+    const data = { ...user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId, lastMessageId ,isBlockedByMe, isBlockedByOther  };
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), data));
   } catch (err) {
 
@@ -144,7 +144,7 @@ exports.changeLanguage = async (req, res) => {
 exports.getSearchUser = async (req, res) => {
   try {
     const lang = getLang(req);
-    
+
     const result = await profileService.searchUser(req.user?.id, req.query.search);
     return res
       .status(200)
