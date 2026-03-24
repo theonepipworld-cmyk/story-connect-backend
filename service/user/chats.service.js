@@ -81,7 +81,9 @@ const validateMessageAction = async (conversationId, messageId, userId) => {
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
     try {
-        if (!senderId || !receiverId || (!messageText && files.length === 0)) {
+        const filesArr = Array.isArray(files) ? files : [];
+
+        if (!senderId || !receiverId || (!messageText && filesArr.length === 0)) {
             throw createError(400, 'missingFields', 'validation');
         }
 
@@ -94,7 +96,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (senderId.toString() === receiverId.toString()) {
             throw createError(400, 'cannotMessageYourself', 'validation');
         }
-
 
         const isBlocked = await Block.findOne({
             $or: [
@@ -112,12 +113,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }];
         }
 
-
         const receiverSocketIds = getAllUserSocketIds(receiverId.toString());
         const messageStatus = receiverSocketIds.length > 0
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
-
 
         let conversation = await Conversation.findOne({
             participants: { $all: [senderId, receiverId] }
@@ -134,7 +133,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
-
         const emitNewMessage = (savedMessage) => {
             const basePayload = savedMessage.toObject();
             const conversationUpdate = {
@@ -150,7 +148,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }
             };
 
-
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
                 getIo().to(sid).emit("newMessage", {
                     ...basePayload,
@@ -163,7 +160,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     unseenCount: 0
                 });
             });
-
 
             if (receiverSocketIds.length > 0) {
                 const currentUnseen = conversation.unseenCount.find(
@@ -181,13 +177,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                         ...conversationUpdate,
                         unseenCount: currentUnseen + 1
                     });
-                    getIo().to(sid).emit("badgeCountUpdate", {
-                        chatUnread: currentUnseen + 1
-                    });
+                    // badgeCountUpdate moved to after DB save (total unread)
                 });
             }
         };
-
 
         const updateConversationState = (savedMessage) => {
             conversation.lastMessage = {
@@ -205,11 +198,17 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 : conversation.unseenCount.push({ userId: receiverId, count: 1 });
         };
 
+        /** Call after conversation.save() so getTotalUnseenCount matches DB */
+        const emitReceiverTotalBadge = async () => {
+            if (receiverSocketIds.length === 0) return;
+            const totalChatUnread = await getTotalUnseenCount(receiverId.toString());
+            emitToUser(receiverId.toString(), "badgeCountUpdate", { chatUnread: totalChatUnread });
+        };
+
         const messages = [];
 
-
-        if (messageText && Array.isArray(files) && files.length > 0) {
-            const uploadedFiles = files.map(file => ({
+        if (messageText && filesArr.length > 0) {
+            const uploadedFiles = filesArr.map(file => ({
                 url: file.location,
                 mimeType: file.mimetype
             }));
@@ -237,11 +236,11 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
             conversation.updatedAt = new Date();
             await conversation.save();
+            await emitReceiverTotalBadge();
             return messages;
         }
 
-
-        if (messageText && (!files || files.length === 0)) {
+        if (messageText && filesArr.length === 0) {
             const savedMessage = await new Message({
                 conversationId: conversation._id,
                 sender: senderId,
@@ -260,9 +259,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
         }
 
-
-        if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
-            for (const file of files) {
+        if ((!messageText || messageText.trim() === "") && filesArr.length > 0) {
+            for (const file of filesArr) {
                 const fileType = file.mimetype.startsWith("image/")
                     ? "image"
                     : file.mimetype.startsWith("video/") ? "video" : "file";
@@ -288,6 +286,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         conversation.updatedAt = new Date();
         await conversation.save();
+        await emitReceiverTotalBadge();
         return messages;
 
     } catch (error) {
@@ -467,29 +466,8 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         ]);
 
         const totalPages = Math.ceil(totalMessages / limit);
-        await Promise.all([
-            Conversation.updateOne(
-                { _id: conversationId, "unseenCount.userId": userId },
-                { $set: { "unseenCount.$.count": 0 } },
-                { timestamps: false }
-            ),
-            Message.updateMany(
-                { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
-                { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
-            )
-        ]);
 
-        const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
-        if (senderId) {
-            const conversationUpdate = {
-                conversationId: conversation._id.toString(),
-                lastMessageStatus: "seen",
-                unseenCount: 0
-            };
-            emitToUser(senderId.toString(), "messages_seen", { conversationId, seenBy: userId });
-            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
-            emitToUser(userId.toString(), "conversationUpdated", conversationUpdate);
-        }
+        // Do NOT mark as SEEN here — only seenMessageService (PATCH) should do that.
 
         return {
             data: messages.reverse(),
