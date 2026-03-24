@@ -95,7 +95,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             throw createError(400, 'cannotMessageYourself', 'validation');
         }
 
-       
+
         const isBlocked = await Block.findOne({
             $or: [
                 { blocker: receiverId, blocked: senderId },
@@ -112,13 +112,13 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }];
         }
 
-      
+
         const receiverSocketIds = getAllUserSocketIds(receiverId.toString());
         const messageStatus = receiverSocketIds.length > 0
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
 
-      
+
         let conversation = await Conversation.findOne({
             participants: { $all: [senderId, receiverId] }
         });
@@ -134,7 +134,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
-    
+
         const emitNewMessage = (savedMessage) => {
             const basePayload = savedMessage.toObject();
             const conversationUpdate = {
@@ -150,7 +150,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }
             };
 
-         
+
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
                 getIo().to(sid).emit("newMessage", {
                     ...basePayload,
@@ -164,7 +164,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 });
             });
 
-       
+
             if (receiverSocketIds.length > 0) {
                 const currentUnseen = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
@@ -188,7 +188,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }
         };
 
-   
+
         const updateConversationState = (savedMessage) => {
             conversation.lastMessage = {
                 _id: savedMessage._id,
@@ -207,7 +207,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         const messages = [];
 
-     
+
         if (messageText && Array.isArray(files) && files.length > 0) {
             const uploadedFiles = files.map(file => ({
                 url: file.location,
@@ -240,7 +240,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             return messages;
         }
 
-      
+
         if (messageText && (!files || files.length === 0)) {
             const savedMessage = await new Message({
                 conversationId: conversation._id,
@@ -260,7 +260,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             });
         }
 
-    
+
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
                 const fileType = file.mimetype.startsWith("image/")
@@ -406,6 +406,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                 lastMessageStatus: "$lastMessageInfo.status",
                                 lastMessageType: "$lastMessageInfo.type",
                                 unseenCount: { $ifNull: ["$unseenCountForUser", 0] },
+                                lastMessageSenderId: "$lastMessageInfo.sender",
                                 updatedAt: 1
                             }
                         }
@@ -466,8 +467,6 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         ]);
 
         const totalPages = Math.ceil(totalMessages / limit);
-
-      
         await Promise.all([
             Conversation.updateOne(
                 { _id: conversationId, "unseenCount.userId": userId },
@@ -523,7 +522,7 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             throw createError(403, 'receiverNotPart', 'notFound');
         }
 
-  
+
         const [result] = await Promise.all([
             Message.updateMany(
                 { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
@@ -546,7 +545,7 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             unseenCount: 0
         };
 
-    
+
         if (senderId) {
             emitToUser(senderId.toString(), "messages_seen", {
                 conversationId,
@@ -556,7 +555,7 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
         }
 
-     
+
         const totalChatUnread = await getTotalUnseenCount(receiverId.toString());
         emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdate);
         emitToUser(receiverId.toString(), "badgeCountUpdate", { chatUnread: totalChatUnread });
@@ -588,7 +587,7 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             { $set: { status: "delivered" } }
         );
 
-       
+
         if (result.modifiedCount === 0) return result;
 
         const senderId = conversation.participants.find(
@@ -600,7 +599,7 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             lastMessageStatus: "delivered"
         };
 
-      
+
         if (senderId) {
             emitToUser(senderId.toString(), "messages_delivered", {
                 conversationId,
@@ -610,7 +609,7 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
         }
 
-     
+
         emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdate);
 
         return result;
@@ -641,7 +640,7 @@ exports.updateMessageService = async (conversationId, messageId, messageText, us
             updatedMessage: { ...message.toObject(), text: messageText }
         };
 
-    
+
         emitToUsers(
             [userId.toString(), otherParticipantId?.toString()].filter(Boolean),
             "messages_updated",

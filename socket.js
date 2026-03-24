@@ -26,7 +26,7 @@ function removeUserSocket(userId, socketId) {
 }
 
 function findUserBySocketId(socketId) {
-  return socketToUser.get(socketId) || null; 
+  return socketToUser.get(socketId) || null;
 }
 
 
@@ -82,6 +82,20 @@ function initIo(server) {
       } else {
         console.log(`User ${userId} logged out from one device (others still active)`);
       }
+    });
+
+    socket.on("typing", (data) => {
+      // data: { conversationId, receiverId, senderId, isTyping }
+      if (!data?.receiverId || !data?.conversationId) return;
+
+      const receiverSocketIds = getAllUserSocketIds(data.receiverId.toString());
+      receiverSocketIds.forEach(sid => {
+        io.to(sid).emit("typing", {
+          conversationId: data.conversationId,
+          senderId: data.senderId,
+          isTyping: data.isTyping
+        });
+      });
     });
 
     // socket.on("messages_seen", () => {
