@@ -34,7 +34,30 @@ exports.updateProfile = async (userId, payload, files) => {
     try {
         const patch = {};
 
-        if (payload.username) patch.username = payload.username;
+     
+        const existingUser = await User.findById(userId).lean();
+        if (!existingUser) throw createError(404, 'userNotFound', 'notFound');
+
+        if (payload.username && payload.username !== existingUser.username) {
+            const usernameExist = await User.findOne({
+                username: payload.username,
+                _id: { $ne: userId }
+            });
+            if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
+
+            patch.username = payload.username;
+        }
+
+        if (payload.email && payload.email !== existingUser.email) {
+            const emailExist = await User.findOne({
+                email: payload.email,
+                _id: { $ne: userId }
+            });
+            if (emailExist) throw createError(400, 'emailAlreadyExist', 'validation');
+
+            patch.email = payload.email;
+        }
+
         if (payload.bio) patch.bio = payload.bio;
         if (payload.profession) patch.profession = payload.profession;
         if (payload.education) patch.education = payload.education;
@@ -43,7 +66,6 @@ exports.updateProfile = async (userId, payload, files) => {
         if (payload.phone) patch.phone = payload.phone;
         if (payload.status) patch.status = payload.status;
         if (payload.relationshipDescription) patch.relationshipDescription = payload.relationshipDescription;
-        if (payload.email) patch.email = payload.email;
 
         if (payload.profession && payload.profession.toLowerCase() === 'other') {
             if (!payload.manualProfession) throw createError(400, 'professionName', 'validation');
@@ -86,20 +108,8 @@ exports.updateProfile = async (userId, payload, files) => {
         }
 
         if (payload.dateOfBirth) {
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(payload.dateOfBirth)) {
-                throw createError(400, 'invalidDateOfBirthFormat', 'validation');
-            }
             patch.dateOfBirth = payload.dateOfBirth;
         }
-
-        const [emailExist, usernameExist] = await Promise.all([
-            payload.email ? checkFieldExists('email', payload.email, userId) : Promise.resolve(false),
-            payload.username ? checkFieldExists('username', payload.username, userId) : Promise.resolve(false)
-        ]);
-
-        if (emailExist) throw createError(400, 'emailAlreadyExist', 'validation');
-        if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
 
         if (files?.avatar?.[0]) {
             try {
