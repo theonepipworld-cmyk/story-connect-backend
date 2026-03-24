@@ -94,7 +94,6 @@ exports.seenMessage = async (req, res) => {
         const lang = getLang(req);
         const receiverId = req.user.id;
         await seenMessageService(req.params.conversationId, receiverId);
-
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'messageSeen')));
     } catch (err) {
         const lang = getLang(req);

@@ -1,28 +1,101 @@
 const User = require('../../models/user.model');
 const mongoose = require('mongoose');
-const { uploadFileToS3 } = require('../../utils/s3.util');
 const { createError, isUserExist, isConversationExist } = require("../../helpers/dbHelpers.js");
 const Block = require("../../models/block.model.js");
 const Message = require("../../models/message.model.js");
 const Conversation = require("../../models/conversations.model.js");
-const { getIo, getOnlineUsers, getAllUserSocketIds } = require("../../socket");
+const { getIo, getAllUserSocketIds } = require("../../socket");
 const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
-const resMessages = require("../../constants/resMessages.constants.js");
 
 
-// SEND MESSAGE
+
+
+const emitToUser = (userId, event, payload) => {
+    const io = getIo();
+    getAllUserSocketIds(userId.toString()).forEach(sid => {
+        io.to(sid).emit(event, payload);
+    });
+};
+
+
+const emitToUsers = (userIds, event, payload) => {
+    userIds.forEach(uid => emitToUser(uid, event, payload));
+};
+
+
+const sendPushNotification = async (receiver, body, data) => {
+    if (!receiver?.device_token || !receiver?.isPushNotification) return;
+    try {
+        await pushNotification.androidPushNotification(receiver.device_token, body, "message", data);
+    } catch (error) {
+        if (
+            error.code === 'messaging/invalid-argument' ||
+            error.code === 'messaging/registration-token-not-registered'
+        ) {
+            await User.findByIdAndUpdate(receiver._id, { device_token: null });
+        }
+    }
+};
+
+
+const getTotalUnseenCount = async (userId) => {
+    const allConversations = await Conversation.find({
+        participants: new mongoose.Types.ObjectId(userId)
+    }).select('unseenCount');
+
+    return allConversations.reduce((total, conv) => {
+        const entry = conv.unseenCount.find(u => u.userId.toString() === userId.toString());
+        return total + (entry?.count || 0);
+    }, 0);
+};
+
+
+const validateMessageAction = async (conversationId, messageId, userId) => {
+    if (!userId) throw createError(404, 'userNotFound', 'notFound');
+
+    const user = await isUserExist(userId);
+    if (!user) throw createError(404, 'userNotFound', 'notFound');
+
+    const conversation = await isConversationExist(conversationId);
+    if (!conversation.participants.some(p => p.toString() === userId.toString())) {
+        throw createError(403, 'receiverNotPart', 'notFound');
+    }
+
+    const message = await Message.findById(messageId);
+    if (!message) throw createError(404, 'messageNotFound', 'notFound');
+
+    if (message.sender.toString() !== userId.toString()) {
+        throw createError(403, 'NotAuthorized', 'customError');
+    }
+
+    if (message.conversationId.toString() !== conversationId.toString()) {
+        throw createError(400, 'invalidConversation', 'customError');
+    }
+
+    return { user, conversation, message };
+};
+
+
+
+
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
     try {
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
             throw createError(400, 'missingFields', 'validation');
         }
 
-        const sender = await isUserExist(senderId);
-        const receiver = await isUserExist(receiverId);
-        if (!sender || !receiver) throw createError(404, 'invalidUser', 'validation');
-        if (senderId.toString() === receiverId.toString()) throw createError(400, 'cannotMessageYourself', 'validation');
+        const [sender, receiver] = await Promise.all([
+            isUserExist(senderId),
+            isUserExist(receiverId)
+        ]);
 
+        if (!sender || !receiver) throw createError(404, 'invalidUser', 'validation');
+        if (senderId.toString() === receiverId.toString()) {
+            throw createError(400, 'cannotMessageYourself', 'validation');
+        }
+
+       
         const isBlocked = await Block.findOne({
             $or: [
                 { blocker: receiverId, blocked: senderId },
@@ -33,15 +106,19 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             const blockedByThem = isBlocked.blocker.toString() === receiverId.toString();
             return [{
                 blocked: true,
-                message: blockedByThem ? "You have been blocked by this user" : "You have blocked this user"
+                message: blockedByThem
+                    ? "You have been blocked by this user"
+                    : "You have blocked this user"
             }];
         }
 
+      
         const receiverSocketIds = getAllUserSocketIds(receiverId.toString());
         const messageStatus = receiverSocketIds.length > 0
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
 
+      
         let conversation = await Conversation.findOne({
             participants: { $all: [senderId, receiverId] }
         });
@@ -57,13 +134,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
-        const emitToParticipants = (event, savedMessage) => {
-            const io = getIo();
-            const senderSocketIds = getAllUserSocketIds(senderId.toString());
-            const receiverSocketIds = getAllUserSocketIds(receiverId.toString());
-
+    
+        const emitNewMessage = (savedMessage) => {
             const basePayload = savedMessage.toObject();
-
             const conversationUpdate = {
                 conversationId: conversation._id.toString(),
                 lastMessage: savedMessage.text,
@@ -77,62 +150,46 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }
             };
 
-            // Emit to all sender devices
-            senderSocketIds.forEach(socketId => {
-                io.to(socketId).emit(event, {
+         
+            getAllUserSocketIds(senderId.toString()).forEach(sid => {
+                getIo().to(sid).emit("newMessage", {
                     ...basePayload,
                     senderName: sender.username,
                     senderAvatar: sender.avatarUrl,
                     isFromMe: true
                 });
-
-                io.to(socketId).emit("conversationUpdated", {
+                getIo().to(sid).emit("conversationUpdated", {
                     ...conversationUpdate,
                     unseenCount: 0
                 });
             });
 
-            // Emit to all receiver devices
+       
             if (receiverSocketIds.length > 0) {
-                const currentUnseenCount = conversation.unseenCount.find(
+                const currentUnseen = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
 
-                receiverSocketIds.forEach(socketId => {
-                    io.to(socketId).emit(event, {
+                receiverSocketIds.forEach(sid => {
+                    getIo().to(sid).emit("newMessage", {
                         ...basePayload,
                         senderName: sender.username,
                         senderAvatar: sender.avatarUrl,
                         isFromMe: false
                     });
-
-                    io.to(socketId).emit("conversationUpdated", {
+                    getIo().to(sid).emit("conversationUpdated", {
                         ...conversationUpdate,
-                        unseenCount: currentUnseenCount + 1
+                        unseenCount: currentUnseen + 1
                     });
-
-                    io.to(socketId).emit("badgeCountUpdate", {
-                        chatUnread: currentUnseenCount + 1,
+                    getIo().to(sid).emit("badgeCountUpdate", {
+                        chatUnread: currentUnseen + 1
                     });
                 });
             }
         };
 
-        const sendPushNotification = async (token, body, data) => {
-            if (!token || !receiver?.isPushNotification) return;
-            try {
-                await pushNotification.androidPushNotification(token, body, "message", data);
-            } catch (error) {
-                if (
-                    error.code === 'messaging/invalid-argument' ||
-                    error.code === 'messaging/registration-token-not-registered'
-                ) {
-                    await User.findByIdAndUpdate(receiver._id, { device_token: null });
-                }
-            }
-        };
-
-        const updateConversation = (savedMessage) => {
+   
+        const updateConversationState = (savedMessage) => {
             conversation.lastMessage = {
                 _id: savedMessage._id,
                 text: savedMessage.text,
@@ -148,29 +205,29 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 : conversation.unseenCount.push({ userId: receiverId, count: 1 });
         };
 
-        let messages = [];
+        const messages = [];
 
+     
         if (messageText && Array.isArray(files) && files.length > 0) {
             const uploadedFiles = files.map(file => ({
                 url: file.location,
                 mimeType: file.mimetype
             }));
 
-            const postMessage = new Message({
+            const savedMessage = await new Message({
                 conversationId: conversation._id,
                 sender: senderId,
                 text: messageText,
                 type: "post",
                 files: uploadedFiles,
                 status: messageStatus
-            });
+            }).save();
 
-            const savedPostMessage = await postMessage.save();
-            messages.push(savedPostMessage);
-            emitToParticipants("newMessage", savedPostMessage);
-            updateConversation(savedPostMessage);
+            messages.push(savedMessage);
+            emitNewMessage(savedMessage);
+            updateConversationState(savedMessage);
 
-            await sendPushNotification(receiver.device_token, messageText, {
+            await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
                 senderId: senderId.toString(),
                 senderName: sender.username?.toString(),
@@ -183,46 +240,46 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             return messages;
         }
 
+      
         if (messageText && (!files || files.length === 0)) {
-            const textMessage = new Message({
+            const savedMessage = await new Message({
                 conversationId: conversation._id,
                 sender: senderId,
                 text: messageText,
                 type: "text",
                 status: messageStatus
-            });
+            }).save();
 
-            const savedTextMessage = await textMessage.save();
-            messages.push(savedTextMessage);
-            emitToParticipants("newMessage", savedTextMessage);
-            updateConversation(savedTextMessage);
+            messages.push(savedMessage);
+            emitNewMessage(savedMessage);
+            updateConversationState(savedMessage);
 
-            await sendPushNotification(receiver.device_token, messageText, {
+            await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
                 senderId: senderId.toString()
             });
         }
 
+    
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
                 const fileType = file.mimetype.startsWith("image/")
                     ? "image"
                     : file.mimetype.startsWith("video/") ? "video" : "file";
 
-                const fileMessage = new Message({
+                const savedMessage = await new Message({
                     conversationId: conversation._id,
                     sender: senderId,
                     text: file.location,
                     type: fileType,
                     status: messageStatus
-                });
+                }).save();
 
-                const savedFileMessage = await fileMessage.save();
-                messages.push(savedFileMessage);
-                emitToParticipants("newMessage", savedFileMessage);
-                updateConversation(savedFileMessage);
+                messages.push(savedMessage);
+                emitNewMessage(savedMessage);
+                updateConversationState(savedMessage);
 
-                await sendPushNotification(receiver.device_token, `Sent a ${fileType}`, {
+                await sendPushNotification(receiver, `Sent a ${fileType}`, {
                     conversationId: conversation._id.toString(),
                     senderId: senderId.toString()
                 });
@@ -240,7 +297,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 };
 
 
-// GET USER CONVERSATIONS
+
+
 exports.getUserConversationService = async (userId, page = 1, limit = 10, search = "") => {
     try {
         if (!userId) throw createError(400, 'missingFields', 'validation');
@@ -249,12 +307,15 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const offset = (page - 1) * limit;
+
         const blockedUsers = await Block.find({
             $or: [{ blocker: userId }, { blocked: userId }]
         }).lean();
 
         const blockedUserIds = blockedUsers.map(b =>
-            b.blocker.toString() === userId.toString() ? b.blocked.toString() : b.blocker.toString()
+            b.blocker.toString() === userId.toString()
+                ? b.blocked.toString()
+                : b.blocker.toString()
         );
 
         const conversations = await Conversation.aggregate([
@@ -264,36 +325,46 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                     from: "users",
                     localField: "participants",
                     foreignField: "_id",
-                    as: "participantsInfo",
+                    as: "participantsInfo"
                 }
             },
-            ...(search
-                ? [{
-                    $addFields: {
-                        participantsInfo: {
-                            $filter: {
-                                input: "$participantsInfo",
-                                as: "p",
-                                cond: { $regexMatch: { input: "$$p.username", regex: search, options: "i" } }
-                            }
+            ...(search ? [{
+                $addFields: {
+                    participantsInfo: {
+                        $filter: {
+                            input: "$participantsInfo",
+                            as: "p",
+                            cond: { $regexMatch: { input: "$$p.username", regex: search, options: "i" } }
                         }
                     }
-                }]
-                : []),
+                }
+            }] : []),
             { $match: { "participantsInfo.0": { $exists: true } } },
             {
                 $addFields: {
                     otherParticipant: {
-                        $arrayElemAt: [
-                            { $filter: { input: "$participantsInfo", as: "p", cond: { $ne: ["$$p._id", new mongoose.Types.ObjectId(userId)] } } },
-                            0
-                        ]
+                        $arrayElemAt: [{
+                            $filter: {
+                                input: "$participantsInfo",
+                                as: "p",
+                                cond: { $ne: ["$$p._id", new mongoose.Types.ObjectId(userId)] }
+                            }
+                        }, 0]
                     },
                     unseenCountForUser: {
-                        $arrayElemAt: [
-                            { $map: { input: { $filter: { input: "$unseenCount", as: "u", cond: { $eq: ["$$u.userId", new mongoose.Types.ObjectId(userId)] } } }, as: "matched", in: "$$matched.count" } },
-                            0
-                        ]
+                        $arrayElemAt: [{
+                            $map: {
+                                input: {
+                                    $filter: {
+                                        input: "$unseenCount",
+                                        as: "u",
+                                        cond: { $eq: ["$$u.userId", new mongoose.Types.ObjectId(userId)] }
+                                    }
+                                },
+                                as: "matched",
+                                in: "$$matched.count"
+                            }
+                        }, 0]
                     }
                 }
             },
@@ -325,7 +396,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                     _id: "$otherParticipant._id",
                                     username: "$otherParticipant.username",
                                     avatarUrl: "$otherParticipant.avatarUrl",
-                                    isOnline: { $ifNull: ["$otherParticipant.isOnline", false] },
+                                    isOnline: { $ifNull: ["$otherParticipant.isOnline", false] }
                                 },
                                 isBlocked: 1,
                                 isBlockedByMe: 1,
@@ -335,7 +406,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                                 lastMessageStatus: "$lastMessageInfo.status",
                                 lastMessageType: "$lastMessageInfo.type",
                                 unseenCount: { $ifNull: ["$unseenCountForUser", 0] },
-                                updatedAt: 1,
+                                updatedAt: 1
                             }
                         }
                     ],
@@ -353,7 +424,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
                 total,
                 totalPages: Math.ceil(total / limit),
                 currentPage: parseInt(page),
-                limit: parseInt(limit),
+                limit: parseInt(limit)
             }
         };
     } catch (error) {
@@ -363,10 +434,12 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
 };
 
 
+
+
 exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10, page = 1) => {
     try {
         if (!userId || !conversationId || !lastMessageId) {
-            throw createError(404, resMessages.validation.missingFields);
+            throw createError(400, 'missingFields', 'validation');
         }
 
         const user = await isUserExist(userId);
@@ -375,37 +448,59 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) throw createError(404, 'invalidConversationId', 'validation');
 
-        if (!conversation.participants.includes(new mongoose.Types.ObjectId(userId))) {
+        if (!conversation.participants.some(p => p.toString() === userId.toString())) {
             throw createError(403, 'unauthorizedAccess', 'auth');
         }
-
-        const totalMessages = await Message.countDocuments({ conversationId });
-        const totalPages = Math.ceil(totalMessages / limit);
-        const skip = (page - 1) * limit;
 
         const lastMessage = await Message.findById(lastMessageId);
         if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
 
-        const messages = await Message.find({ conversationId })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate("sender", "username avatarUrl currentCountry");
+        const skip = (page - 1) * limit;
+        const [totalMessages, messages] = await Promise.all([
+            Message.countDocuments({ conversationId }),
+            Message.find({ conversationId })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate("sender", "username avatarUrl currentCountry")
+        ]);
 
-        await Conversation.updateOne(
-            { _id: conversationId, "unseenCount.userId": userId },
-            { $set: { "unseenCount.$.count": 0 } },
-            { timestamps: false }
-        );
+        const totalPages = Math.ceil(totalMessages / limit);
 
-        await Message.updateMany(
-            { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
-            { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
-        );
+      
+        await Promise.all([
+            Conversation.updateOne(
+                { _id: conversationId, "unseenCount.userId": userId },
+                { $set: { "unseenCount.$.count": 0 } },
+                { timestamps: false }
+            ),
+            Message.updateMany(
+                { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
+                { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
+            )
+        ]);
+
+        const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
+        if (senderId) {
+            const conversationUpdate = {
+                conversationId: conversation._id.toString(),
+                lastMessageStatus: "seen",
+                unseenCount: 0
+            };
+            emitToUser(senderId.toString(), "messages_seen", { conversationId, seenBy: userId });
+            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
+            emitToUser(userId.toString(), "conversationUpdated", conversationUpdate);
+        }
 
         return {
             data: messages.reverse(),
-            pagination: { total: totalMessages, totalPages, currentPage: page, limit, hasMore: page < totalPages },
+            pagination: {
+                total: totalMessages,
+                totalPages,
+                currentPage: page,
+                limit,
+                hasMore: page < totalPages
+            }
         };
     } catch (error) {
         if (error.statusCode) throw error;
@@ -414,19 +509,21 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 };
 
 
-// SEEN MESSAGE
+
+
 exports.seenMessageService = async (conversationId, receiverId) => {
     try {
-        if (!receiverId) throw createError(404, 'userNotFound', 'notFound');
+        if (!receiverId) throw createError(400, 'userNotFound', 'notFound');
 
         const receiver = await isUserExist(receiverId);
         if (!receiver) throw createError(404, 'userNotFound', 'notFound');
 
         const conversation = await isConversationExist(conversationId);
-        if (!conversation.participants.some(p => p.toString() === receiverId)) {
-            throw createError(404, 'receiverNotPart', 'notFound');
+        if (!conversation.participants.some(p => p.toString() === receiverId.toString())) {
+            throw createError(403, 'receiverNotPart', 'notFound');
         }
 
+  
         const [result] = await Promise.all([
             Message.updateMany(
                 { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
@@ -439,19 +536,9 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             )
         ]);
 
-        conversation.unseenCount = conversation.unseenCount.map(u =>
-            u.userId.toString() === receiverId.toString() ? { ...u, count: 0 } : u
-        );
-
         const senderId = conversation.participants.find(
             p => p.toString() !== receiverId.toString()
         );
-
-        const io = getIo();
-        const receiverSocketId = getUserSocketId(receiverId.toString());
-        const senderSocketId = getUserSocketId(senderId?.toString());
-
-        io.emit("messages_seen", { conversationId, seenBy: receiverId, data: result });
 
         const conversationUpdate = {
             conversationId: conversation._id.toString(),
@@ -459,28 +546,20 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             unseenCount: 0
         };
 
-        if (senderSocketId) {
-            io.to(senderSocketId).emit("conversationUpdated", conversationUpdate);
-        }
-
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("conversationUpdated", conversationUpdate);
-
-            const allConversations = await Conversation.find({
-                participants: new mongoose.Types.ObjectId(receiverId)
-            }).select('unseenCount');
-
-            const totalChatUnread = allConversations.reduce((total, conv) => {
-                const entry = conv.unseenCount.find(
-                    u => u.userId.toString() === receiverId.toString()
-                );
-                return total + (entry?.count || 0);
-            }, 0);
-
-            io.to(receiverSocketId).emit("badgeCountUpdate", {
-                chatUnread: totalChatUnread
+    
+        if (senderId) {
+            emitToUser(senderId.toString(), "messages_seen", {
+                conversationId,
+                seenBy: receiverId,
+                data: result
             });
+            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
         }
+
+     
+        const totalChatUnread = await getTotalUnseenCount(receiverId.toString());
+        emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdate);
+        emitToUser(receiverId.toString(), "badgeCountUpdate", { chatUnread: totalChatUnread });
 
         return result;
     } catch (error) {
@@ -490,17 +569,18 @@ exports.seenMessageService = async (conversationId, receiverId) => {
 };
 
 
-// DELIVERED MESSAGE
+
+
 exports.deliveredMessageService = async (conversationId, receiverId) => {
     try {
-        if (!receiverId) throw createError(404, 'userNotFound', 'notFound');
+        if (!receiverId) throw createError(400, 'userNotFound', 'notFound');
 
         const receiver = await isUserExist(receiverId);
         if (!receiver) throw createError(404, 'userNotFound', 'notFound');
 
         const conversation = await isConversationExist(conversationId);
-        if (!conversation.participants.some(p => p.toString() === receiverId)) {
-            throw createError(404, 'receiverNotPart', 'notFound');
+        if (!conversation.participants.some(p => p.toString() === receiverId.toString())) {
+            throw createError(403, 'receiverNotPart', 'notFound');
         }
 
         const result = await Message.updateMany(
@@ -508,7 +588,31 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             { $set: { status: "delivered" } }
         );
 
-        getIo().emit("messages_delivered", { conversationId, deliveredBy: receiverId, data: result });
+       
+        if (result.modifiedCount === 0) return result;
+
+        const senderId = conversation.participants.find(
+            p => p.toString() !== receiverId.toString()
+        );
+
+        const conversationUpdate = {
+            conversationId: conversation._id.toString(),
+            lastMessageStatus: "delivered"
+        };
+
+      
+        if (senderId) {
+            emitToUser(senderId.toString(), "messages_delivered", {
+                conversationId,
+                deliveredTo: receiverId,
+                data: result
+            });
+            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
+        }
+
+     
+        emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdate);
+
         return result;
     } catch (error) {
         if (error.statusCode) throw error;
@@ -517,12 +621,33 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
 };
 
 
-// UPDATE MESSAGE
+
+
 exports.updateMessageService = async (conversationId, messageId, messageText, userId) => {
     try {
-        const { message } = await validateMessageAction(conversationId, messageId, userId);
-        const update = await Message.updateOne({ _id: messageId }, { $set: { text: messageText } });
-        getIo().emit("messages_updated", { conversationId, updatedby: userId, updatedMessage: message });
+        const { message, conversation } = await validateMessageAction(conversationId, messageId, userId);
+
+        const update = await Message.updateOne(
+            { _id: messageId },
+            { $set: { text: messageText, updatedAt: new Date() } }
+        );
+
+        const otherParticipantId = conversation.participants.find(
+            p => p.toString() !== userId.toString()
+        );
+
+        const payload = {
+            conversationId,
+            updatedMessage: { ...message.toObject(), text: messageText }
+        };
+
+    
+        emitToUsers(
+            [userId.toString(), otherParticipantId?.toString()].filter(Boolean),
+            "messages_updated",
+            payload
+        );
+
         return update;
     } catch (error) {
         if (error.statusCode) throw error;
@@ -531,12 +656,29 @@ exports.updateMessageService = async (conversationId, messageId, messageText, us
 };
 
 
-// DELETE MESSAGE
+
+
 exports.deleteMessageservice = async (conversationId, messageId, userId) => {
     try {
-        const { message } = await validateMessageAction(conversationId, messageId, userId);
+        const { message, conversation } = await validateMessageAction(conversationId, messageId, userId);
+
         const deleted = await Message.deleteOne({ _id: messageId });
-        getIo().emit("messages_deleted", { conversationId, deletedby: userId, deletedMessage: message });
+
+        const otherParticipantId = conversation.participants.find(
+            p => p.toString() !== userId.toString()
+        );
+
+        const payload = {
+            conversationId,
+            deletedMessage: message
+        };
+
+        emitToUsers(
+            [userId.toString(), otherParticipantId?.toString()].filter(Boolean),
+            "messages_deleted",
+            payload
+        );
+
         return deleted;
     } catch (error) {
         if (error.statusCode) throw error;
@@ -545,52 +687,30 @@ exports.deleteMessageservice = async (conversationId, messageId, userId) => {
 };
 
 
-// DELETE CONVERSATION
+
+
 exports.deleteConversationService = async (conversationId, userId) => {
     try {
-        if (!userId) throw createError(404, 'userNotFound', 'notFound');
+        if (!userId) throw createError(400, 'userNotFound', 'notFound');
 
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const conversation = await isConversationExist(conversationId);
-        if (!conversation.participants.some(p => p.toString() === userId)) {
-            throw createError(404, 'receiverNotPart', 'notFound');
+        if (!conversation.participants.some(p => p.toString() === userId.toString())) {
+            throw createError(403, 'receiverNotPart', 'notFound');
         }
 
         const result = await Conversation.updateOne(
             { _id: conversationId },
             { $addToSet: { hiddenBy: userId } }
         );
+
+        emitToUser(userId.toString(), "conversation_deleted", { conversationId });
+
         return result;
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
-};
-
-
-const validateMessageAction = async (conversationId, messageId, userId) => {
-    if (!userId) throw createError(404, 'userNotFound', 'notFound');
-
-    const user = await isUserExist(userId);
-    if (!user) throw createError(404, 'userNotFound', 'notFound');
-
-    const conversation = await isConversationExist(conversationId);
-    if (!conversation.participants.some(p => p.toString() === userId.toString())) {
-        throw createError(404, 'receiverNotPart', 'notFound');
-    }
-
-    const message = await Message.findById(messageId);
-    if (!message) throw createError(404, 'messageNotFound', 'notFound');
-
-    if (message.sender.toString() !== userId.toString()) {
-        throw createError(403, 'NotAuthorized', 'customError');
-    }
-
-    if (message.conversationId.toString() !== conversationId.toString()) {
-        throw createError(400, 'invalidConversation', 'customError');
-    }
-
-    return { user, conversation, message };
 };

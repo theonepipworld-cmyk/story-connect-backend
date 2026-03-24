@@ -278,7 +278,6 @@ exports.getPostById = async (id, userId) => {
 
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
-
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
 
@@ -295,6 +294,7 @@ exports.getPostById = async (id, userId) => {
 
     const result = await Post.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
+
       {
         $lookup: {
           from: "users",
@@ -305,6 +305,18 @@ exports.getPostById = async (id, userId) => {
       },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
       {
+        $addFields: {
+          isAdmin: {
+            $cond: [
+              { $eq: ["$user.role", "admin"] },
+              true,
+              false
+            ]
+          }
+        }
+      },
+
+      {
         $lookup: {
           from: "communities",
           localField: "communityId",
@@ -313,6 +325,7 @@ exports.getPostById = async (id, userId) => {
         }
       },
       { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
+
       {
         $lookup: {
           from: "communitycategories",
@@ -322,6 +335,7 @@ exports.getPostById = async (id, userId) => {
         }
       },
       { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
+
       {
         $lookup: {
           from: "userstats",
@@ -354,6 +368,7 @@ exports.getPostById = async (id, userId) => {
           }
         }
       },
+
       {
         $lookup: {
           from: "comments",
@@ -363,6 +378,7 @@ exports.getPostById = async (id, userId) => {
         }
       },
       { $addFields: { totalComments: { $size: "$comments" } } },
+
       {
         $project: {
           _id: 1,
@@ -385,9 +401,11 @@ exports.getPostById = async (id, userId) => {
           totalLikes: 1,
           totalViews: 1,
           totalComments: 1,
-          isPostLikedByMe: 1
+          isPostLikedByMe: 1,
+          isAdmin: 1 
         }
       },
+
       {
         $facet: {
           data: [{ $limit: 1 }]
@@ -722,9 +740,7 @@ exports.getTrendingTagsService = async () => {
 
 exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
-
     if (!userId) throw createError(400, "userNotFound", "notFound");
-
 
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
@@ -801,6 +817,18 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
               }
             },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+            {
+              $addFields: {
+                isAdmin: {
+                  $cond: [
+                    { $eq: ["$user.role", "admin"] },
+                    true,
+                    false
+                  ]
+                }
+              }
+            },
+
             {
               $lookup: {
                 from: "communities",
@@ -922,7 +950,8 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 totalComments: 1,
                 isPostLikedByMe: 1,
                 isFriend: 1,
-                isPendingRequest: 1
+                isPendingRequest: 1,
+                isAdmin: 1
               }
             },
             { $skip: skip },
