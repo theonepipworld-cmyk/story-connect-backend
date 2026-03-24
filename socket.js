@@ -84,23 +84,23 @@ function initIo(server) {
       }
     });
 
-    socket.on("messages_seen", () => {
-      const userId = findUserBySocketId(socket.id);
-      if (!userId) return;
+    // socket.on("messages_seen", () => {
+    //   const userId = findUserBySocketId(socket.id);
+    //   if (!userId) return;
 
-      const Conversation = require("./models/conversations.model");
-      Conversation.updateMany(
-        { participants: userId, "unseenCount.userId": userId },
-        { $set: { "unseenCount.$.count": 0 } }
-      ).catch(console.error);
+    //   const Conversation = require("./models/conversations.model");
+    //   Conversation.updateMany(
+    //     { participants: userId, "unseenCount.userId": userId },
+    //     { $set: { "unseenCount.$.count": 0 } }
+    //   ).catch(console.error);
 
-      const allSocketIds = getAllUserSocketIds(userId);
-      allSocketIds.forEach(socketId => {
-        if (socketId !== socket.id) {
-          io.to(socketId).emit("badgeCountUpdate", { chatUnread: 0 });
-        }
-      });
-    });
+    //   const allSocketIds = getAllUserSocketIds(userId);
+    //   allSocketIds.forEach(socketId => {
+    //     if (socketId !== socket.id) {
+    //       io.to(socketId).emit("badgeCountUpdate", { chatUnread: 0 });
+    //     }
+    //   });
+    // });
 
     socket.on("disconnect", () => {
       const userId = findUserBySocketId(socket.id);
