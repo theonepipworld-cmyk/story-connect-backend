@@ -70,7 +70,7 @@ exports.updateProfile = async (userId, payload, files) => {
         if (payload.profession && payload.profession.toLowerCase() === 'other') {
             if (!payload.manualProfession) throw createError(400, 'professionName', 'validation');
             patch.manualProfession = payload.manualProfession.trim();
-        } else {
+        } else if (payload.profession) {
             patch.manualProfession = null;
         }
 

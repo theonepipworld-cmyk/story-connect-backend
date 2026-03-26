@@ -6,6 +6,12 @@ const { validate } = require("../../../middlewares/requestValidations/user/valid
 const storage = multer.memoryStorage();
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const phoneRegex = /^\+?[0-9]{4,15}$/;
+const hasValue = (value) =>
+  value !== undefined &&
+  value !== null &&
+  String(value).trim() !== '' &&
+  String(value).trim().toLowerCase() !== 'null' &&
+  String(value).trim().toLowerCase() !== 'undefined';
 const avatarUpload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -39,12 +45,12 @@ exports.updateProfileValidator = [
 
   check("relationship")
     .optional()
-    .if((value) => value !== undefined && value !== null && value !== '')
+    .if((value) => hasValue(value))
     .custom(value => {
       const allowedValues = ['single', 'married', 'divorced', 'widowed', 'separated', 'other'];
       return allowedValues.includes(value.toLowerCase());
     })
-    .withMessage(`${resMessages.validation.invalidEnum} : In relationship`),
+    .withMessage(`${resMessages.validation.invalidEnum} : relationship`),
 
   check("relationshipDescription")
     .optional()
@@ -53,7 +59,7 @@ exports.updateProfileValidator = [
 
   check("status")
     .optional()
-    .if((value) => value !== undefined && value !== null && value !== '')
+    .if((value) => hasValue(value))
     .custom(value => {
       const allowedValues = ['active', 'inactive', 'banned', 'deleted'];
       return allowedValues.includes(value.toLowerCase());
@@ -62,7 +68,7 @@ exports.updateProfileValidator = [
 
   check("profession")
     .optional()
-    .if((value) => value !== undefined && value !== null && value !== '')
+    .if((value) => hasValue(value))
     .custom(value => {
       const allowedValues = ['nurse', 'doctor', 'scientist', 'professor', 'artist', 'chef', 'manager', 'pilot', 'firefighter', 'developer', 'other'];
       return allowedValues.includes(value.toLowerCase());
@@ -76,6 +82,7 @@ exports.updateProfileValidator = [
 
   check("entryYear")
     .optional()
+    .if((value) => hasValue(value))
     .custom(value => {
       if (!/^\d{4}$/.test(value)) {
         throw new Error(resMessages.validation.invalidYearFormat);
@@ -90,6 +97,7 @@ exports.updateProfileValidator = [
 
   check("dateOfBirth")
     .optional()
+    .if((value) => hasValue(value))
     .custom(value => {
       if (!dateRegex.test(value)) {
         throw new Error(resMessages.validation.invalidDateOfBirthFormat);
@@ -107,26 +115,31 @@ exports.updateProfileValidator = [
 
   check("phone")
     .optional()
+    .if((value) => hasValue(value))
     .matches(phoneRegex)
     .withMessage(resMessages.validation.invalidPhoneNumber),
 
   check("email")
     .optional()
+    .if((value) => hasValue(value))
     .isEmail()
     .withMessage(resMessages.validation.invalidEmail),
 
   check("countryOfOrigin")
     .optional()
+    .if((value) => hasValue(value))
     .isMongoId()
     .withMessage(resMessages.validation.invalidCountry),
 
   check("currentCountry")
     .optional()
+    .if((value) => hasValue(value))
     .isMongoId()
     .withMessage(resMessages.validation.invalidCountry),
 
   check("professionSymbol")
     .optional()
+    .if((value) => hasValue(value))
     .isMongoId()
     .withMessage(resMessages.validation.invalidProfessionSymbol),
 
