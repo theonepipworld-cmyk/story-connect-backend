@@ -34,7 +34,7 @@ exports.updateProfile = async (userId, payload, files) => {
     try {
         const patch = {};
 
-     
+
         const existingUser = await User.findById(userId).lean();
         if (!existingUser) throw createError(404, 'userNotFound', 'notFound');
 
@@ -209,7 +209,12 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             conversationId: conversation ? conversation._id : null,
             lastMessageId: conversation ? conversation.lastMessage : null,
             isBlockedByMe: !!blockByMe,
-            isBlockedByOther: !!blockedByHim
+            isBlockedByOther: !!blockedByHim,
+            iSentRequest: friendship?.requester?.toString() === loginUserId.toString(),
+            requestSentBy: friendship ? {
+                _id: friendship.requester,
+                isMe: friendship.requester?.toString() === loginUserId.toString()
+            } : null
         };
     } catch (error) {
         if (error.statusCode) throw error;
