@@ -177,7 +177,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 await Notification.create({
                     user: comment.userId._id,
                     sender: userId,
-                    commentId:comment._id,
+                    commentId:commentId,
                     type: enums.notification_Types.LIKE,
                     message: `${username} ${resMessages.notifications.commentLike}`,
                     postId
