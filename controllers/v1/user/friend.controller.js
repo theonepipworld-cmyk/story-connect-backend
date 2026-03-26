@@ -18,7 +18,7 @@ const getLang = (req) => req.lang || 'en';
 exports.sendFriendReq = async (req, res) => {
     try {
         const lang = getLang(req);
-        const { result, isRequested } = await sendFriendReqService(req.user.id, req.params.id);
+        const { result, isRequested } = await sendFriendReqService(req.user.id, req.params.id, lang);
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'sendReqSuccessfully'), isRequested));
     }
     catch (err) {
@@ -35,7 +35,7 @@ exports.respondFriendReq = async (req, res) => {
     try {
         const lang = getLang(req);
         const { action } = req.body;
-        await respondFriendReqService(req.user.id, req.params.id, action);
+        await respondFriendReqService(req.user.id, req.params.id, action, lang);
         return res.status(200).json(
             successResponse(
                 action === "accepted"
@@ -135,7 +135,7 @@ exports.unfriendReq = async (req, res) => {
 exports.cancelFriendReq = async (req, res) => {
     try {
         const lang = getLang(req);
-        const response = await cancelFriendReqService(req.user.id, req.params.id);
+        const response = await cancelFriendReqService(req.user.id, req.params.id, lang);
         return res.status(200).json(successResponse(getMessage(lang, 'success', 'cancelReqSuccessfully'), response));
     }
     catch (err) {

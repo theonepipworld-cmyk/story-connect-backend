@@ -13,9 +13,10 @@ const User = require("../../models/user.model.js");
 const CommunityMember = require("../../models/communityMember.model.js");
 const enums = require("../../constants/enum.constants.js");
 const Block = require("../../models/block.model");
-const { getIo } = require("../../socket");
+const { getIo, getAllUserSocketIds } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
 const pushNotification = require("../../utils/pushNotification.js");
+const { getMessage } = require("../../constants/locales/index.js");
 
 
 
@@ -44,18 +45,28 @@ const sendPush = async (user, title, type, data) => {
 };
 
 
-const safeEmit = (room, event, payload) => {
+const emitToUser = (userId, event, payload) => {
     try {
         const io = getIo();
-        if (io) io.to(room).emit(event, payload);
+        const socketIds = getAllUserSocketIds(userId.toString());
+        socketIds.forEach((sid) => io.to(sid).emit(event, payload));
     } catch (err) {
-        console.error(`Socket emit failed [${event}]:`, err.message);
+        console.error(`Socket emit failed [${event}]:`, err?.message || err);
+    }
+};
+
+const emitNotificationUnread = async (userId) => {
+    try {
+        const count = await Notification.countDocuments({ user: userId, isRead: false });
+        emitToUser(userId, "badgeCountUpdate", { notificationUnread: count });
+    } catch (err) {
+        // silent
     }
 };
 
 
 
-exports.sendFriendReqService = async (userId, friendReqId) => {
+exports.sendFriendReqService = async (userId, friendReqId, lang = 'en') => {
     try {
         if (!userId || !friendReqId) {
             throw createError(404, "userOrFriendIdNotFound", "notFound");
@@ -107,8 +118,9 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 existingFriend.status = enums.friend_Request_status.PENDING;
                 await existingFriend.save();
 
-              
-                safeEmit(friendReqId.toString(), "friend_request_received", {
+                const notifMessage = getMessage(lang, 'notifications', 'sendFriendReq');
+
+                emitToUser(friendReqId.toString(), "friend_request_received", {
                     from: userId,
                     to: friendReqId,
                     sender: {
@@ -116,6 +128,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                         username: user.username,
                         avatarUrl: user.avatarUrl || null,
                     },
+                    message: notifMessage,
                     data: existingFriend
                 });
 
@@ -124,16 +137,19 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                         user: friendReqId,
                         sender: userId,
                         type: enums.notification_Types.FRIEND_REQUEST,
-                        message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                        message: `${user.username} ${notifMessage}`,
                         postId: null
                     }),
                     sendPush(
                         recipient,
-                        `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                        `${user.username} ${notifMessage}`,
                         "friend_request",
                         { senderId: userId.toString(), type: "friend_request" }
                     )
                 ]);
+
+                // Update notification unread count for recipient immediately.
+                await emitNotificationUnread(friendReqId);
 
                 return { result: existingFriend, isRequested: true };
             }
@@ -148,7 +164,9 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
         if (!newFriendDoc) throw createError(500, "serverError", "error");
 
       
-        safeEmit(friendReqId.toString(), "friend_request_received", {
+        const notifMessage = getMessage(lang, 'notifications', 'sendFriendReq');
+
+        emitToUser(friendReqId.toString(), "friend_request_received", {
             from: userId,
             to: friendReqId,
             sender: {
@@ -156,6 +174,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 username: user.username,
                 avatarUrl: user.avatarUrl || null,
             },
+            message: notifMessage,
             data: newFriendDoc
         });
 
@@ -164,16 +183,19 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
                 user: friendReqId,
                 sender: userId,
                 type: enums.notification_Types.FRIEND_REQUEST,
-                message: `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                message: `${user.username} ${notifMessage}`,
                 postId: null
             }),
             sendPush(
                 recipient,
-                `${user.username} ${resMessages.notifications.sendFriendReq}`,
+                `${user.username} ${notifMessage}`,
                 "friend_request",
                 { senderId: userId.toString(), type: "friend_request" }
             )
         ]);
+
+        // Update notification unread count for recipient immediately.
+        await emitNotificationUnread(friendReqId);
 
         return { result: newFriendDoc, isRequested: true };
 
@@ -183,7 +205,7 @@ exports.sendFriendReqService = async (userId, friendReqId) => {
     }
 };
 
-exports.respondFriendReqService = async (userId, friendReqId, action) => {
+exports.respondFriendReqService = async (userId, friendReqId, action, lang = 'en') => {
     try {
         if (!userId || !friendReqId) {
             throw createError(404, "userOrFriendIdNotFound", "notFound");
@@ -235,9 +257,11 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         await existing.save();
 
         const isAccepted = existing.status === enums.friend_Request_status.ACCEPTED;
-        const notifMessage = isAccepted
-            ? `${user.username} ${resMessages.notifications.acceptedFriendReq}`
-            : `${user.username} ${resMessages.notifications.rejectedFriendReq}`;
+        const notifMessage = `${user.username} ${
+            isAccepted
+                ? getMessage(lang, 'notifications', 'acceptedFriendReq')
+                : getMessage(lang, 'notifications', 'rejectedFriendReq')
+        }`;
         const notifType = isAccepted
             ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
             : enums.notification_Types.FRIEND_REQUEST_REJECTED;
@@ -259,7 +283,7 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
         ]);
 
 
-        safeEmit(friendReqId.toString(), "friend_request_responded", {
+        emitToUser(friendReqId.toString(), "friend_request_responded", {
             from: userId,
             to: friendReqId,
             responder: {
@@ -267,10 +291,12 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
                 username: user.username,
                 avatarUrl: user.avatarUrl || null,
             },
+            message: notifMessage,
+            status: existing.status,
             data: existing
         });
 
-        safeEmit(userId.toString(), "notification_deleted", {
+        emitToUser(userId.toString(), "notification_deleted", {
             type: enums.notification_Types.FRIEND_REQUEST,
             sender: friendReqId
         });
@@ -284,6 +310,10 @@ exports.respondFriendReqService = async (userId, friendReqId, action) => {
                 type: isAccepted ? "friend_request_accepted" : "friend_request_rejected"
             }
         );
+
+        // Update both users' notification unread counts.
+        await emitNotificationUnread(userId);
+        await emitNotificationUnread(existing.requester);
 
         return existing;
 
@@ -654,7 +684,7 @@ exports.unfriendReqService = async (loginUserId, unfriendUserId) => {
 
 
 
-exports.cancelFriendReqService = async (userId, friendId) => {
+exports.cancelFriendReqService = async (userId, friendId, lang = 'en') => {
     try {
         if (!userId || !friendId) {
             throw createError(404, "userOrFriendIdNotFound", "notFound");
@@ -677,11 +707,18 @@ exports.cancelFriendReqService = async (userId, friendId) => {
         await Promise.all([
             request.deleteOne(),
             Notification.deleteOne({
+                user: friendId,
                 sender: userId,
-                receiver: friendId,
                 type: enums.notification_Types.FRIEND_REQUEST
             })
         ]);
+
+        // Notify friend user and update their unread count.
+        emitToUser(friendId.toString(), "notification_deleted", {
+            type: enums.notification_Types.FRIEND_REQUEST,
+            sender: userId
+        });
+        await emitNotificationUnread(friendId);
 
         return {
             success: true,
