@@ -87,7 +87,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             { upsert: true, new: true }
         );
 
-     
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
 
@@ -133,24 +132,27 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
                 await emitBellBadge(post.userId);
             }
-
         }
-      
+
+
         else if (type === userActivityStats.userStats.Views) {
             const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
             if (!alreadyView) stats.views.push({ userId, userName: username });
             stats.totalViews = stats.views.length;
         }
-    
-        else if (type.startsWith("comment")) {
+
+        else if (
+            type === userActivityStats.userStats.CommentLikes ||
+            type === userActivityStats.userStats.CommentReplyLike
+        ) {
             const liked = toggleCommentStats(stats, userId, commentId, parentCommentId);
             if (liked) {
                 const comment = await Comment.findById(commentId).populate("userId", "_id username avatarUrl");
-
                 if (comment && comment.userId?._id.toString() !== userId.toString()) {
                     const commentOwnerFull = await User.findById(comment.userId._id)
                         .select("device_token username isPushNotification");
-
+                    console.log("comment-------------------------", comment)
+                    // Push notification
                     if (commentOwnerFull?.device_token && commentOwnerFull?.isPushNotification) {
                         try {
                             await pushNotification.androidPushNotification(
@@ -177,15 +179,17 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                         }
                     }
 
-                    await Notification.create({
+                    // DB notification
+                    const notify = await Notification.create({
                         user: comment.userId._id,
                         sender: userId,
-                        type: enums.notification_Types.COMMENTLIKE, 
+                        type: enums.notification_Types.COMMENTLIKE,
                         message: `${username} ${resMessages.notifications.commentLike}`,
                         postId,
-                        commentId 
+                        commentId
                     });
-
+                    console.log("notify--------------", notify)
+                    // Socket emit
                     const commentOwnerSocketIds = getAllUserSocketIds(comment.userId._id.toString());
                     safeEmit(commentOwnerSocketIds, "comment_liked", {
                         postId,
@@ -260,7 +264,6 @@ exports.getAllLikedUserService = async (postId, type, userId, commentId) => {
             throw createError(400, 'invalidType', 'validation');
         }
 
-        // blocked filter
         resultArr = resultArr.filter(u =>
             !blockedUserIds.some(bid => bid.toString() === u.userId.toString())
         );

@@ -71,7 +71,6 @@ exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) 
   let commentEntry = stats.commentLikes.find(
     cl => cl.commentId.toString() === commentId.toString()
   );
-  console.log("Found commentEntry:", commentEntry)
   if (!commentEntry) {
     commentEntry = {
       commentId,
@@ -80,24 +79,36 @@ exports.toggleCommentStats = (stats, userId, commentId, parentCommentId = null) 
       totalLikes: 1
     };
     stats.commentLikes.push(commentEntry);
+    return true; // like was added
   } else {
-    console.log("Toggling like for commentEntry:", commentEntry)
     const userIndex = commentEntry.userIds.findIndex(id => id.toString() === userId.toString());
-    console.log("User index in commentEntry:", userIndex)
     if (userIndex === -1) {
       commentEntry.userIds.push(userId);
+      commentEntry.totalLikes = commentEntry.userIds.length;
+      return true; // like was added
     } else {
       commentEntry.userIds.splice(userIndex, 1);
+      commentEntry.totalLikes = commentEntry.userIds.length;
+      const nowHasLikes = commentEntry.userIds.length > 0;
+      if (!nowHasLikes) {
+        const index = stats.commentLikes.findIndex(
+          cl => cl.commentId.toString() === commentId.toString()
+        );
+        if (index !== -1) stats.commentLikes.splice(index, 1);
+      }
+      return false; // like was removed
     }
+    // Safety fallback (should never reach)
     commentEntry.totalLikes = commentEntry.userIds.length;
-    if (commentEntry.userIds.length === 0) {
-      const index = stats.commentLikes.findIndex(
-        cl => cl.commentId.toString() === commentId.toString()
-      );
-      stats.commentLikes.splice(index, 1);
-    }
+    return commentEntry.userIds.length > 0;
   }
 };
+
+/*
+// Previous version did not return a boolean. That caused caller code like:
+//   const liked = toggleCommentStats(...);
+// to always treat `liked` as falsy, so comment-like notifications/push/socket events never fired.
+*/
 
 
 //handle like and dislike of post
