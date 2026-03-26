@@ -71,7 +71,9 @@ const validateMessageAction = async (conversationId, messageId, userId) => {
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
     try {
-        if (!senderId || !receiverId || (!messageText && files.length === 0)) {
+        const filesArr = Array.isArray(files) ? files : [];
+
+        if (!senderId || !receiverId || (!messageText && filesArr.length === 0)) {
             throw createError(400, 'missingFields', 'validation');
         }
 
@@ -201,6 +203,13 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             conversation.lastMessage = savedMessage._id;
         };
 
+        /** Call after conversation.save() so getTotalUnseenCount matches DB */
+        const emitReceiverTotalBadge = async () => {
+            if (receiverSocketIds.length === 0) return;
+            const totalChatUnread = await getTotalUnseenCount(receiverId.toString());
+            emitToUser(receiverId.toString(), "badgeCountUpdate", { chatUnread: totalChatUnread });
+        };
+
         const messages = [];
 
         if (messageText && Array.isArray(files) && files.length > 0) {
@@ -232,6 +241,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
             conversation.updatedAt = new Date();
             await conversation.save();
+            await emitReceiverTotalBadge();
             return messages;
         }
 
@@ -281,6 +291,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
         conversation.updatedAt = new Date();
         await conversation.save();
+        await emitReceiverTotalBadge();
         return messages;
 
     } catch (error) {
