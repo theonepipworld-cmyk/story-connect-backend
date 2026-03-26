@@ -87,6 +87,7 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
             { upsert: true, new: true }
         );
 
+     
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
 
@@ -123,79 +124,82 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
                 safeEmit(postOwnerSocketIds, "post_liked", {
                     postId,
-                    // keep original fields for compatibility
                     userId,
                     username,
-                    // fields used by SocketPushNotifications
                     senderId: userId,
                     senderName: username,
                     senderAvatar: user?.avatarUrl
                 });
+
                 await emitBellBadge(post.userId);
             }
 
-        } else if (type === userActivityStats.userStats.Views) {
+        }
+      
+        else if (type === userActivityStats.userStats.Views) {
             const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
             if (!alreadyView) stats.views.push({ userId, userName: username });
             stats.totalViews = stats.views.length;
+        }
+    
+        else if (type.startsWith("comment")) {
+            const liked = toggleCommentStats(stats, userId, commentId, parentCommentId);
+            if (liked) {
+                const comment = await Comment.findById(commentId).populate("userId", "_id username avatarUrl");
 
-        } else if (type.startsWith("comment")) {
-            toggleCommentStats(stats, userId, commentId, parentCommentId);
+                if (comment && comment.userId?._id.toString() !== userId.toString()) {
+                    const commentOwnerFull = await User.findById(comment.userId._id)
+                        .select("device_token username isPushNotification");
 
-            const comment = await Comment.findById(commentId).populate("userId", "_id username");
-
-            if (comment && comment.userId?._id.toString() !== userId.toString()) {
-                const commentOwnerFull = await User.findById(comment.userId._id)
-                    .select("device_token username isPushNotification");
-
-                if (commentOwnerFull?.device_token && commentOwnerFull?.isPushNotification) {
-                    try {
-                        await pushNotification.androidPushNotification(
-                            commentOwnerFull.device_token,
-                            `${user.username} ${resMessages.notifications.commentLike}`,
-                            "commentLike",
-                            {
-                                postId: String(postId),
-                                commentId: String(commentId),
-                                senderId: String(userId),
-                                parentCommentId: parentCommentId ? String(parentCommentId) : ""
+                    if (commentOwnerFull?.device_token && commentOwnerFull?.isPushNotification) {
+                        try {
+                            await pushNotification.androidPushNotification(
+                                commentOwnerFull.device_token,
+                                `${user.username} ${resMessages.notifications.commentLike}`,
+                                "commentLike",
+                                {
+                                    postId: String(postId),
+                                    commentId: String(commentId),
+                                    senderId: String(userId),
+                                    parentCommentId: parentCommentId ? String(parentCommentId) : ""
+                                }
+                            );
+                        } catch (error) {
+                            console.error(`Failed to send comment push to user ${commentOwnerFull._id}:`, error.message);
+                            if (
+                                error.code === 'messaging/invalid-argument' ||
+                                error.code === 'messaging/registration-token-not-registered' ||
+                                error.code === 'messaging/invalid-registration-token' ||
+                                error.code === 'messaging/invalid-payload'
+                            ) {
+                                await User.findByIdAndUpdate(commentOwnerFull._id, { device_token: null });
                             }
-                        );
-                    } catch (error) {
-                        console.error(`Failed to send comment push to user ${commentOwnerFull._id}:`, error.message);
-                        if (
-                            error.code === 'messaging/invalid-argument' ||
-                            error.code === 'messaging/registration-token-not-registered' ||
-                            error.code === 'messaging/invalid-registration-token' ||
-                            error.code === 'messaging/invalid-payload'
-                        ) {
-                            await User.findByIdAndUpdate(commentOwnerFull._id, { device_token: null });
                         }
                     }
+
+                    await Notification.create({
+                        user: comment.userId._id,
+                        sender: userId,
+                        type: enums.notification_Types.COMMENTLIKE, 
+                        message: `${username} ${resMessages.notifications.commentLike}`,
+                        postId,
+                        commentId 
+                    });
+
+                    const commentOwnerSocketIds = getAllUserSocketIds(comment.userId._id.toString());
+                    safeEmit(commentOwnerSocketIds, "comment_liked", {
+                        postId,
+                        commentId,
+                        parentCommentId: parentCommentId || null,
+                        userId,
+                        username,
+                        senderId: userId,
+                        senderName: username,
+                        senderAvatar: user?.avatarUrl
+                    });
+
+                    await emitBellBadge(comment.userId._id);
                 }
-
-                await Notification.create({
-                    user: comment.userId._id,
-                    sender: userId,
-                    commentId:commentId,
-                    type: enums.notification_Types.LIKE,
-                    message: `${username} ${resMessages.notifications.commentLike}`,
-                    postId
-                });
-
-                const commentOwnerSocketIds = getAllUserSocketIds(comment.userId._id.toString());
-                safeEmit(commentOwnerSocketIds, "comment_liked", {
-                    postId,
-                    commentId,
-                    // keep original fields for compatibility
-                    userId,
-                    username,
-                    // fields used by SocketPushNotifications
-                    senderId: userId,
-                    senderName: username,
-                    senderAvatar: user?.avatarUrl
-                });
-                await emitBellBadge(comment.userId._id);
             }
         }
 

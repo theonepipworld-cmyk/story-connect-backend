@@ -1,34 +1,55 @@
 const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema({
-    user: { 
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true,
     },
-    sender: { 
+    sender: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true,
     },
     type: {
         type: String,
-        enum: ["like", "friend_request", "friend_request_accepted","friend_request_rejected" ,"comment","commentLike"],
+        enum: [
+            "like",
+            "friend_request",
+            "friend_request_accepted",
+            "friend_request_rejected",
+            "comment",
+            "commentLike"
+        ],
         required: true,
     },
-    postId: { 
+    postId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Post",
+        default: null
     },
-    message: { 
+
+   
+    commentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment",
+        default: null
+    },
+
+    parentCommentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment",
+        default: null
+    },
+
+    message: {
         type: String,
     },
-    isRead: { 
+    isRead: {
         type: Boolean,
         default: false,
     },
 }, { timestamps: true });
-
 
 notificationSchema.index({ user: 1, createdAt: -1 });
 

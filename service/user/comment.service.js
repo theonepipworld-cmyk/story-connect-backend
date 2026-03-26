@@ -61,6 +61,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 { blocker: userId, blocked: post.userId }
             ]
         });
+
         if (blocked) throw createError(403, 'userBlocked', 'validation');
 
         const comment = await Comment.create({
@@ -80,6 +81,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             await Promise.all([
                 (async () => {
                     if (!postOwner?.device_token || !postOwner?.isPushNotification) return;
+
                     try {
                         await pushNotification.androidPushNotification(
                             postOwner.device_token,
@@ -94,6 +96,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                         );
                     } catch (error) {
                         console.error(`Failed to send push to user ${postOwner._id}:`, error.message);
+
                         if (
                             error.code === 'messaging/invalid-argument' ||
                             error.code === 'messaging/registration-token-not-registered'
@@ -108,19 +111,35 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                     sender: userId,
                     type: enums.notification_Types.COMMENT,
                     message: `${user.username} ${resMessages.notifications.comment}`,
-                    postId
+                    postId,
+                    commentId: comment._id,
+                    parentCommentId: parentCommentId || null
                 })
             ]);
 
             const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
-    safeEmit(postOwnerSocketIds, "new_comment", {
-    postId,
-    commentId: comment._id,
-    senderId: userId,
-    senderUsername: user.username,
-    senderAvatar: user.avatarUrl,
-    parentCommentId: parentCommentId || null
-});
+            safeEmit(postOwnerSocketIds, "new_comment", {
+                type: "new_comment",
+                title: user.username,
+                body: parentCommentId ? "Replied to your comment" : "Commented on your post",
+                avatar: user.avatarUrl || "/Avatar.svg",
+                href: `/posts/${postId}?commentId=${comment._id}${parentCommentId ? `&parentCommentId=${parentCommentId}` : ""}`,
+
+                postId: postId.toString(),
+                commentId: comment._id.toString(),
+                parentCommentId: parentCommentId ? parentCommentId.toString() : "",
+
+                senderId: userId.toString(),
+                senderName: user.username,
+                senderAvatar: user.avatarUrl || "/Avatar.svg",
+
+                sender: {
+                    _id: user._id,
+                    username: user.username,
+                    avatarUrl: user.avatarUrl || "/Avatar.svg"
+                }
+            });
+
             await emitBellBadge(post.userId);
         }
 
@@ -130,7 +149,6 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
         throw createError(500, 'serverError', 'error');
     }
 };
-
 
 exports.updateCommentService = async (postId, commentId, parentCommentId, content, userId) => {
     try {
