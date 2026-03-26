@@ -113,13 +113,14 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             ]);
 
             const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
-            safeEmit(postOwnerSocketIds, "new_comment", {
-                postId,
-                commentId: comment._id,
-                senderId: userId,
-                senderUsername: user.username,
-                parentCommentId: parentCommentId || null
-            });
+    safeEmit(postOwnerSocketIds, "new_comment", {
+    postId,
+    commentId: comment._id,
+    senderId: userId,
+    senderUsername: user.username,
+    senderAvatar: user.avatarUrl,
+    parentCommentId: parentCommentId || null
+});
             await emitBellBadge(post.userId);
         }
 
@@ -346,6 +347,7 @@ exports.getTopLevelCommentService = async (postId, page, limit, userId) => {
                                 content: 1,
                                 createdAt: 1,
                                 username: "$userInfo.username",
+                                userId: "$userInfo._id",
                                 profilePicture: "$userInfo.avatarUrl",
                                 currentCountry: { $ifNull: ["$userInfo.currentCountry", { code: "", name: "" }] },
                                 replyCount: 1,
@@ -471,6 +473,7 @@ exports.getReplyCommentService = async (postId, page, limit, parentCommentId, us
                                 content: 1,
                                 createdAt: 1,
                                 username: "$userInfo.username",
+                                userId: "$userInfo._id",
                                 profilePicture: "$userInfo.avatarUrl",
                                 currentCountry: "$userInfo.currentCountry",
                                 totalLikes: { $ifNull: [{ $arrayElemAt: ["$likesInfo.totalLikes", 0] }, 0] },

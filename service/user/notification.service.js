@@ -24,7 +24,7 @@ exports.getUserNotificationService = async (userId) => {
             user: user._id,
             createdAt: { $gte: lastMonth }
         })
-            .populate("sender", "username avatarUrl")
+            .populate("sender", "username avatarUrl currentCountry")
             .populate("postId", "mediaUrls")
             .sort({ createdAt: -1 });
 

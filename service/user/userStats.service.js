@@ -121,7 +121,16 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 });
 
                 const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
-                safeEmit(postOwnerSocketIds, "post_liked", { postId, userId, username });
+                safeEmit(postOwnerSocketIds, "post_liked", {
+                    postId,
+                    // keep original fields for compatibility
+                    userId,
+                    username,
+                    // fields used by SocketPushNotifications
+                    senderId: userId,
+                    senderName: username,
+                    senderAvatar: user?.avatarUrl
+                });
                 await emitBellBadge(post.userId);
             }
 
@@ -174,7 +183,17 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
                 });
 
                 const commentOwnerSocketIds = getAllUserSocketIds(comment.userId._id.toString());
-                safeEmit(commentOwnerSocketIds, "comment_liked", { postId, commentId, userId, username });
+                safeEmit(commentOwnerSocketIds, "comment_liked", {
+                    postId,
+                    commentId,
+                    // keep original fields for compatibility
+                    userId,
+                    username,
+                    // fields used by SocketPushNotifications
+                    senderId: userId,
+                    senderName: username,
+                    senderAvatar: user?.avatarUrl
+                });
                 await emitBellBadge(comment.userId._id);
             }
         }

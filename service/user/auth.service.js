@@ -93,7 +93,7 @@ exports.forgotPassword = async ({ email }) => {
     user.resetPasswordExpires = Date.now() + 1000 * 60 * 15;
     await user.save();
 
-    const resetLink = `${RESET_PASS_LINK}/${resetToken}?email=${encodeURIComponent(user.email)}`;
+   const resetLink = `${RESET_PASS_LINK}?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
 
     await sendEmail({
       to: email,

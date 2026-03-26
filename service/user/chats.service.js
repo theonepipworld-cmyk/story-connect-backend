@@ -8,9 +8,6 @@ const { getIo, getAllUserSocketIds } = require("../../socket");
 const enums = require("../../constants/enum.constants.js");
 const pushNotification = require("../../utils/pushNotification.js");
 
-
-
-
 const emitToUser = (userId, event, payload) => {
     const io = getIo();
     getAllUserSocketIds(userId.toString()).forEach(sid => {
@@ -18,11 +15,9 @@ const emitToUser = (userId, event, payload) => {
     });
 };
 
-
 const emitToUsers = (userIds, event, payload) => {
     userIds.forEach(uid => emitToUser(uid, event, payload));
 };
-
 
 const sendPushNotification = async (receiver, body, data) => {
     if (!receiver?.device_token || !receiver?.isPushNotification) return;
@@ -38,7 +33,6 @@ const sendPushNotification = async (receiver, body, data) => {
     }
 };
 
-
 const getTotalUnseenCount = async (userId) => {
     const allConversations = await Conversation.find({
         participants: new mongoose.Types.ObjectId(userId)
@@ -49,7 +43,6 @@ const getTotalUnseenCount = async (userId) => {
         return total + (entry?.count || 0);
     }, 0);
 };
-
 
 const validateMessageAction = async (conversationId, messageId, userId) => {
     if (!userId) throw createError(404, 'userNotFound', 'notFound');
@@ -76,9 +69,6 @@ const validateMessageAction = async (conversationId, messageId, userId) => {
     return { user, conversation, message };
 };
 
-
-
-
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
     try {
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
@@ -95,13 +85,13 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             throw createError(400, 'cannotMessageYourself', 'validation');
         }
 
-
         const isBlocked = await Block.findOne({
             $or: [
                 { blocker: receiverId, blocked: senderId },
                 { blocker: senderId, blocked: receiverId }
             ]
         });
+
         if (isBlocked) {
             const blockedByThem = isBlocked.blocker.toString() === receiverId.toString();
             return [{
@@ -112,12 +102,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }];
         }
 
-
         const receiverSocketIds = getAllUserSocketIds(receiverId.toString());
         const messageStatus = receiverSocketIds.length > 0
             ? enums.messages_Status.DELIVERED
             : enums.messages_Status.SENT;
-
 
         let conversation = await Conversation.findOne({
             participants: { $all: [senderId, receiverId] }
@@ -134,15 +122,32 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             await conversation.save();
         }
 
+        // Increment unseen count for receiver BEFORE emitting
+        // so the emitted unseenCount value is already correct
+        const unseen = conversation.unseenCount.find(
+            u => u.userId.toString() === receiverId.toString()
+        );
+
+        if (unseen) {
+            unseen.count++;
+        } else {
+            conversation.unseenCount.push({ userId: receiverId, count: 1 });
+        }
+
+        const receiverNewUnseenCount = conversation.unseenCount.find(
+            u => u.userId.toString() === receiverId.toString()
+        )?.count || 1;
 
         const emitNewMessage = (savedMessage) => {
             const basePayload = savedMessage.toObject();
+
             const conversationUpdate = {
                 conversationId: conversation._id.toString(),
                 lastMessage: savedMessage.text,
                 lastMessageType: savedMessage.type,
                 lastMessageAt: savedMessage.createdAt,
                 lastMessageStatus: savedMessage.status,
+                lastMessageSenderId: senderId.toString(),
                 participant: {
                     _id: sender._id,
                     username: sender.username,
@@ -150,63 +155,53 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }
             };
 
-
+            // Emit to sender — unseenCount 0 (their own message, no badge)
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
                 getIo().to(sid).emit("newMessage", {
                     ...basePayload,
+                    conversationId: conversation._id.toString(),
+                    senderId: senderId.toString(),
                     senderName: sender.username,
                     senderAvatar: sender.avatarUrl,
                     isFromMe: true
                 });
+
                 getIo().to(sid).emit("conversationUpdated", {
                     ...conversationUpdate,
                     unseenCount: 0
                 });
             });
 
-
+            // Emit to receiver — send correct (already incremented) unseenCount
             if (receiverSocketIds.length > 0) {
-                const currentUnseen = conversation.unseenCount.find(
-                    u => u.userId.toString() === receiverId.toString()
-                )?.count || 0;
-
                 receiverSocketIds.forEach(sid => {
                     getIo().to(sid).emit("newMessage", {
                         ...basePayload,
+                        conversationId: conversation._id.toString(),
+                        senderId: senderId.toString(),
                         senderName: sender.username,
                         senderAvatar: sender.avatarUrl,
                         isFromMe: false
                     });
+
                     getIo().to(sid).emit("conversationUpdated", {
                         ...conversationUpdate,
-                        unseenCount: currentUnseen + 1
+                        unseenCount: receiverNewUnseenCount
                     });
+
                     getIo().to(sid).emit("badgeCountUpdate", {
-                        chatUnread: currentUnseen + 1
+                        chatUnread: receiverNewUnseenCount
                     });
                 });
             }
         };
 
-
+        // FIXED: save only ObjectId in conversation.lastMessage
         const updateConversationState = (savedMessage) => {
-            conversation.lastMessage = {
-                _id: savedMessage._id,
-                text: savedMessage.text,
-                type: savedMessage.type,
-                status: savedMessage.status,
-                sender: savedMessage.sender
-            };
-            const unseen = conversation.unseenCount.find(
-                u => u.userId.toString() === receiverId.toString()
-            );
-            unseen
-                ? unseen.count++
-                : conversation.unseenCount.push({ userId: receiverId, count: 1 });
+            conversation.lastMessage = savedMessage._id;
         };
 
         const messages = [];
-
 
         if (messageText && Array.isArray(files) && files.length > 0) {
             const uploadedFiles = files.map(file => ({
@@ -224,8 +219,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }).save();
 
             messages.push(savedMessage);
-            emitNewMessage(savedMessage);
             updateConversationState(savedMessage);
+            emitNewMessage(savedMessage);
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
@@ -240,7 +235,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             return messages;
         }
 
-
         if (messageText && (!files || files.length === 0)) {
             const savedMessage = await new Message({
                 conversationId: conversation._id,
@@ -251,15 +245,14 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }).save();
 
             messages.push(savedMessage);
-            emitNewMessage(savedMessage);
             updateConversationState(savedMessage);
+            emitNewMessage(savedMessage);
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
                 senderId: senderId.toString()
             });
         }
-
 
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
@@ -276,8 +269,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }).save();
 
                 messages.push(savedMessage);
-                emitNewMessage(savedMessage);
                 updateConversationState(savedMessage);
+                emitNewMessage(savedMessage);
 
                 await sendPushNotification(receiver, `Sent a ${fileType}`, {
                     conversationId: conversation._id.toString(),
@@ -295,9 +288,6 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
-
 
 exports.getUserConversationService = async (userId, page = 1, limit = 10, search = "") => {
     try {
@@ -434,12 +424,16 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
     }
 };
 
-
-
-
+// ─── FIXED: loadMoreMessagesService ──────────────────────────────────────────
+// REMOVED all automatic seen marking from here.
+// Seen marking ONLY happens via seenMessageService which frontend calls
+// explicitly when user is actually viewing the conversation.
+// This was the ROOT CAUSE of the bug — loading chat history was marking
+// messages as seen even when user was on a different conversation.
 exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10, page = 1) => {
     try {
-        if (!userId || !conversationId || !lastMessageId) {
+        // lastMessageId is optional — don't throw if missing
+        if (!userId || !conversationId) {
             throw createError(400, 'missingFields', 'validation');
         }
 
@@ -453,8 +447,11 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             throw createError(403, 'unauthorizedAccess', 'auth');
         }
 
-        const lastMessage = await Message.findById(lastMessageId);
-        if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
+        // Validate lastMessageId only if provided
+        if (lastMessageId) {
+            const lastMessage = await Message.findById(lastMessageId);
+            if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
+        }
 
         const skip = (page - 1) * limit;
         const [totalMessages, messages] = await Promise.all([
@@ -467,29 +464,9 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         ]);
 
         const totalPages = Math.ceil(totalMessages / limit);
-        await Promise.all([
-            Conversation.updateOne(
-                { _id: conversationId, "unseenCount.userId": userId },
-                { $set: { "unseenCount.$.count": 0 } },
-                { timestamps: false }
-            ),
-            Message.updateMany(
-                { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
-                { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
-            )
-        ]);
 
-        const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
-        if (senderId) {
-            const conversationUpdate = {
-                conversationId: conversation._id.toString(),
-                lastMessageStatus: "seen",
-                unseenCount: 0
-            };
-            emitToUser(senderId.toString(), "messages_seen", { conversationId, seenBy: userId });
-            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
-            emitToUser(userId.toString(), "conversationUpdated", conversationUpdate);
-        }
+        // ✅ NO seen marking here — frontend calls seenMessageService explicitly
+        // when user is confirmed to be viewing the conversation (after 800ms delay)
 
         return {
             data: messages.reverse(),
@@ -507,9 +484,9 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
     }
 };
 
-
-
-
+// ─── FIXED: seenMessageService ────────────────────────────────────────────────
+// Added early return if unseenCount is already 0 — prevents ghost seen events
+// being emitted when there's nothing to mark.
 exports.seenMessageService = async (conversationId, receiverId) => {
     try {
         if (!receiverId) throw createError(400, 'userNotFound', 'notFound');
@@ -522,29 +499,74 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             throw createError(403, 'receiverNotPart', 'notFound');
         }
 
+        // ✅ FIX: Early return if nothing to mark seen
+        // Without this, seen tick was being emitted even when count was already 0
+        const unseenEntry = conversation.unseenCount.find(
+            u => u.userId.toString() === receiverId.toString()
+        );
 
-        const [result] = await Promise.all([
-            Message.updateMany(
-                { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
-                { $set: { status: "seen" } }
-            ),
-            Conversation.updateOne(
-                { _id: conversationId, "unseenCount.userId": receiverId },
-                { $set: { "unseenCount.$.count": 0 } },
-                { timestamps: false }
-            )
-        ]);
+        if (!unseenEntry || unseenEntry.count === 0) {
+            // Check if any messages are actually unseen before bailing
+            const hasUnseenMessages = await Message.exists({
+                conversationId,
+                sender: { $ne: receiverId },
+                status: { $ne: "seen" }
+            });
+
+            if (!hasUnseenMessages) {
+                return { modifiedCount: 0 };
+            }
+        }
+
+        // Update message status first. If there are no messages that actually
+        // need marking, don't clear unseenCount and don't emit seen events.
+        // This prevents "ghost seen" where unseenCount becomes 0 even though
+        // everything was already marked as seen.
+        const result = await Message.updateMany(
+            { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
+            { $set: { status: "seen" } }
+        );
+
+        const matchedCount = result?.matchedCount ?? 0;
+        const modifiedCount = result?.modifiedCount ?? 0;
+
+        if (!result || Number(matchedCount) === 0 || Number(modifiedCount) === 0) {
+            console.log(
+                '[seenMessageService] matchedCount=0, skipping emits',
+                { conversationId, receiverId, matchedCount, modifiedCount }
+            );
+            return { modifiedCount: 0 };
+        }
+
+        // Now it's safe to clear the receiver's unseenCount.
+        await Conversation.updateOne(
+            { _id: conversationId, "unseenCount.userId": receiverId },
+            { $set: { "unseenCount.$.count": 0 } },
+            { timestamps: false }
+        );
 
         const senderId = conversation.participants.find(
             p => p.toString() !== receiverId.toString()
         );
 
-        const conversationUpdate = {
+        const senderUnseenCount = senderId
+            ? (conversation.unseenCount.find(
+                u => u.userId.toString() === senderId.toString()
+            )?.count || 0)
+            : 0;
+
+        // Receiver side unseen count is cleared; sender side should keep its own unseen count.
+        const conversationUpdateForSender = {
+            conversationId: conversation._id.toString(),
+            lastMessageStatus: "seen",
+            unseenCount: senderUnseenCount
+        };
+
+        const conversationUpdateForReceiver = {
             conversationId: conversation._id.toString(),
             lastMessageStatus: "seen",
             unseenCount: 0
         };
-
 
         if (senderId) {
             emitToUser(senderId.toString(), "messages_seen", {
@@ -552,13 +574,18 @@ exports.seenMessageService = async (conversationId, receiverId) => {
                 seenBy: receiverId,
                 data: result
             });
-            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
+            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdateForSender);
         }
 
-
         const totalChatUnread = await getTotalUnseenCount(receiverId.toString());
-        emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdate);
+        emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdateForReceiver);
         emitToUser(receiverId.toString(), "badgeCountUpdate", { chatUnread: totalChatUnread });
+        console.log('[seenMessageService] emitted conversationUpdated', {
+            conversationId: conversation._id.toString(),
+            receiverId: receiverId.toString(),
+            unseenCountForReceiver: 0,
+            unseenCountForSender: senderUnseenCount
+        });
 
         return result;
     } catch (error) {
@@ -566,9 +593,6 @@ exports.seenMessageService = async (conversationId, receiverId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
-
 
 exports.deliveredMessageService = async (conversationId, receiverId) => {
     try {
@@ -587,7 +611,6 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             { $set: { status: "delivered" } }
         );
 
-
         if (result.modifiedCount === 0) return result;
 
         const senderId = conversation.participants.find(
@@ -599,7 +622,6 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             lastMessageStatus: "delivered"
         };
 
-
         if (senderId) {
             emitToUser(senderId.toString(), "messages_delivered", {
                 conversationId,
@@ -609,7 +631,6 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
             emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
         }
 
-
         emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdate);
 
         return result;
@@ -618,9 +639,6 @@ exports.deliveredMessageService = async (conversationId, receiverId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
-
 
 exports.updateMessageService = async (conversationId, messageId, messageText, userId) => {
     try {
@@ -640,7 +658,6 @@ exports.updateMessageService = async (conversationId, messageId, messageText, us
             updatedMessage: { ...message.toObject(), text: messageText }
         };
 
-
         emitToUsers(
             [userId.toString(), otherParticipantId?.toString()].filter(Boolean),
             "messages_updated",
@@ -653,9 +670,6 @@ exports.updateMessageService = async (conversationId, messageId, messageText, us
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
-
 
 exports.deleteMessageservice = async (conversationId, messageId, userId) => {
     try {
@@ -684,9 +698,6 @@ exports.deleteMessageservice = async (conversationId, messageId, userId) => {
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
-
 
 exports.deleteConversationService = async (conversationId, userId) => {
     try {
