@@ -11,6 +11,7 @@ exports.createPost = async (req, res) => {
     if (req.files && req.files.length > 0) {
       const uploadPromises = req.files.map(file => uploadFileToS3(file, "posts"));
       const uploadResults = await Promise.all(uploadPromises);
+      console.log("--------------",uploadResults)
       mediaUrls = uploadResults.map(result => result.Location);
     }
     const postData = {
