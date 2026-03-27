@@ -1,12 +1,10 @@
 const multer = require("multer");
 const path = require("path");
 const { Upload } = require("@aws-sdk/lib-storage");
-const { s3 } = require("../../../utils/s3.util")
+const { s3 } = require("../../../utils/s3.util");
 const { errorResponse } = require("../../../utils/responseHandler.util");
 const resMessages = require("../../../constants/resMessages.constants");
 const envVariables = require("../../../config/secretVariables");
-
-
 
 class S3StreamStorage {
   constructor({ folder = "uploads" }) {
@@ -19,7 +17,8 @@ class S3StreamStorage {
       const baseName = path
         .basename(file.originalname, ext)
         .replace(/\s+/g, "_");
-      const key = `${this.folder}/${baseName}_${Date.now()}${ext}`;
+      const uniqueFileName = `${baseName}_${Date.now()}`;
+      const key = `${this.folder}/${uniqueFileName}${ext}`;
 
       const upload = new Upload({
         client: s3,
@@ -37,9 +36,20 @@ class S3StreamStorage {
       upload
         .done()
         .then(() => {
+          const fileUrl = `https://${envVariables.aws_s3_bucket_name}.s3.${envVariables.aws_s3_region}.amazonaws.com/${key}`;
+          let thumbnailUrl = null;
+
+          if (
+            file.mimetype.startsWith("video/") ||
+            file.mimetype.startsWith("image/")
+          ) {
+            thumbnailUrl = `https://${envVariables.aws_s3_bucket_name}.s3.${envVariables.aws_s3_region}.amazonaws.com/thumbnails/${uniqueFileName}.jpg`;
+          }
+
           cb(null, {
             key,
-            location: `https://${envVariables.aws_s3_bucket_name}.s3.${envVariables.aws_s3_region}.amazonaws.com/${key}`,
+            location: fileUrl,
+            thumbnailUrl,
           });
         })
         .catch((err) => {
@@ -56,9 +66,11 @@ class S3StreamStorage {
   }
 }
 
-
-
-function createUploadHandler({ folder, fieldName = "mediaUrls", maxFiles = 5 }) {
+function createUploadHandler({
+  folder,
+  fieldName = "mediaUrls",
+  maxFiles = 5,
+}) {
   const upload = multer({
     storage: new S3StreamStorage({ folder }),
     limits: {
@@ -99,8 +111,6 @@ function createUploadHandler({ folder, fieldName = "mediaUrls", maxFiles = 5 }) 
   };
 }
 
-
-
 const mediaUploadHandler = createUploadHandler({
   folder: "posts",
   fieldName: "mediaUrls",
@@ -119,4 +129,9 @@ const reportUploadHandler = createUploadHandler({
   maxFiles: 5,
 });
 
-module.exports = { mediaUploadHandler, chatUploadHandler, createUploadHandler, reportUploadHandler };
+module.exports = {
+  mediaUploadHandler,
+  chatUploadHandler,
+  createUploadHandler,
+  reportUploadHandler,
+};
