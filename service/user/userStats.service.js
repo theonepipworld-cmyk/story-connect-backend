@@ -1,135 +1,311 @@
 const userStats = require("../../models/userActivityStats.model.js");
-const Comment = require('../../models/Comments.model')
-const { toggleCommentStats, togglePostLike } = require("../../helpers/dbHelpers.js")
+const mongoose = require('mongoose');
+const Comment = require('../../models/Comments.model');
+const { toggleCommentStats, togglePostLike } = require("../../helpers/dbHelpers.js");
+const userActivityStats = require("../../constants/variables.constants.js");
+const { isPostExist, validateComment, createError, isUserExist } = require("../../helpers/dbHelpers.js");
+const resMessages = require("../../constants/resMessages.constants.js");
+const Block = require("../../models/block.model.js");
+const { getIo, getAllUserSocketIds } = require("../../socket");
+const Notification = require("../../models/notification.model.js");
+const User = require("../../models/user.model.js");
+const enums = require("../../constants/enum.constants.js");
+const pushNotification = require("../../utils/pushNotification.js");
+const Conversation = require("../../models/conversations.model.js");
+
+
+const safeEmit = (socketIds, event, payload) => {
+    try {
+        const io = getIo();
+        if (!io || !socketIds) return;
+        const ids = Array.isArray(socketIds) ? socketIds : [socketIds];
+        ids.forEach(socketId => {
+            if (socketId) io.to(socketId).emit(event, payload);
+        });
+    } catch (err) {
+        console.error(`Socket emit failed [${event}]:`, err.message);
+    }
+};
+
+const emitBellBadge = async (userId) => {
+    try {
+        const socketIds = getAllUserSocketIds(userId.toString());
+        if (!socketIds.length) return;
+
+        const notificationUnread = await Notification.countDocuments({
+            user: userId,
+            isRead: false
+        });
+
+        safeEmit(socketIds, "badgeCountUpdate", { notificationUnread });
+    } catch (err) {
+        console.error("emitBellBadge failed:", err.message);
+    }
+};
 
 
 exports.addStatsService = async (postId, type, commentId, userId, username, parentCommentId) => {
     try {
+        if (!userId || !username) throw createError(400, 'userNotFound', 'notFound');
 
-        if (type === "commentLike") {
-            if (!commentId) throw new Error("commentId required for comment actions");
-            if (parentCommentId) {
-                const parentComment = await Comment.findOne({
-                    _id: parentCommentId,
-                    postId: postId
-                });
+        const user = await isUserExist(userId);
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
 
-                if (!parentComment) {
-                    throw new Error("Invalid parentCommentId for this post");
+        const post = await isPostExist(postId);
+        if (!post) throw createError(404, 'postNotFound', 'notFound');
+
+        const blocked = await Block.findOne({
+            $or: [
+                { blocker: post.userId, blocked: userId },
+                { blocker: userId, blocked: post.userId }
+            ]
+        });
+        if (blocked) throw createError(403, 'userNotLikedorView', 'validation');
+
+        if (type === userActivityStats.userStats.CommentLikes) {
+            if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
+            await validateComment(postId, commentId, parentCommentId);
+        }
+
+        if (type === userActivityStats.userStats.CommentReplyLike) {
+            if (!parentCommentId || !commentId) throw createError(400, 'commentNotFound', 'notFound');
+            await validateComment(postId, commentId, parentCommentId, true);
+        }
+
+        let stats = await userStats.findOneAndUpdate(
+            { postId },
+            {
+                $setOnInsert: {
+                    postId,
+                    likes: [],
+                    views: [],
+                    commentLikes: [],
+                    totalLikes: 0,
+                    totalViews: 0
+                }
+            },
+            { upsert: true, new: true }
+        );
+
+        if (type === userActivityStats.userStats.Likes) {
+            const liked = togglePostLike(stats, user);
+
+            if (liked && post.userId.toString() !== userId.toString()) {
+                const postOwner = await isUserExist(post.userId);
+
+                if (postOwner?.device_token && postOwner?.isPushNotification) {
+                    try {
+                        await pushNotification.androidPushNotification(
+                            postOwner.device_token,
+                            `${username} ${resMessages.notifications.likedPost}`,
+                            "like",
+                            { postId: postId.toString(), senderId: userId.toString() }
+                        );
+                    } catch (error) {
+                        console.error(`Failed to send like push to user ${postOwner._id}:`, error.message);
+                        if (
+                            error.code === 'messaging/invalid-argument' ||
+                            error.code === 'messaging/registration-token-not-registered'
+                        ) {
+                            await User.findByIdAndUpdate(postOwner._id, { device_token: null });
+                        }
+                    }
                 }
 
-                const childComment = await Comment.findOne({
-                    _id: commentId,
-                    parentCommentId: parentCommentId,
-                    postId: postId
+                await Notification.create({
+                    user: post.userId,
+                    sender: userId,
+                    type: enums.notification_Types.LIKE,
+                    message: `${username} ${resMessages.notifications.likedPost}`,
+                    postId
                 });
 
-                if (!childComment) {
-                    throw new Error("commentId is not a reply to the given parentCommentId");
-                }
-            } else {
-                const comment = await Comment.findOne({
-                    _id: commentId,
-                    postId: postId
+                const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
+                safeEmit(postOwnerSocketIds, "post_liked", {
+                    postId,
+                    userId,
+                    username,
+                    senderId: userId,
+                    senderName: username,
+                    senderAvatar: user?.avatarUrl
                 });
-                if (!comment) {
-                    throw new Error("Invalid commentId for this post");
+
+                await emitBellBadge(post.userId);
+            }
+        }
+
+
+        else if (type === userActivityStats.userStats.Views) {
+            const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
+            if (!alreadyView) stats.views.push({ userId, userName: username });
+            stats.totalViews = stats.views.length;
+        }
+
+        else if (
+            type === userActivityStats.userStats.CommentLikes ||
+            type === userActivityStats.userStats.CommentReplyLike
+        ) {
+            const liked = toggleCommentStats(stats, userId, commentId, parentCommentId);
+            if (liked) {
+                const comment = await Comment.findById(commentId).populate("userId", "_id username avatarUrl");
+                if (comment && comment.userId?._id.toString() !== userId.toString()) {
+                    const commentOwnerFull = await User.findById(comment.userId._id)
+                        .select("device_token username isPushNotification");
+                    console.log("comment-------------------------", comment)
+                    // Push notification
+                    if (commentOwnerFull?.device_token && commentOwnerFull?.isPushNotification) {
+                        try {
+                            await pushNotification.androidPushNotification(
+                                commentOwnerFull.device_token,
+                                `${user.username} ${resMessages.notifications.commentLike}`,
+                                "commentLike",
+                                {
+                                    postId: String(postId),
+                                    commentId: String(commentId),
+                                    senderId: String(userId),
+                                    parentCommentId: parentCommentId ? String(parentCommentId) : ""
+                                }
+                            );
+                        } catch (error) {
+                            console.error(`Failed to send comment push to user ${commentOwnerFull._id}:`, error.message);
+                            if (
+                                error.code === 'messaging/invalid-argument' ||
+                                error.code === 'messaging/registration-token-not-registered' ||
+                                error.code === 'messaging/invalid-registration-token' ||
+                                error.code === 'messaging/invalid-payload'
+                            ) {
+                                await User.findByIdAndUpdate(commentOwnerFull._id, { device_token: null });
+                            }
+                        }
+                    }
+
+                    // DB notification
+                    const notify = await Notification.create({
+                        user: comment.userId._id,
+                        sender: userId,
+                        type: enums.notification_Types.COMMENTLIKE,
+                        message: `${username} ${resMessages.notifications.commentLike}`,
+                        postId,
+                        commentId
+                    });
+                    console.log("notify--------------", notify)
+                    // Socket emit
+                    const commentOwnerSocketIds = getAllUserSocketIds(comment.userId._id.toString());
+                    safeEmit(commentOwnerSocketIds, "comment_liked", {
+                        postId,
+                        commentId,
+                        parentCommentId: parentCommentId || null,
+                        userId,
+                        username,
+                        senderId: userId,
+                        senderName: username,
+                        senderAvatar: user?.avatarUrl
+                    });
+
+                    await emitBellBadge(comment.userId._id);
                 }
             }
         }
-        let stats = await userStats.findOne({ postId });
-        if (!stats) {
-            stats = await userStats.create({
-                postId: postId,
-                likes: [],
-                views: [],
-                commentLikes: [],
-                totalLikes: 0,
-                totalViews: 0
-            });
-        };
-        if (type === "likes") {
-            togglePostLike(stats, userId, username);
-        } else if (type === "views") {
-            const alreadyView = stats.views.some(v => v.userId.toString() === userId.toString());
-            if (!alreadyView) stats.views.push({ userId, username });
-            stats.totalViews = stats.views.length;
-        }
-        // else if (type === "commentLike") {
-        //     if (!commentId) throw new Error("commentId required for commentLike");
 
-        //     const existing = stats.commentLikes.find(cl => cl.commentId.toString() === commentId.toString() && cl.userId.toString() === userId.toString());
-        //     if (!existing) {
-        //         stats.commentLikes.push({ commentId, userId});
-        //     }
-        // }
-
-        // else if (type === "commentDislike") {
-        //     if (!commentId) throw new Error("commentId required for commentDislike");
-
-        //     const index = stats.commentLikes.findIndex(cl => cl.commentId.toString() === commentId.toString() && cl.userId.toString() === userId.toString());
-        //     if (index !== -1) {
-        //         stats.commentLikes.splice(index, 1);
-        //     }
-        // }
-        // else if(type == "commentReplyLike"){
-        //        if (!commentId || !parentCommentId) throw new Error("both commentId nd parentid required for commentLike");
-
-        //     const existing = stats.commentLikes.find(cl => cl.commentId.toString() === commentId.toString() && cl.userId.toString() === userId.toString());
-        //     if (!existing) {
-        //         stats.commentLikes.push({ commentId, userId,parentCommentId});
-        //     }
-        // }
-        //   else if(type == "commentReplyDisLike"){
-        //        if (!commentId || !parentCommentId) throw new Error("both commentId nd parentid required for commentLike");
-
-        //       const index = stats.commentLikes.findIndex(cl => cl.commentId.toString() === commentId.toString() && cl.userId.toString() === userId.toString());
-        //     if (index !== -1) {
-        //         stats.commentLikes.splice(index, 1);
-        //     }
-        // }
-
-        else if (type.startsWith("comment")) {
-            toggleCommentStats(stats, userId, commentId, parentCommentId);
-        }
         await stats.save();
         return stats;
 
     } catch (error) {
-        console.error("Error in addStats:", error);
-        throw new Error(error.message || "Failed to add stats");
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
-exports.getAllLikedUserService = async (postId, type) => {
+
+exports.getAllLikedUserService = async (postId, type, userId, commentId) => {
     try {
-        if (!postId) {
-            throw new Error("postId is undefined or null");
-        }
-        if (!type) {
-            throw new Error("type is required");
+        const isPostIdExist = await isPostExist(postId);
+        if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
+
+        const blocked = await Block.find({
+            $or: [{ blocker: userId }, { blocked: userId }]
+        });
+
+        const blockedUserIds = (blocked || [])
+            .map(b => b.blocker.toString() === userId.toString() ? b.blocked : b.blocker)
+            .filter(Boolean);
+
+        let resultArr = [];
+
+        if (type === userActivityStats.userStats.Likes) {
+            const stats = await userStats.findOne({ postId }).select("likes");
+            if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+            resultArr = stats.likes;
+
+        } else if (type === userActivityStats.userStats.Views) {
+            const stats = await userStats.findOne({ postId }).select("views");
+            if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+            resultArr = stats.views;
+
+        } else if (type === userActivityStats.userStats.CommentLikes) {
+            if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
+
+            const stats = await userStats.findOne({ postId }).select("commentLikes");
+            if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+
+            const commentStat = stats.commentLikes.find(
+                c => c.commentId === commentId.toString()
+            );
+
+            if (!commentStat) return [];
+            const users = await User.find(
+                { _id: { $in: commentStat.userIds } },
+                "username avatarUrl currentCountry"
+            ).lean();
+
+            resultArr = users.map(u => ({ userId: u._id, ...u }));
+
+        } else {
+            throw createError(400, 'invalidType', 'validation');
         }
 
-        let stats;
+        resultArr = resultArr.filter(u =>
+            !blockedUserIds.some(bid => bid.toString() === u.userId.toString())
+        );
 
-        if (type === "like") {
-            stats = await userStats.findOne({ postId }).select("likes");
-        }
-        else if (type === "views") {
-            stats = await userStats.findOne({ postId }).select("views");
-        }
-        else {
-            throw new Error("Invalid type");
-        }
-
-        if (!stats) {
-            throw new Error("No stats found for this post");
-        }
-        return type === "like" ? stats.likes : stats.views;
+        return resultArr;
 
     } catch (error) {
-        console.error("Error in getAllLikedUserService:", error);
-        throw new Error(error.message || "Failed to get Users");
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
     }
 };
 
+
+exports.getBadgeCountsService = async (userId) => {
+    try {
+        if (!userId) throw createError(400, 'missingFields', 'validation');
+
+        const user = await isUserExist(userId);
+        if (!user) throw createError(404, 'userNotFound', 'notFound');
+
+        const [conversations, notificationUnread] = await Promise.all([
+            Conversation.find({
+                participants: new mongoose.Types.ObjectId(userId)
+            }).select('unseenCount'),
+
+            Notification.countDocuments({
+                user: userId,
+                isRead: false
+            })
+        ]);
+
+        const chatUnread = conversations.reduce((total, conv) => {
+            const entry = conv.unseenCount.find(
+                u => u.userId.toString() === userId.toString()
+            );
+            return total + (entry?.count || 0);
+        }, 0);
+
+        return { chatUnread, notificationUnread };
+
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};

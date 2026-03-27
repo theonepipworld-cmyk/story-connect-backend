@@ -6,3 +6,6 @@ node_modules/
 
 # Logs
 *.log
+
+#FIREBASE
+story-connect-c35dc-firebase-adminsdk-fbsvc-f40a5a7783.json

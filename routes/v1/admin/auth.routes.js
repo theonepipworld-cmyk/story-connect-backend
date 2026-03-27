@@ -1,0 +1,19 @@
+const express = require('express')
+const router = express.Router()
+const authController = require("../../../controllers/v1/admin/auth.controller.js")
+const { isAuthenticated } = require('../../../middlewares/requestValidations/user/isAuthenticated.js');
+const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
+
+const {
+    loginValidator, forgotPasswordValidator, resetPasswordValidator
+} = require("../../../middlewares/requestValidations/user/commonAuth.middleware.js")
+
+//Authentication
+
+router.post('/login', loginValidator, authController.adminlogin);
+router.post('/forgot-password', forgotPasswordValidator, authController.forgotPassword);
+router.post('/reset-password', resetPasswordValidator, authController.resetPassword);
+//router.get('/reset-password/:token', authController.renderPasswordSubmitPage);
+// router.post('/google', authController.googleAuth);
+
+module.exports = router;

@@ -6,7 +6,7 @@ const { isAuthenticated } = require('../../../middlewares/requestValidations/use
 const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
 
 
-router.get('/', isAuthenticated, authorizeRoles('user','admin'), profileController.getProfile);
+router.get('/', isAuthenticated, authorizeRoles('user', 'admin'), profileController.getProfile);
 router.put(
   '/',
   avatarUpload,
@@ -14,9 +14,12 @@ router.put(
   updateProfileValidator,
   profileController.updateProfile
 );
+router.get('/otherprofile/:userId', isAuthenticated, authorizeRoles('user', 'admin'), profileController.getOtherProfile);
+router.get('/search',isAuthenticated,authorizeRoles('user', 'admin'), profileController.getSearchUser);
 
 // Soft delete user profile (deactivate)
 router.delete('/', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);
+router.post("/update-lang", isAuthenticated, authorizeRoles('user'), profileController.changeLanguage)
 
 
 module.exports = router;

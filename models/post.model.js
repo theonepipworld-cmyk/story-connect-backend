@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const postSchema = new mongoose.Schema(
   {
     userId: {
@@ -21,9 +20,8 @@ const postSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    postFor: {
+    postType: {
       type: String,
-      trim: true,
     },
     mediaUrls: [
       {
@@ -45,7 +43,7 @@ const postSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["video", "image","both"],
+      enum: ["video","image","both"],
     },
     videoOfTheMonth: {
       type: Boolean,

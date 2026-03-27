@@ -5,17 +5,59 @@ module.exports = {
         createSuccessful: "create Sucessfully",
         getSuccessful: "get Sucessfully",
         deleteSuccessful: "delete Sucessfully",
-        addSuccessful: "added Sucessfully"
+        likeSuccessful: "likes Sucessfully",
+        viewSuccessfully: "viewed Successfully",
+        fetchSuccessfully: "fetch successfully",
+        joinSuccessfully: "User joined successfully",
+        sendReqSuccessfully: "friend Request Send Successfully",
+        acceptReqSuccessfully: "friend Request Accept Successfully",
+        rejectReqSuccessfully: "friend request rejected Successfully",
+        unFriendSuccessfully: "Unfriend user Successfully ",
+        blockedSuccessfully: "user block Successfully",
+        unBlockSuccessfully: "user unblock Successfully",
+        messageSeen: "message seen successfully",
+        messagedelivered: "message delivered successfully",
+        reportSuccessfully: "report user successfully",
+        messageSent: "message sent successfully",
+        seenSuccessfully: "seen successfully",
+        deviceTokenSaved: "Device token saved/updated successfully",
+        leaveMember: "user leave the community successfully",
+        cancelReqSuccessfully:"friend Req cancel successfully"
     },
+
+    notifications: {
+        acceptedFriendReq: "Accepted your friend request",
+        rejectedFriendReq: "Rejected your friend request",
+        sendFriendReq: "Send you friend request",
+        likedPost: "Liked your post",
+        comment: "Commented on your post",
+        commentLike:" Liked your comment"
+    },
+
     notFound: {
         emailNotFound: "Email not found",
         postNotFound: "post not found",
         userNotFound: "User not found",
-        deleteSuccessful: "delete successfully"
-
+        ReqUser: "User which we requesting frined not found",
+        commentNotFound: "Comment not found",
+        communityNotFound: "community not found",
+        communityCategoryNotFound: "community category not found",
+        memberNotFound: "member not found",
+        userOrFriendIdNotFound: "either friend or user id is missing",
+        noFriendFound: "no Friend found",
+        noMutualFriend: "No mutual friend",
+        noTrendingTags: "No trending Tags found",
+        noBlockUser: "no Block profiles found",
+        userNotBlocked: "user is not blocked ",
+        receiverNotPart: "receiver not part of conversationId.",
+        noNotifciationFound: " Notifications not found",
+        faqIdNotFound:"faq id is not found",
+        faqNotFound:"faq not found"
     },
     validation: {
         missingFields: "Missing required fields",
+        invalidUsername: "invalid username field",
+        invalidBio: "invalid bio",
         incorrectPassword: "Incorrect Password.",
         emailAlreadyExist: "This email is already in use.",
         passwordsDoNotMatch: "Confirm password must be the same as the password",
@@ -26,27 +68,80 @@ module.exports = {
         authTokenMissing: "Authorization token missing",
         invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
         typeError: "Type must be either 'video' or 'image'",
-        postForError: "Type must be either 'profile' or 'community'",
-        invalidFileType: "invalid type",
-        invalidOrExpiredToken: "Invalid or expired reset tokens",
-        usernameAlreadyExist: "username is already exists",
-        invalidEnum: "Invalid value. Please provide a valid option from the allowed values",
-        invalidYearFormat: "invalid year format"
+        invalidDateOfBirthFormat: "Invalid date format. Please use YYYY-MM-DD.",
+        categoryName: "category name is required for others",
+        professionName: "profession name is required for others",
+        invalidCategory: "category name is invalid",
+        invalidFileType: "invalid file Type",
+        alreadyCommunityMember: "user is already a community member",
+        invalidId: "invalidId",
+        invalidEnum: "invalid profession",
+        typeUserStatsError: "Type not defeined properly",
+        inValidRole: "role shuld be admin or user",
+        invalidFriendAction: "action must be accept or reject",
+        userBlocked: "user is blocked by you or you are blocked by user",
+        usernameAlreadyExist: "username is already exist",
+        userNotLikedorView: "user can not like and view the post as user is blocked or user blocked the post owner",
+        cannotMessageYourself: "you cant message to yourself",
+        invalidConversationId: "conversationId is invalid",
+        mediaorTextMissing: "either media or text is required to send message",
+        invalidSender: "senderId is invalid",
+        invalidReceiver: "receiverId is invalid",
+        cannotReportSelf: "you can report yourself",
+        invalidType: "Inavlid type",
+        idIsSame: "User cannot respond to their own friend request.",
+        ownerCantRemove: "owner can not remove himself",
+        invalidMessageId: " last message id is invalid",
+        duplicateCommunityName: "Community with this name already exists",
+        AlreadyExist:"Community name already exists",
+        CategoryRequired:"Category name is required",
+        InvalidPushNotification :"Invalid push notification status",
+        invalidType:"invalid type",
+        reportIdRequired:"report ID is required",
+        faqAlreadyExists:"faq already exit.",
+        missingFaqFields:"either title or content is missing",
+        invalidFaqStatus:"invalid faq status",
+        notFound:"user not found"
+
     },
     auth: {
         unauthorizedAccess: "Unauthorized access",
         invalidToken: "Invalid token",
     },
-    serverError: {
+    
+    error: {
         internalError: "Internal server error",
         processingError: "Error while processing request",
-        limitExccessedError: "You can upload up to 5 media files only."
+        limitExccessedError: "You can upload up to 5 media files only.",
+        serverError:"Something went wrong",
+        
     },
     generalError: {
         somethingWentWrong: "Something went wrong. Please try again later.",
         idMissMatch: "Id miss-matched.",
         calledFunctionError: "Getting error from called Function",
-        uploading: "Error uploading file"
+        uploading: "Error uploading file",
+        processingError:"procession error"
 
     },
+    customError: {
+        commentError: "commentId required for comment actions",
+        parentCommentIdInvalid: "parentComment is invalid",
+        commentIdNotMatch: "commentId not match .",
+        NotAuthorized: "user not have authorized to delete or update",
+        NotAuthorizedRemove: "user dont have authorization to remove the member",
+        ownerNotRemove: "owner cant remove from Community",
+        commentNotDeleted: "comment not deleted because of not found record of the id's",
+        noUserStatsFound: "No user-stats found",
+        notFound: "no  comments found",
+        friendReqSent: "friend Request already Sent",
+        alreadyFriend: "you are already a friend",
+        alreadyRejected: "friendReq already rejected",
+        notSendReqYourself: "you cant send a request to yourself",
+        noPendingReq: "No pending Request",
+        noFriends: "No friends",
+        invalidConversation: "Invalid Conversation"
+    },
+
 };
+

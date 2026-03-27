@@ -1,0 +1,13 @@
+[
+  { "name": "nurse", "code": "NR", "icon": "nurse.png" },
+  { "name": "doctor", "code": "DR", "icon": "doctor.png" },
+  { "name": "scientist", "code": "SC", "icon": "scientist.png" },
+  { "name": "professor", "code": "PF", "icon": "professor.png" },
+  { "name": "artist", "code": "AR", "icon": "artist.png" },
+  { "name": "chef", "code": "CH", "icon": "chef.png" },
+  { "name": "manager", "code": "MG", "icon": "manager.png" },
+  { "name": "pilot", "code": "PL", "icon": "pilot.png" },
+  { "name": "firefighter", "code": "FF", "icon": "firefighter.png" },
+  { "name": "developer", "code": "DEV", "icon": "coding.png" },
+  { "name": "other", "code": "OTH", "icon": "other.png" }
+]

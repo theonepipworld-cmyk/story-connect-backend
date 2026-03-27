@@ -11,5 +11,4 @@ module.exports = {
   aws_s3_bucket_name:process.env.AWS_S3_BUCKET_NAME,
   aws_s3_region:process.env.AWS_S3_REGION,
   MONGO_URI: process.env.MONGO_URI,
-
 };

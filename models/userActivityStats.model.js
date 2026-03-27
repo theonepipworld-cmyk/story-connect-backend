@@ -12,7 +12,9 @@ const userActivityStatsSchema = new mongoose.Schema({
         {
             _id: false,
             userId: String,
-            userName: String
+            userName: String,
+            avatarUrl:String,
+            currentCountryCode: String
         }
     ],
     views: [

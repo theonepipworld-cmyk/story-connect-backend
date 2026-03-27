@@ -46,28 +46,28 @@ const signupValidator = [
 
 
   // Phone number
-  check("phone")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: phone`)
-    .matches(phoneRegex).withMessage(resMessages.validation.invalidPhoneNumber),
+  // check("phone")
+  //   .notEmpty().withMessage(`${resMessages.validation.missingFields}: phone`)
+  //   .matches(phoneRegex).withMessage(resMessages.validation.invalidPhoneNumber),
 
   // Date of birth
-  check("dateOfBirth")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: dateOfBirth`)
-    .custom(value => {
-      if (!dateRegex.test(value)) {
-        throw new Error(resMessages.validation.invalidDateOfBirthFormat);
-      }
-      const dob = new Date(value);
-      if (isNaN(dob.getTime())) {
-        throw new Error(resMessages.validation.invalidDateOfBirth);
-      }
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (dob > today) {
-        throw new Error(resMessages.validation.invalidDateOfBirth);
-      }
-      return true;
-    }),
+  // check("dateOfBirth")
+  //   .notEmpty().withMessage(`${resMessages.validation.missingFields}: dateOfBirth`)
+  //   .custom(value => {
+  //     if (!dateRegex.test(value)) {
+  //       throw new Error(resMessages.validation.invalidDateOfBirthFormat);
+  //     }
+  //     const dob = new Date(value);
+  //     if (isNaN(dob.getTime())) {
+  //       throw new Error(resMessages.validation.invalidDateOfBirth);
+  //     }
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0);
+  //     if (dob > today) {
+  //       throw new Error(resMessages.validation.invalidDateOfBirth);
+  //     }
+  //     return true;
+  //   }),
 
   validate
 ];
@@ -82,22 +82,10 @@ const forgotPasswordValidator = [
 
 
 const resetPasswordValidator = [
-  check("token")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: token`),
-
   check("newPassword")
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: newPassword`)
     .isLength({ min: 6 })
     .withMessage(resMessages.validation.passwordTooShort),
-
-  check("confirmPassword")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: confirmPassword`)
-    .custom((value, { req }) => {
-      if (value !== req.body.newPassword) {
-        throw new Error(resMessages.validation.passwordsDoNotMatch);
-      }
-      return true;
-    }),
   validate
 ];
 
