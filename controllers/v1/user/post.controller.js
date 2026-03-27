@@ -11,6 +11,7 @@ exports.createPost = async (req, res) => {
   try {
 
     req.body.userId = req.user.id;
+    console.log("mediaUrls-----------------", req.files)
     const mediaUrls = req.files?.length
       ? req.files.map((f) => f.location)
       : [];
@@ -27,6 +28,7 @@ exports.createPost = async (req, res) => {
       : [];
 
     const { hashTags: _, ...restBody } = req.body;
+
     const postData = { ...restBody, mediaUrls, hashtags: cleanHashtags };
 
     const post = await postService.createPost(postData, cleanHashtags);
