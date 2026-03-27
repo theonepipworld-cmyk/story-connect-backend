@@ -442,7 +442,7 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
 };
 
 
-exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
+exports.getCommunityDetailService = async (communityId, userId) => {
     if (!userId) throw createError(404, 'userNotFound', 'notFound');
 
     try {
@@ -450,6 +450,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
         const community = await isCommunityExist(communityId);
+        if (!community) throw createError(404, 'communityNotFound', 'notFound');
 
         const blocked = await Block.findOne({
             $or: [
@@ -459,106 +460,119 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
         });
         if (blocked) throw createError(403, 'userBlocked', 'validation');
 
-        const allFriends = await getAllFriends(user._id);
-        const allFriendIds = allFriends.map(f => f._id.toString());
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        const communityObjectId = new mongoose.Types.ObjectId(communityId);
 
-        const pendingRequests = await Friend.find({
-            status: enums.friend_Request_status.PENDING,
-            $or: [{ requester: user._id }, { recipient: user._id }]
-        });
-
-        const pendingUserIds = pendingRequests.map(req =>
-            req.requester._id.toString() === user._id.toString() ? req.recipient : req.requester
-        );
-
-        const offset = (page - 1) * limit;
-
-        const result = await Post.aggregate([
-            { $match: { communityId: new mongoose.Types.ObjectId(communityId) } },
+        const result = await Community.aggregate([
+            { $match: { _id: communityObjectId } },
             {
-                $facet: {
-                    paginatedResults: [
-                        { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userInfo" } },
-                        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-                        { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
-                        { $unwind: { path: "$stats", preserveNullAndEmptyArrays: true } },
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "userInfo"
+                }
+            },
+            { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "communitycategories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "categoryInfo"
+                }
+            },
+            { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
                         {
-                            $addFields: {
-                                totalLikes: { $ifNull: ["$stats.totalLikes", 0] },
-                                totalViews: { $ifNull: ["$stats.totalViews", 0] },
-                                isPostLikedByMe: {
-                                    $anyElementTrue: {
-                                        $map: {
-                                            input: { $ifNull: ["$stats.likes", []] },
-                                            as: "like",
-                                            in: { $eq: ["$$like.userId", { $toString: user._id }] }
-                                        }
-                                    }
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$communityId", "$$communityIdObj"] },
+                                        { $eq: ["$userId", userObjectId] }
+                                    ]
                                 }
                             }
-                        },
-                        { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
-                        { $addFields: { totalComments: { $size: "$comments" } } },
+                        }
+                    ],
+                    as: "joinedInfo"
+                }
+            },
+            {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
+                        { $sort: { createdAt: -1 } },
+                        { $limit: 3 },
                         {
-                            $addFields: {
-                                isFriend: {
-                                    $in: ["$userId", allFriendIds.map(id => new mongoose.Types.ObjectId(id))]
-                                },
-                                isPendingRequest: {
-                                    $in: ["$userId", pendingUserIds.map(id => new mongoose.Types.ObjectId(id))]
-                                }
+                            $lookup: {
+                                from: "users",
+                                localField: "userId",
+                                foreignField: "_id",
+                                as: "userInfo"
                             }
                         },
-                        // ✅ same transform as other post services
-                        mediaTransformStage,
+                        { $unwind: "$userInfo" },
                         {
                             $project: {
-                                _id: 1,
-                                postHeading: 1,
-                                postDescription: 1,
-                                mediaUrls: 1,
-                                thumbnails: 1, // ✅
-                                hashtags: 1,
-                                communityId: 1,
-                                type: 1,
-                                storyOfTheMonth: 1,
-                                videoOfTheMonth: 1,
-                                createdAt: 1,
-                                updatedAt: 1,
+                                _id: 0,
                                 "userInfo._id": 1,
-                                "userInfo.username": 1,
-                                "userInfo.email": 1,
                                 "userInfo.avatarUrl": 1,
-                                "userInfo.currentCountry": 1,
-                                totalLikes: 1,
-                                totalViews: 1,
-                                totalComments: 1,
-                                isPostLikedByMe: 1,
-                                isFriend: 1,
-                                isPendingRequest: 1
+                                "userInfo.username": 1
                             }
-                        },
-                        { $sort: { createdAt: -1 } },
-                        { $skip: offset },
-                        { $limit: limit }
+                        }
                     ],
-                    totalCount: [{ $count: "count" }]
+                    as: "membersPreview"
+                }
+            },
+            {
+                $lookup: {
+                    from: "communitymembers",
+                    let: { communityIdObj: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$communityId", "$$communityIdObj"] } } },
+                        { $count: "count" }
+                    ],
+                    as: "memberData"
+                }
+            },
+            {
+                $addFields: {
+                    memberCount: { $ifNull: [{ $arrayElemAt: ["$memberData.count", 0] }, 0] },
+                    isJoinedByMe: { $gt: [{ $size: { $ifNull: ["$joinedInfo", []] } }, 0] },
+                    isOwner: { $eq: ["$userId", userObjectId] }
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    description: 1,
+                    coverImage: 1,
+                    isActive: 1,
+                    manualCategoryName: 1,
+                    memberCount: 1,
+                    "userInfo._id": 1,
+                    "userInfo.username": 1,
+                    "userInfo.email": 1,
+                    "userInfo.avatarUrl": 1,
+                    "userInfo.currentCountry": 1,
+                    "categoryInfo.name": 1,
+                    "categoryInfo._id": 1,
+                    isJoinedByMe: 1,
+                    isOwner: 1,
+                    membersPreview: 1,
+                    createdAt: 1
                 }
             }
         ]);
 
-        const communityPost = result[0]?.paginatedResults || [];
-        const total = result[0]?.totalCount[0]?.count || 0;
-
-        return {
-            communityPost,
-            pagination: {
-                total,
-                totalPages: Math.ceil(total / limit),
-                currentPage: page,
-                limit
-            }
-        };
+        return result[0] || null;
 
     } catch (error) {
         if (error.statusCode) throw error;
@@ -709,23 +723,9 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
             {
                 $facet: {
                     paginatedResults: [
-                        {
-                            $lookup: {
-                                from: "users",
-                                localField: "userId",
-                                foreignField: "_id",
-                                as: "userInfo"
-                            }
-                        },
+                        { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userInfo" } },
                         { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-                        {
-                            $lookup: {
-                                from: "userstats",
-                                localField: "_id",
-                                foreignField: "postId",
-                                as: "stats"
-                            }
-                        },
+                        { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
                         { $unwind: { path: "$stats", preserveNullAndEmptyArrays: true } },
                         {
                             $addFields: {
@@ -742,14 +742,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 }
                             }
                         },
-                        {
-                            $lookup: {
-                                from: "comments",
-                                localField: "_id",
-                                foreignField: "postId",
-                                as: "comments"
-                            }
-                        },
+                        { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
                         { $addFields: { totalComments: { $size: "$comments" } } },
                         {
                             $addFields: {
@@ -761,12 +754,15 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 }
                             }
                         },
+                        // ✅ same transform as other post services
+                        mediaTransformStage,
                         {
                             $project: {
                                 _id: 1,
                                 postHeading: 1,
                                 postDescription: 1,
                                 mediaUrls: 1,
+                                thumbnails: 1, // ✅
                                 hashtags: 1,
                                 communityId: 1,
                                 type: 1,
