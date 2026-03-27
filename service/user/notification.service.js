@@ -8,7 +8,7 @@ const enums = require("../../constants/enum.constants.js")
 const Block = require("../../models/block.model");
 const { getIo, getAllUserSocketIds } = require("../../socket");
 const Notification = require("../../models/notification.model.js");
-
+const Post = require("../../models/post.model.js")
 
 exports.getUserNotificationService = async (userId) => {
     try {
@@ -20,17 +20,39 @@ exports.getUserNotificationService = async (userId) => {
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
 
-        const result = await Notification.find({
+        const notifications = await Notification.find({
             user: user._id,
             createdAt: { $gte: lastMonth }
         })
             .populate("sender", "username avatarUrl currentCountry")
-            .populate("postId", "mediaUrls")
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const postIds = notifications
+            .map((item) => item.postId)
+            .filter(Boolean);
+
+        const posts = await Post.collection
+            .find({ _id: { $in: postIds } })
+            .project({ mediaUrls: 1 })
+            .toArray();
+
+        const postMap = {};
+        posts.forEach((post) => {
+            postMap[post._id.toString()] = post;
+        });
+
+        const result = notifications.map((item) => ({
+            ...item,
+            postId: item.postId
+                ? postMap[item.postId.toString()] || null
+                : null
+        }));
 
         return result;
 
     } catch (error) {
+        console.log(error)
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }

@@ -89,7 +89,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
-
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
 
