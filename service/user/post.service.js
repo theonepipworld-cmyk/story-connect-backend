@@ -39,7 +39,7 @@ const mediaTransformStage = {
         as: "media",
         in: {
           $cond: {
-     
+
             if: { $eq: [{ $type: "$$media" }, "object"] },
             then: "$$media.url",
             else: "$$media"
@@ -371,11 +371,11 @@ exports.updatePost = async (id, updateData, userId) => {
     }
 
     if (updateData.mediaUrls && Array.isArray(updateData.mediaUrls)) {
-  
+
       const oldUrls = (isPostIdExist.mediaUrls || []).map((m) =>
         typeof m === "string" ? m : m.url
       );
-      
+
       const newUrls = updateData.mediaUrls.map((m) =>
         typeof m === "string" ? m : m.url
       );
@@ -691,9 +691,13 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
     const skip = (page - 1) * limit;
 
+    // ✅ search ya hashtag ho toh $sample skip karo
+    const isSearching = !!(search || hashtagSearch);
+
     const result = await Post.aggregate([
       { $match: baseMatch },
-      { $sample: { size: SAMPLE_POOL_SIZE } },
+      // ✅ sirf explore/feed pe random sample, search pe nahi
+      ...(isSearching ? [] : [{ $sample: { size: SAMPLE_POOL_SIZE } }]),
       {
         $facet: {
           data: [
@@ -753,7 +757,6 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                 isPendingRequest: { $in: ["$userId", pendingUserIds.map((id) => new mongoose.Types.ObjectId(id))] },
               },
             },
-         
             mediaTransformStage,
             {
               $project: {

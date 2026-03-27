@@ -170,7 +170,7 @@ exports.getAllPost = async (req, res) => {
     const lang = getLang(req);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || "";
+    const search = decodeURIComponent(req.query.search || "");
     let textSearch = search;
     let hashtagSearch = null;
 
