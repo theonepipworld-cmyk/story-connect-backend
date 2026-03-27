@@ -94,6 +94,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                                 postId: postId.toString(),
                                 commentId: comment._id.toString(),
                                 senderId: userId.toString(),
+                                avatarUrl:userId.avatarUrl,
                                 parentCommentId: parentCommentId ? parentCommentId.toString() : ""
                             }
                         );

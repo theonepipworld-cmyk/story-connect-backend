@@ -262,7 +262,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
-                senderId: senderId.toString()
+                senderId: senderId.toString(),
+                senderImage: sender.avatarUrl?.toString(),
             });
         }
 
@@ -292,7 +293,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
                 await sendPushNotification(receiver, `Sent a ${fileType}`, {
                     conversationId: conversation._id.toString(),
-                    senderId: senderId.toString()
+                    senderId: senderId.toString(),
+                    senderImage: sender.avatarUrl?.toString(),
                 });
             }
         }
