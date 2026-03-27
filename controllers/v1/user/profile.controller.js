@@ -78,9 +78,9 @@ exports.getOtherProfile = async (req, res) => {
     const lang = getLang(req);
     const otherUserId = req.params.userId;
     const { user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId,
-      lastMessageId, isBlockedByMe, isBlockedByOther } =
+      lastMessageId, isBlockedByMe, isBlockedByOther, iSentRequest, requestSentBy } =
       await profileService.getOtherProfileService(otherUserId, req.user.id);
-    const data = { ...user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId, lastMessageId ,isBlockedByMe, isBlockedByOther  };
+    const data = { ...user, totalFriends, mutualFriendsCount, isThisUserFriend, isreqPending, conversationId, lastMessageId, isBlockedByMe, isBlockedByOther, iSentRequest, requestSentBy };
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'getSuccessful'), data));
   } catch (err) {
 

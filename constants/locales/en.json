@@ -25,8 +25,9 @@
     "removeSuccessfully": "Removed successfully.",
     "ResetLink": "Password reset link sent to your email.",
     "userUnsuspended": "User unsuspended successfully",
-    "ResetPassword":"password reset successfully",
-    "registrationSuccessful":"Registration successful."
+    "ResetPassword": "password reset successfully",
+    "registrationSuccessful": "Registration successful.",
+    "leaveMember": "user leave the community successfully"
   },
   "notifications": {
     "acceptedFriendReq": "accepted your friend request.",
