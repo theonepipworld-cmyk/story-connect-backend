@@ -284,7 +284,11 @@ exports.getPostById = async (id, userId) => {
         { blocker: userId, blocked: post.userId },
       ],
     });
-    if (isBlocked) throw createError(403, "userBlocked", "validation");
+    
+    if (isBlocked) {
+      const blockedByThem = isBlocked.blocker.toString() === post.userId.toString();
+      throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
+    }
 
     const result = await Post.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
@@ -691,12 +695,11 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
     const skip = (page - 1) * limit;
 
-    // ✅ search ya hashtag ho toh $sample skip karo
+
     const isSearching = !!(search || hashtagSearch);
 
     const result = await Post.aggregate([
       { $match: baseMatch },
-      // ✅ sirf explore/feed pe random sample, search pe nahi
       ...(isSearching ? [] : [{ $sample: { size: SAMPLE_POOL_SIZE } }]),
       {
         $facet: {

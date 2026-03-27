@@ -163,7 +163,7 @@ exports.sendFriendReqService = async (userId, friendReqId, lang = 'en') => {
 
         if (!newFriendDoc) throw createError(500, "serverError", "error");
 
-      
+
         const notifMessage = getMessage(lang, 'notifications', 'sendFriendReq');
 
         emitToUser(friendReqId.toString(), "friend_request_received", {
@@ -237,7 +237,10 @@ exports.respondFriendReqService = async (userId, friendReqId, action, lang = 'en
         ]);
 
         if (!existing) throw createError(404, "noFriendFound", "notFound");
-        if (isBlocked) throw createError(403, "userBlocked", "validation");
+        if (isBlocked) {
+            const blockedByThem = isBlocked.blocker.toString() === friendReqId.toString();
+            throw createError(403, blockedByThem ? "youHaveBeenBlocked" : "youHaveBlockedThisUser", "validation");
+        }
 
         if (existing.status === enums.friend_Request_status.ACCEPTED) {
             throw createError(400, "alreadyFriend", "customError");
@@ -257,11 +260,10 @@ exports.respondFriendReqService = async (userId, friendReqId, action, lang = 'en
         await existing.save();
 
         const isAccepted = existing.status === enums.friend_Request_status.ACCEPTED;
-        const notifMessage = `${user.username} ${
-            isAccepted
+        const notifMessage = `${user.username} ${isAccepted
                 ? getMessage(lang, 'notifications', 'acceptedFriendReq')
                 : getMessage(lang, 'notifications', 'rejectedFriendReq')
-        }`;
+            }`;
         const notifType = isAccepted
             ? enums.notification_Types.FRIEND_REQUEST_ACCEPTED
             : enums.notification_Types.FRIEND_REQUEST_REJECTED;

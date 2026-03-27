@@ -176,7 +176,8 @@ exports.getAllPost = async (req, res) => {
 
     if (search && search.startsWith("#")) {
       hashtagSearch = search.replace("#", "").trim();
-      textSearch = null;
+      console.log(hashtagSearch)
+      textSearch = "";
     }
     const { data, pagination } = await postService.getAllPostService(textSearch, page, limit, req.user?.id, hashtagSearch);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));

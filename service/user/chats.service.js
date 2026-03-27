@@ -77,6 +77,15 @@ const validateMessageAction = async (conversationId, messageId, userId) => {
 };
 
 
+// Helper: map uploaded files to mediaUrls schema shape
+const mapFilesToMediaUrls = (files) => {
+    return files.map(file => ({
+        url: file.location,
+        thumbnailUrl: file.thumbnailUrl ?? null,
+        mediaType: file.mimetype.startsWith("image/") ? "image"
+            : file.mimetype.startsWith("video/") ? "video" : "file"
+    }));
+};
 
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
@@ -208,18 +217,14 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         const messages = [];
 
 
+        // Case 1: text + files together → type "post"
         if (messageText && Array.isArray(files) && files.length > 0) {
-            const uploadedFiles = files.map(file => ({
-                url: file.location,
-                mimeType: file.mimetype
-            }));
-
             const savedMessage = await new Message({
                 conversationId: conversation._id,
                 sender: senderId,
                 text: messageText,
                 type: "post",
-                files: uploadedFiles,
+                mediaUrls: mapFilesToMediaUrls(files),
                 status: messageStatus
             }).save();
 
@@ -241,6 +246,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         }
 
 
+        // Case 2: text only → type "text"
         if (messageText && (!files || files.length === 0)) {
             const savedMessage = await new Message({
                 conversationId: conversation._id,
@@ -261,10 +267,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         }
 
 
+        // Case 3: files only → one message per file
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
-                const fileType = file.mimetype.startsWith("image/")
-                    ? "image"
+                const fileType = file.mimetype.startsWith("image/") ? "image"
                     : file.mimetype.startsWith("video/") ? "video" : "file";
 
                 const savedMessage = await new Message({
@@ -272,6 +278,11 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     sender: senderId,
                     text: file.location,
                     type: fileType,
+                    mediaUrls: [{
+                        url: file.location,
+                        thumbnailUrl: file.thumbnailUrl ?? null,
+                        mediaType: fileType
+                    }],
                     status: messageStatus
                 }).save();
 
@@ -522,8 +533,6 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             throw createError(403, 'receiverNotPart', 'notFound');
         }
 
-        // Mark messages as seen first. If nothing matched, do not clear unseenCount
-        // and do not emit "seen" events (prevents ghost unseenCount=0).
         const result = await Message.updateMany(
             { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
             { $set: { status: "seen" } }

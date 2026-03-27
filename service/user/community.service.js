@@ -458,7 +458,11 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-        if (blocked) throw createError(403, 'userBlocked', 'validation');
+        
+        if (blocked) {
+            const blockedByThem = blocked.blocker.toString() === community.userId.toString();
+            throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
+        }
 
         const userObjectId = new mongoose.Types.ObjectId(userId);
         const communityObjectId = new mongoose.Types.ObjectId(communityId);
@@ -702,6 +706,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
+        
         if (blocked) throw createError(403, 'userBlocked', 'validation');
 
         const allFriends = await getAllFriends(user._id);

@@ -62,7 +62,10 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             ]
         });
 
-        if (blocked) throw createError(403, 'userBlocked', 'validation');
+        if (blocked) {
+            const blockedByThem = blocked.blocker.toString() === post.userId.toString();
+            throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
+        }
 
         const comment = await Comment.create({
             userId,

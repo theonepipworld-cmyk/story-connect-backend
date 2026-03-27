@@ -120,7 +120,9 @@
     "registrationIncomplete": "Registration is incomplete. Please complete your registration.",
     "invalidOrExpiredToken": "Reset token is invalid or has expired.",
     "invalidLanguage": "invalid language code",
-    "sameUser": "You cannot view mutual friends with yourself"
+    "sameUser": "You cannot view mutual friends with yourself",
+    "youHaveBeenBlocked": "You have been blocked by this user",
+    "youHaveBlockedThisUser": "You have blocked this user"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",
