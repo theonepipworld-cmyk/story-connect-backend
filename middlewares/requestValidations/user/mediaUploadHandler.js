@@ -70,16 +70,28 @@ function createUploadHandler({
   folder,
   fieldName = "mediaUrls",
   maxFiles = 5,
+  fileSizeMB = 150,     
+  totalSizeMB = 600,       
 }) {
   const upload = multer({
     storage: new S3StreamStorage({ folder }),
     limits: {
       files: maxFiles,
-      fileSize: 150 * 1024 * 1024,
+      fileSize: (fileSizeMB + 1) * 1024 * 1024, 
     },
   }).array(fieldName, maxFiles);
 
   return function (req, res, next) {
+    
+    const contentLength = parseInt(req.headers["content-length"] || "0");
+    const totalLimitBytes = totalSizeMB * 1024 * 1024;
+
+    if (contentLength > totalLimitBytes) {
+      return res.status(400).json(
+        errorResponse(`Total upload size cannot exceed ${totalSizeMB}MB`)
+      );
+    }
+
     upload(req, res, function (err) {
       if (err instanceof multer.MulterError) {
         console.error("Multer error:", err);
@@ -90,9 +102,9 @@ function createUploadHandler({
             .json(errorResponse(resMessages.serverError.limitExccessedError));
         }
         if (err.code === "LIMIT_FILE_SIZE") {
-          return res
-            .status(400)
-            .json(errorResponse(resMessages.serverError.fileSizeError));
+          return res.status(400).json(
+            errorResponse(`Each file must be under ${fileSizeMB}MB`)
+          );
         }
         return res
           .status(400)
@@ -111,22 +123,30 @@ function createUploadHandler({
   };
 }
 
+
 const mediaUploadHandler = createUploadHandler({
   folder: "posts",
   fieldName: "mediaUrls",
   maxFiles: 5,
+  fileSizeMB: 150,
+  totalSizeMB: 750,
 });
+
 
 const chatUploadHandler = createUploadHandler({
   folder: "chats",
   fieldName: "mediaUrls",
   maxFiles: 5,
+  fileSizeMB: 150,
+  totalSizeMB: 750,
 });
 
 const reportUploadHandler = createUploadHandler({
   folder: "reports",
   fieldName: "mediaUrls",
   maxFiles: 5,
+  fileSizeMB: 150,
+  totalSizeMB: 750,
 });
 
 module.exports = {
