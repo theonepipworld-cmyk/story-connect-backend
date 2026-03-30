@@ -126,7 +126,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                 type: "new_comment",
                 title: user.username,
                 body: parentCommentId ? "Replied to your comment" : "Commented on your post",
-                avatar: user.avatarUrl || "/Avatar.svg",
+                avatar: user.avatarUrl,
                 href: `/posts/${postId}?commentId=${comment._id}${parentCommentId ? `&parentCommentId=${parentCommentId}` : ""}`,
 
                 postId: postId.toString(),
