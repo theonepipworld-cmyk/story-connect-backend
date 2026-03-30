@@ -11,7 +11,7 @@ exports.createPost = async (req, res) => {
   try {
 
     req.body.userId = req.user.id;
-    console.log("mediaUrls-----------------", req.files)
+    // console.log("mediaUrls-----------------", req.files)
     const mediaUrls = req.files?.length
       ? req.files.map((f) => f.location)
       : [];
@@ -64,7 +64,7 @@ exports.getUserFeedPosts = async (req, res) => {
 exports.getPostById = async (req, res) => {
   try {
     const lang = getLang(req);
-    console.log(req.user.id, "req.user")
+    console.log(req.user.id, "--req.user")
     const userId = req.user.id;
     const { post } = await postService.getPostById(req.params.id, userId);
     if (!post)

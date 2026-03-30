@@ -5,8 +5,8 @@ const { isAuthenticated } = require('../../../middlewares/requestValidations/use
 const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
 
 
-
 router.put("/add-highlighted-post", isAuthenticated, authorizeRoles('admin'), adminpostController.addStoryAndVideoOfMonth);
 router.put("/remove-highlighted-post", isAuthenticated, authorizeRoles('admin'), adminpostController.removeStoryAndVideoOfMonth);
 router.patch("/action-on-community/:communityId/:action", isAuthenticated, authorizeRoles('admin'), adminpostController.actionOnCommunityController);
+
 module.exports = router;

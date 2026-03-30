@@ -28,7 +28,7 @@ const uploadFileToS3 = async (file, folder = "") => {
         params: {
             Bucket: envVariables.aws_s3_bucket_name,
             Key: key,
-            Body: file.buffer,           
+            Body: file.buffer,
             ContentType: file.mimetype,
         },
         queueSize: 4,
