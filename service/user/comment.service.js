@@ -135,12 +135,12 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 
                 senderId: userId.toString(),
                 senderName: user.username,
-                senderAvatar: user.avatarUrl || "/Avatar.svg",
+                senderAvatar: user.avatarUrl ,
 
                 sender: {
                     _id: user._id,
                     username: user.username,
-                    avatarUrl: user.avatarUrl || "/Avatar.svg"
+                    avatarUrl: user.avatarUrl
                 }
             });
 
