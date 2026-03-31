@@ -14,6 +14,7 @@ const emitToUser = (userId, event, payload) => {
   try {
     const io = getIo();
     const socketIds = getAllUserSocketIds(userId.toString());
+    console.log(`Emitting event -------`,socketIds);
     socketIds.forEach((sid) => io.to(sid).emit(event, payload));
   } catch (err) {
     console.error(`Socket emit failed [${event}]:`, err?.message || err);
