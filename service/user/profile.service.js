@@ -200,27 +200,47 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             Block.findOne({ blocker: otherUserId, blocked: loginUserId })
         ]);
 
+        const isAccepted = friendship?.status === enums.friend_Request_status.ACCEPTED;
+        const isPending = friendship?.status === enums.friend_Request_status.PENDING;
+        const isRejected = friendship?.status === enums.friend_Request_status.REJECTED;
+
+        const isRequesterMe = friendship?.requester?.toString() === loginUserId.toString();
+  
         return {
             user,
             totalFriends,
             mutualFriendsCount,
-            isThisUserFriend: friendship?.status === enums.friend_Request_status.ACCEPTED,
-            isreqPending: friendship?.status === enums.friend_Request_status.PENDING,
+
+            isThisUserFriend: isAccepted,
+            isreqPending: isPending,
+            isRejected: isRejected,
+
             conversationId: conversation ? conversation._id : null,
             lastMessageId: conversation ? conversation.lastMessage : null,
+
             isBlockedByMe: !!blockByMe,
             isBlockedByOther: !!blockedByHim,
-            iSentRequest: friendship?.requester?.toString() === loginUserId.toString(),
+
+            //  ONLY true when pending AND sent by me
+            iSentRequest: isPending && isRequesterMe,
+
             requestSentBy: friendship ? {
                 _id: friendship.requester,
-                isMe: friendship.requester?.toString() === loginUserId.toString()
-            } : null
+                isMe: isRequesterMe
+            } : null,
+
+            //  OPTIONAL (very useful)
+            canSendRequest: !friendship || isRejected
         };
     } catch (error) {
         if (error.statusCode) throw error;
+        console.log(" error ----", error);
         throw createError(500, 'serverError', 'error');
     }
 };
+
+
+
 exports.searchUser = async (loginUserId, search) => {
     try {
         if (!search) return [];
