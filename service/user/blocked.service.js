@@ -6,6 +6,21 @@ const CommunityMember = require("../../models/communityMember.model.js");
 const enums = require("../../constants/enum.constants.js");
 const Block = require("../../models/block.model.js");
 const Community = require("../../models/community.model.js");
+const { getIo, getAllUserSocketIds } = require("../../socket");
+const { getMessage } = require("../../constants/locales/index.js");
+
+
+const emitToUser = (userId, event, payload) => {
+  try {
+    const io = getIo();
+    const socketIds = getAllUserSocketIds(userId.toString());
+    socketIds.forEach((sid) => io.to(sid).emit(event, payload));
+  } catch (err) {
+    console.error(`Socket emit failed [${event}]:`, err?.message || err);
+  }
+};
+
+
 
 exports.blockUserService = async (userId, blockUserId) => {
   try {
@@ -40,6 +55,11 @@ exports.blockUserService = async (userId, blockUserId) => {
           userId
         })
       ]);
+
+      emitToUser(blockUserId.toString(), "user_blocked", {
+        blockedBy: userId,
+        message: "You have been blocked"
+      });
     }
 
     return result;
@@ -60,6 +80,11 @@ exports.unblockUserService = async (userId, unblockUserId) => {
     if (!isBlocked) throw createError(404, 'userNotBlocked', 'notFound');
 
     const result = await Block.deleteOne({ blocker: userId, blocked: unblockUserId });
+
+    emitToUser(unblockUserId.toString(), "user_unblocked", {
+      unblockedBy: userId,
+      message: "You have been unblocked"
+    });
 
     return result;
   } catch (error) {
