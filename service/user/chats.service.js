@@ -13,6 +13,7 @@ const pushNotification = require("../../utils/pushNotification.js");
 
 const emitToUser = (userId, event, payload) => {
     const io = getIo();
+    console.log("Emitting event -------", getAllUserSocketIds(userId.toString()));
     getAllUserSocketIds(userId.toString()).forEach(sid => {
         io.to(sid).emit(event, payload);
     });
@@ -229,8 +230,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }).save();
 
             messages.push(savedMessage);
-            emitNewMessage(savedMessage);
             updateConversationState(savedMessage);
+            emitNewMessage(savedMessage);
+            
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
@@ -257,8 +259,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }).save();
 
             messages.push(savedMessage);
-            emitNewMessage(savedMessage);
             updateConversationState(savedMessage);
+            emitNewMessage(savedMessage);
+            
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
@@ -288,8 +291,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 }).save();
 
                 messages.push(savedMessage);
-                emitNewMessage(savedMessage);
                 updateConversationState(savedMessage);
+                emitNewMessage(savedMessage);
+                
 
                 await sendPushNotification(receiver, `Sent a ${fileType}`, {
                     conversationId: conversation._id.toString(),
@@ -480,19 +484,28 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         ]);
 
         const totalPages = Math.ceil(totalMessages / limit);
-        await Promise.all([
-            Conversation.updateOne(
-                { _id: conversationId, "unseenCount.userId": userId },
-                { $set: { "unseenCount.$.count": 0 } },
-                { timestamps: false }
-            ),
-            Message.updateMany(
-                { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
-                { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
-            )
-        ]);
+        const hasUnread = await Message.exists({
+            conversationId,
+            sender: { $ne: userId },
+            status: { $ne: enums.messages_Status.SEEN }
+        });
+
+        if (hasUnread) {
+            await Promise.all([
+                Conversation.updateOne(
+                    { _id: conversationId, "unseenCount.userId": userId },
+                    { $set: { "unseenCount.$.count": 0 } },
+                    { timestamps: false }
+                ),
+                Message.updateMany(
+                    { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
+                    { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
+                )
+            ]);
+        }
 
         const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
+        console.log("senderId for seen update:----", senderId);
         if (senderId) {
             const conversationUpdate = {
                 conversationId: conversation._id.toString(),

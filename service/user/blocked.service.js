@@ -39,7 +39,7 @@ exports.blockUserService = async (userId, blockUserId) => {
         Community.find({ userId }),
         Community.find({ userId: blockUserId }),
 
-        Friend.findOneAndDelete({
+        Friend.deleteMany({
           $or: [
             { requester: userId, recipient: blockUserId },
             { requester: blockUserId, recipient: userId }
@@ -56,7 +56,7 @@ exports.blockUserService = async (userId, blockUserId) => {
           communityId: { $in: blockedCommunities.map(c => c._id) },
           userId
         }),
-         Notification.deleteMany({
+        Notification.deleteMany({
           $or: [
             { user: userId, sender: blockUserId },
             { user: blockUserId, sender: userId }
