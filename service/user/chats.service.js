@@ -515,6 +515,7 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             }
         };
     } catch (error) {
+        console.log("ERROR::", error);
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }

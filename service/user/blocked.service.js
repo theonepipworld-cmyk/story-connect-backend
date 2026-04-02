@@ -8,7 +8,7 @@ const Block = require("../../models/block.model.js");
 const Community = require("../../models/community.model.js");
 const { getIo, getAllUserSocketIds } = require("../../socket");
 const { getMessage } = require("../../constants/locales/index.js");
-const Nofication = require("../../models/notification.model.js");
+const Notification = require("../../models/notification.model.js");
 
 
 const emitToUser = (userId, event, payload) => {
