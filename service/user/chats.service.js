@@ -232,7 +232,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             messages.push(savedMessage);
             updateConversationState(savedMessage);
             emitNewMessage(savedMessage);
-            
+
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
@@ -261,7 +261,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             messages.push(savedMessage);
             updateConversationState(savedMessage);
             emitNewMessage(savedMessage);
-            
+
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
@@ -293,7 +293,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 messages.push(savedMessage);
                 updateConversationState(savedMessage);
                 emitNewMessage(savedMessage);
-                
+
 
                 await sendPushNotification(receiver, `Sent a ${fileType}`, {
                     conversationId: conversation._id.toString(),
@@ -506,15 +506,28 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 
         const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
         console.log("senderId for seen update:----", senderId);
-        if (senderId) {
-            const conversationUpdate = {
+        const conversationUpdate = {
+            conversationId: conversation._id.toString(),
+            lastMessageStatus: "seen",
+            unseenCount: 0
+        };
+        if (hasUnread && senderId) {
+            emitToUser(senderId.toString(), "messages_seen", {
+                conversationId,
+                seenBy: userId
+            });
+
+            emitToUser(senderId.toString(), "conversationUpdated", {
                 conversationId: conversation._id.toString(),
                 lastMessageStatus: "seen",
                 unseenCount: 0
-            };
-            emitToUser(senderId.toString(), "messages_seen", { conversationId, seenBy: userId });
-            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
-            emitToUser(userId.toString(), "conversationUpdated", conversationUpdate);
+            });
+
+            emitToUser(userId.toString(), "conversationUpdated", {
+                conversationId: conversation._id.toString(),
+                lastMessageStatus: "seen",
+                unseenCount: 0
+            });
         }
 
         return {
