@@ -5,7 +5,7 @@ const socketToUser = new Map(); // O(1) reverse lookup
 
 const { incrementHourlyActiveUser, decrementHourlyActiveUser } = require("./helpers/dbHelpers");
 const User = require("./models/user.model");
-const Conversation = require("./models/conversations.model");
+const conversationModel = require("./models/conversations.model");
 const mongoose = require("mongoose");
 
 
@@ -175,9 +175,9 @@ function isUserOnline(userId) {
 
 
 async function emitUserOnline(userId) {
-  const Conversation = require("./models/conversations.model");
+  console.log( " user id in online funciton ----", userId);
 
-  const conversations = await Conversation.find(
+  const conversations = await conversationModel.find(
     { participants: new mongoose.Types.ObjectId(userId) },
     { participants: 1 }
   );
@@ -206,14 +206,15 @@ async function emitUserOnline(userId) {
 
 
 async function emitUserOffline(userId) {
-  const Conversation = require("./models/conversations.model");
-
-  const conversations = await Conversation.find(
+console.log( " user id in offline funciton ----", userId);
+  const conversations = await conversationModel.find(
     { participants: new mongoose.Types.ObjectId(userId) },
     { participants: 1 }
   );
 
   const partnerIds = new Set();
+
+  console.log("partner ids offline-------", partnerIds);
 
   conversations.forEach(conv => {
     conv.participants.forEach(p => {
