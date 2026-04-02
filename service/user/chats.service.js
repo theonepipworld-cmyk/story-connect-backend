@@ -189,7 +189,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     });
                     getIo().to(sid).emit("conversationUpdated", {
                         ...conversationUpdate,
-                        unseenCount: currentUnseen + 1
+                        unseenCount: currentUnseen
                     });
                     getIo().to(sid).emit("badgeCountUpdate", {
                         chatUnread: currentUnseen + 1
