@@ -67,6 +67,9 @@ function initIo(server) {
         User.findByIdAndUpdate(userId, { isOnline: false }).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} is now offline (all devices disconnected)`);
+
+        emitUserOffline(userId);
+
       } else {
         console.log(`User ${userId} disconnected one device (remaining: ${onlineUsers.get(userId)?.size || 0})`);
       }
@@ -133,8 +136,6 @@ function initIo(server) {
         User.findByIdAndUpdate(userId, { isOnline: false }).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} fully disconnected (all devices gone)`);
-
-        emitUserOffline(userId);
 
       } else {
         console.log(`User ${userId} lost one connection (others still active)`);
