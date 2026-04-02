@@ -8,13 +8,14 @@ const Block = require("../../models/block.model.js");
 const Community = require("../../models/community.model.js");
 const { getIo, getAllUserSocketIds } = require("../../socket");
 const { getMessage } = require("../../constants/locales/index.js");
+const Nofication = require("../../models/notification.model.js");
 
 
 const emitToUser = (userId, event, payload) => {
   try {
     const io = getIo();
     const socketIds = getAllUserSocketIds(userId.toString());
-    console.log(`Emitting event -------`,socketIds);
+    console.log(`Emitting event -------`, socketIds);
     socketIds.forEach((sid) => io.to(sid).emit(event, payload));
   } catch (err) {
     console.error(`Socket emit failed [${event}]:`, err?.message || err);
@@ -54,6 +55,12 @@ exports.blockUserService = async (userId, blockUserId) => {
         CommunityMember.deleteMany({
           communityId: { $in: blockedCommunities.map(c => c._id) },
           userId
+        }),
+         Notification.deleteMany({
+          $or: [
+            { user: userId, sender: blockUserId },
+            { user: blockUserId, sender: userId }
+          ]
         })
       ]);
 
