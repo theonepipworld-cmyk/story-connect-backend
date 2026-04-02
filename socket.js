@@ -175,7 +175,7 @@ function isUserOnline(userId) {
 
 
 async function emitUserOnline(userId) {
-  console.log( " user id in online funciton ----", userId);
+  console.log(" user id in online funciton ----", userId);
 
   const conversations = await conversationModel.find(
     { participants: new mongoose.Types.ObjectId(userId) },
@@ -206,9 +206,9 @@ async function emitUserOnline(userId) {
 
 
 async function emitUserOffline(userId) {
-console.log( " user id in offline funciton ----", userId);
+  console.log(" user id in offline funciton ----", userId);
   const conversations = await conversationModel.find(
-    { participants: new mongoose.Types.ObjectId(userId) },
+    { participants: userId },
     { participants: 1 }
   );
 
