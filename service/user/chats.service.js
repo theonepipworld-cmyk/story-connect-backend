@@ -512,10 +512,10 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             unseenCount: 0
         };
         if (hasUnread && senderId) {
-            // emitToUser(senderId.toString(), "messages_seen", {
-            //     conversationId,
-            //     seenBy: userId
-            // });
+            emitToUser(senderId.toString(), "messages_seen", {
+                conversationId,
+                seenBy: userId
+            });
 
             emitToUser(senderId.toString(), "conversationUpdated", {
                 conversationId: conversation._id.toString(),
