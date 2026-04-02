@@ -86,8 +86,8 @@ function initIo(server) {
         ).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} logged out — token cleared & offline`);
+        emitUserOffline(userId);
 
-        
       } else {
         emitUserOffline(userId);
         console.log(`User ${userId} logged out from one device (others still active)`);
