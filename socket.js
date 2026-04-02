@@ -68,8 +68,6 @@ function initIo(server) {
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} is now offline (all devices disconnected)`);
 
-        emitUserOffline(userId);
-
       } else {
         console.log(`User ${userId} disconnected one device (remaining: ${onlineUsers.get(userId)?.size || 0})`);
       }
@@ -88,6 +86,8 @@ function initIo(server) {
         ).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} logged out — token cleared & offline`);
+
+        emitUserOffline(userId);
       } else {
         console.log(`User ${userId} logged out from one device (others still active)`);
       }
@@ -209,7 +209,7 @@ async function emitUserOnline(userId) {
 async function emitUserOffline(userId) {
   console.log(" user id in offline funciton ----", userId);
   const conversations = await conversationModel.find(
-    { participants: userId },
+    { participants: new mongoose.Types.ObjectId(userId) },
     { participants: 1 }
   );
 
