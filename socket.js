@@ -183,7 +183,7 @@ async function emitUserOnline(userId) {
   );
 
   const partnerIds = new Set();
-  console.log("partner ids online-------", partnerIds);
+  console.log("partner ids online-------", conversations);
 
   conversations.forEach(conv => {
     conv.participants.forEach(p => {
@@ -214,7 +214,7 @@ async function emitUserOffline(userId) {
 
   const partnerIds = new Set();
 
-  console.log("partner ids offline-------", partnerIds);
+  console.log("partner ids offline-------", conversations);
 
   conversations.forEach(conv => {
     conv.participants.forEach(p => {
