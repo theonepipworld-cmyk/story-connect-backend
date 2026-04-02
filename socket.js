@@ -5,6 +5,8 @@ const socketToUser = new Map(); // O(1) reverse lookup
 
 const { incrementHourlyActiveUser, decrementHourlyActiveUser } = require("./helpers/dbHelpers");
 const User = require("./models/user.model");
+const Conversation = require("./models/conversations.model");
+const mongoose = require("mongoose");
 
 
 function addUserSocket(userId, socketId) {
@@ -47,9 +49,13 @@ function initIo(server) {
         User.findByIdAndUpdate(userId, { isOnline: true }).catch(console.error);
         incrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} is now online (first device)`);
+
+        emitUserOnline(userId);
+
       } else {
         console.log(`User ${userId} connected from another device (total: ${onlineUsers.get(userId).size})`);
       }
+
     });
 
     socket.on("offline", (data) => {
@@ -127,6 +133,9 @@ function initIo(server) {
         User.findByIdAndUpdate(userId, { isOnline: false }).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} fully disconnected (all devices gone)`);
+
+        emitUserOffline(userId);
+
       } else {
         console.log(`User ${userId} lost one connection (others still active)`);
       }
@@ -161,6 +170,67 @@ function getAllUserSocketIds(userId) {
 function isUserOnline(userId) {
   const sockets = onlineUsers.get(userId.toString());
   return !!sockets && sockets.size > 0;
+}
+
+
+
+async function emitUserOnline(userId) {
+  const Conversation = require("./models/conversations.model");
+
+  const conversations = await Conversation.find(
+    { participants: new mongoose.Types.ObjectId(userId) },
+    { participants: 1 }
+  );
+
+  const partnerIds = new Set();
+  console.log("partner ids online-------", partnerIds);
+
+  conversations.forEach(conv => {
+    conv.participants.forEach(p => {
+      if (p.toString() !== userId) {
+        partnerIds.add(p.toString());
+      }
+    });
+  });
+
+  // 👉 emit to partners
+  partnerIds.forEach(partnerId => {
+    const sockets = getAllUserSocketIds(partnerId);
+
+    sockets.forEach(sid => {
+      io.to(sid).emit("user_online", { userId });
+    });
+  });
+}
+
+
+
+async function emitUserOffline(userId) {
+  const Conversation = require("./models/conversations.model");
+
+  const conversations = await Conversation.find(
+    { participants: new mongoose.Types.ObjectId(userId) },
+    { participants: 1 }
+  );
+
+  const partnerIds = new Set();
+
+  conversations.forEach(conv => {
+    conv.participants.forEach(p => {
+      if (p.toString() !== userId) {
+        partnerIds.add(p.toString());
+      }
+    });
+  });
+
+  // 👉 emit to partners
+  partnerIds.forEach(partnerId => {
+    const sockets = getAllUserSocketIds(partnerId);
+
+    sockets.forEach(sid => {
+      io.to(sid).emit("user_offline", { userId });
+    });
+  });
 }
 
 module.exports = { initIo, getIo, getOnlineUsers, getUserSocketId, getAllUserSocketIds, isUserOnline };
