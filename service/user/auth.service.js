@@ -5,6 +5,7 @@ const { checkFieldExists, createError } = require("../../helpers/dbHelpers.js");
 const resMessages = require('../../constants/resMessages.constants.js');
 const { sendEmail } = require('../../utils/email.util.js');
 const { RESET_PASS_LINK } = require("../../constants/variables.constants.js");
+const secretVariables = require("../../config/secretVariables.js");
 
 exports.signup = async (data) => {
   try {
@@ -99,7 +100,10 @@ exports.forgotPassword = async ({ email }) => {
       to: email,
       subject: 'Password Reset Request',
       template: 'reset-password',
-      context: { resetLink }
+      context: { 
+        resetLink,
+        FRONTEND_URL: secretVariables.frontend_base_url || 'http://localhost:3000'
+       }
     });
 
     return { message: 'ResetLink' };
