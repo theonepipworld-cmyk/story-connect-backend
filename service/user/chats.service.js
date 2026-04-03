@@ -544,8 +544,6 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 };
 
 
-
-
 // exports.seenMessageService = async (conversationId, loggedInUserId) => {
 //     try {
 //         if (!loggedInUserId) throw createError(400, 'userNotFound', 'notFound');
@@ -597,7 +595,6 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 //             unseenCount: 0
 //         };
 
-
 //         if (senderId) {
 //             emitToUser(senderId.toString(), "messages_seen", {
 //                 conversationId,
@@ -640,6 +637,8 @@ exports.seenMessageService = async (conversationId, loggedInUserId) => {
         if (!lastMsg || lastMsg.sender.toString() === loggedInUserId.toString()) {
             return { message: "No need to mark as seen" };
         }
+
+        console.log("Marking messages as seen for conversation:", conversationId, "by user:", loggedInUserId);
 
         // 🔥 2. Mark messages as seen
         const result = await Message.updateMany(
@@ -685,7 +684,8 @@ exports.seenMessageService = async (conversationId, loggedInUserId) => {
         if (senderId) {
             emitToUser(senderId.toString(), "messages_seen", {
                 conversationId,
-                seenBy: loggedInUserId
+                seenBy: loggedInUserId,
+                userId: senderId
             });
 
             emitToUser(senderId.toString(), "conversationUpdated", conversationUpdateForSender);
