@@ -50,7 +50,7 @@ exports.forgotPassword = async ({ email }) => {
             template: 'reset-password',
             context: { 
                 resetLink,
-                FRONTEND_URL: secretVariables.frontend_base_url || 'http://localhost:3000'
+               
              }
         });
         return { message: 'ResetLink' };

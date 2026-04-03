@@ -101,8 +101,7 @@ exports.forgotPassword = async ({ email }) => {
       subject: 'Password Reset Request',
       template: 'reset-password',
       context: { 
-        resetLink,
-        FRONTEND_URL: secretVariables.frontend_base_url || 'http://localhost:3000'
+        resetLink
        }
     });
 
