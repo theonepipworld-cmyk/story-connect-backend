@@ -490,19 +490,19 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             status: { $ne: enums.messages_Status.SEEN }
         });
 
-        if (hasUnread) {
-            await Promise.all([
-                Conversation.updateOne(
-                    { _id: conversationId, "unseenCount.userId": userId },
-                    { $set: { "unseenCount.$.count": 0 } },
-                    { timestamps: false }
-                ),
-                Message.updateMany(
-                    { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
-                    { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
-                )
-            ]);
-        }
+        // if (hasUnread) {
+        //     await Promise.all([
+        //         Conversation.updateOne(
+        //             { _id: conversationId, "unseenCount.userId": userId },
+        //             { $set: { "unseenCount.$.count": 0 } },
+        //             { timestamps: false }
+        //         ),
+        //         Message.updateMany(
+        //             { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
+        //             { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
+        //         )
+        //     ]);
+        // }
 
         const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
         console.log("senderId for seen update:----", senderId);
