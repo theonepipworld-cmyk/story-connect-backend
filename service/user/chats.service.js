@@ -508,22 +508,22 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         console.log("senderId for seen update:----", senderId);
 
         if (hasUnread && senderId) {
-            // emitToUser(senderId.toString(), "messages_seen", {
-            //     conversationId,
-            //     seenBy: userId
-            // });
+            emitToUser(senderId.toString(), "messages_seen", {
+                conversationId,
+                seenBy: userId
+            });
 
-            // emitToUser(senderId.toString(), "conversationUpdated", {
-            //     conversationId: conversation._id.toString(),
-            //     lastMessageStatus: "seen",
-            //     unseenCount: 0
-            // });
+            emitToUser(senderId.toString(), "conversationUpdated", {
+                conversationId: conversation._id.toString(),
+                lastMessageStatus: "seen",
+                unseenCount: 0
+            });
 
-            // emitToUser(userId.toString(), "conversationUpdated", {
-            //     conversationId: conversation._id.toString(),
-            //     lastMessageStatus: "seen",
-            //     unseenCount: 0
-            // });
+            emitToUser(userId.toString(), "conversationUpdated", {
+                conversationId: conversation._id.toString(),
+                lastMessageStatus: "seen",
+                unseenCount: 0
+            });
         }
 
         return {
