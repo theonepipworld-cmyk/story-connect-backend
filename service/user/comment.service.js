@@ -15,6 +15,15 @@ const enums = require("../../constants/enum.constants.js");
 
 
 
+const emitToUser = (userId, event, payload) => {
+    const io = getIo();
+    console.log("Emitting event -------", getAllUserSocketIds(userId.toString()));
+    getAllUserSocketIds(userId.toString()).forEach(sid => {
+        io.to(sid).emit(event, payload);
+    });
+};
+
+
 const safeEmit = (socketIds, event, payload) => {
     try {
         const io = getIo();
@@ -152,7 +161,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             await emitBellBadge(post.userId);
         }
 
-        safeEmit(postId.toString(), "comment_added", { totalComments });
+        emitToUser(postId.toString(), "comment_added", { totalComments });
 
         return comment;
     } catch (error) {
