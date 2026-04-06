@@ -137,7 +137,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
             console.log(`Post owner socket IDs for user ${post.userId}:`, postOwnerSocketIds);
 
-            safeEmit(postId.toString(), "comment_added", { totalComments, postId: postId.toString() })
+            safeEmit(postOwnerSocketIds, "comment_added", { totalComments, postId: postId.toString() })
         
 
             safeEmit(postOwnerSocketIds, "new_comment", {
