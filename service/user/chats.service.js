@@ -456,7 +456,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
 
 exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10, page = 1) => {
     try {
-        if (!userId || !conversationId || !lastMessageId) {
+        if (!userId || !conversationId ) {
             throw createError(400, 'missingFields', 'validation');
         }
 
@@ -469,9 +469,11 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         if (!conversation.participants.some(p => p.toString() === userId.toString())) {
             throw createError(403, 'unauthorizedAccess', 'auth');
         }
-
+            
+        if(lastMessageId){
         const lastMessage = await Message.findById(lastMessageId);
         if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
+        }
 
         const skip = (page - 1) * limit;
         const [totalMessages, messages] = await Promise.all([
