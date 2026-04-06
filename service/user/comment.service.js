@@ -130,7 +130,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 
             const io = getIo();
 
-            io.emit("comment_added", { totalComments, postId })
+            io.emit(userId, "comment_added", { totalComments, postId });
 
             safeEmit(postOwnerSocketIds, "new_comment", {
                 type: "new_comment",
