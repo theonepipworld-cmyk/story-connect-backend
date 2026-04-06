@@ -136,6 +136,12 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 
             const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
             console.log(`Post owner socket IDs for user ${post.userId}:`, postOwnerSocketIds);
+
+            safeEmit(postOwnerSocketIds, "comment_added", { totalComments })
+            safeEmit(postOwnerSocketIds, "comment_addedd", { totalComments }, () => {
+                console.log(`Emitted comment_added for post ${postId} with totalComments: ${totalComments}`)
+            });
+
             safeEmit(postOwnerSocketIds, "new_comment", {
                 type: "new_comment",
                 title: user.username,
@@ -159,9 +165,11 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             });
 
             await emitBellBadge(post.userId);
+
+
         }
 
-        emitToUser(postId.toString(), "comment_added", { totalComments });
+
 
         return comment;
     } catch (error) {
