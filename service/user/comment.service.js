@@ -14,6 +14,7 @@ const { getIo, getAllUserSocketIds } = require("../../socket");
 const enums = require("../../constants/enum.constants.js");
 
 
+
 const safeEmit = (socketIds, event, payload) => {
     try {
         const io = getIo();
@@ -78,6 +79,9 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             await Comment.findByIdAndUpdate(parentCommentId, { $inc: { replyCount: 1 } });
         }
 
+        const totalComments = await Comment.countDocuments({ postId });
+        console.log(`Total comments for post ${postId}: ${totalComments}`);
+
         if (post.userId.toString() !== userId.toString()) {
             const postOwner = await User.findById(post.userId);
 
@@ -94,7 +98,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                                 postId: postId.toString(),
                                 commentId: comment._id.toString(),
                                 senderId: userId.toString(),
-                                avatarUrl:userId.avatarUrl,
+                                avatarUrl: userId.avatarUrl,
                                 parentCommentId: parentCommentId ? parentCommentId.toString() : ""
                             }
                         );
@@ -122,6 +126,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             ]);
 
             const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
+            console.log(`Post owner socket IDs for user ${post.userId}:`, postOwnerSocketIds);
             safeEmit(postOwnerSocketIds, "new_comment", {
                 type: "new_comment",
                 title: user.username,
@@ -135,7 +140,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 
                 senderId: userId.toString(),
                 senderName: user.username,
-                senderAvatar: user.avatarUrl ,
+                senderAvatar: user.avatarUrl,
 
                 sender: {
                     _id: user._id,
@@ -146,6 +151,8 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 
             await emitBellBadge(post.userId);
         }
+
+        emitToUser(postId.toString(), "comment_added", { totalComments });
 
         return comment;
     } catch (error) {
