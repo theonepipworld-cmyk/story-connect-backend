@@ -152,10 +152,11 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             await emitBellBadge(post.userId);
         }
 
-        emitToUser(postId.toString(), "comment_added", { totalComments });
+        safeEmit(postId.toString(), "comment_added", { totalComments });
 
         return comment;
     } catch (error) {
+        console.log("addCommentService error:>>>", error);
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
