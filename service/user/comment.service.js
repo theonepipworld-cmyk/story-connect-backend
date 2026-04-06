@@ -15,15 +15,6 @@ const enums = require("../../constants/enum.constants.js");
 
 
 
-const emitToUser = (userId, event, payload) => {
-    const io = getIo();
-    console.log("Emitting event -------", getAllUserSocketIds(userId.toString()));
-    getAllUserSocketIds(userId.toString()).forEach(sid => {
-        io.to(sid).emit(event, payload);
-    });
-};
-
-
 const safeEmit = (socketIds, event, payload) => {
     try {
         const io = getIo();
@@ -137,8 +128,9 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
             console.log(`Post owner socket IDs for user ${post.userId}:`, postOwnerSocketIds);
 
-            safeEmit(postOwnerSocketIds, "comment_added", { totalComments, postId: postId.toString() })
-        
+            const io = getIo();
+
+            io.emit("comment_added", { totalComments, postId })
 
             safeEmit(postOwnerSocketIds, "new_comment", {
                 type: "new_comment",
