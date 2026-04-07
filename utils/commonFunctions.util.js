@@ -3,6 +3,9 @@ const { jwt_secret } = require('../config/secretVariables.js')
 const jwt = require('jsonwebtoken')
 
 
+
+
+
 exports.hashPassword = async (password) => {
   try {
     const saltRounds = 10;
