@@ -135,6 +135,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         });
 
         if (!conversation) {
+            isFirstMessage = true;
             conversation = new Conversation({
                 participants: [senderId, receiverId],
                 unseenCount: [
@@ -143,7 +144,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 ]
             });
             await conversation.save();
-            isFirstMessage = true;
+            
         }
 
 
@@ -161,10 +162,10 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     avatarUrl: sender.avatarUrl,
                 },
                 receiverId: receiverId.toString(),
-                isFirstMessage: isFirstMessage
+                isFirstMessage: isFirstMessage || false
 
             };
-
+            console.log("is first message _________________", isFirstMessage);
 
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
                 getIo().to(sid).emit("newMessage", {
@@ -173,7 +174,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     senderAvatar: sender.avatarUrl,
                     isFromMe: true,
                     receiverId: receiverId.toString(),
-                    isFirstMessage: isFirstMessage
+                    isFirstMessage: isFirstMessage || false
                 });
                 getIo().to(sid).emit("conversationUpdated", {
                     ...conversationUpdate,
@@ -194,7 +195,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                         senderAvatar: sender.avatarUrl,
                         isFromMe: false,
                         receiverId: receiverId.toString(),
-                        isFirstMessage: isFirstMessage
+                        isFirstMessage: isFirstMessage || false
                     });
                     getIo().to(sid).emit("conversationUpdated", {
                         ...conversationUpdate,
