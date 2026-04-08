@@ -94,6 +94,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
             throw createError(400, 'missingFields', 'validation');
         }
+        let isFirstMessage = false;
 
         const [sender, receiver] = await Promise.all([
             isUserExist(senderId),
@@ -142,6 +143,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 ]
             });
             await conversation.save();
+            isFirstMessage = true;
         }
 
 
@@ -158,7 +160,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     username: sender.username,
                     avatarUrl: sender.avatarUrl,
                 },
-                receiverId: receiverId.toString()
+                receiverId: receiverId.toString(),
+                isFirstMessage: isFirstMessage
+
             };
 
 
@@ -167,7 +171,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     ...basePayload,
                     senderName: sender.username,
                     senderAvatar: sender.avatarUrl,
-                    isFromMe: true
+                    isFromMe: true,
+                    receiverId: receiverId.toString(),
+                    isFirstMessage: isFirstMessage
                 });
                 getIo().to(sid).emit("conversationUpdated", {
                     ...conversationUpdate,
@@ -186,7 +192,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                         ...basePayload,
                         senderName: sender.username,
                         senderAvatar: sender.avatarUrl,
-                        isFromMe: false
+                        isFromMe: false,
+                        receiverId: receiverId.toString(),
+                        isFirstMessage: isFirstMessage
                     });
                     getIo().to(sid).emit("conversationUpdated", {
                         ...conversationUpdate,
