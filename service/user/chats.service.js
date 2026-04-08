@@ -147,6 +147,8 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             
         }
 
+         console.log("is first message _________________", isFirstMessage);
+
 
         const emitNewMessage = (savedMessage) => {
             const basePayload = savedMessage.toObject();
@@ -165,7 +167,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 isFirstMessage: isFirstMessage || false
 
             };
-            console.log("is first message _________________", isFirstMessage);
+           
 
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
                 getIo().to(sid).emit("newMessage", {
