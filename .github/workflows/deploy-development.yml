@@ -20,8 +20,9 @@ jobs:
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           sudo chown -R $USER:$USER /var/www/html/story-connect-backend/.git
           cd /var/www/html/story-connect-backend
-          sudo git fetch --all
-          sudo git reset --hard origin/development
-          sudo git pull origin development --force
-          sudo npm install
+          git fetch --all
+          git reset --hard origin/development
+          git pull origin development --force
+          echo '${{ secrets.DEV_FIREBASE_SERVICE_ACCOUNT_JSON }}' > story-connect-c35dc-firebase-adminsdk-fbsvc-f40a5a7783.json
+          npm install
           pm2 restart story-connect-backend || pm2 start server.js --name story-connect-backend

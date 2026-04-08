@@ -23,5 +23,6 @@ jobs:
           git fetch --all
           git reset --hard origin/production
           git pull origin production --force
+          echo '${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_JSON }}' > story-connect-c35dc-firebase-adminsdk-fbsvc-f40a5a7783.json
           npm install
           pm2 restart story-connect-backend || pm2 start server.js --name story-connect-backend
