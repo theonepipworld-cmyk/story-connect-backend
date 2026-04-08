@@ -17,8 +17,10 @@ jobs:
         key: ${{ secrets.EC2_PROD_SSH_KEY }}
         script: |
           cd /var/www/html/story-connect-backend
-          sudo git fetch --all
-          sudo git reset --hard origin/PRODelopment
-          sudo git pull origin PRODelopment --force
-          sudo npm install
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          git fetch --all
+          git reset --hard origin/production
+          git pull origin production --force
+          npm install
           pm2 restart server
