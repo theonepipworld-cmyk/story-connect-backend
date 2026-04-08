@@ -12,4 +12,6 @@ module.exports = {
   aws_s3_region:process.env.AWS_S3_REGION,
   MONGO_URI: process.env.MONGO_URI,
   frontend_base_url: process.env.FRONTEND_WEB_BASE_URL,
+  admin_default_email: process.env.ADMIN_DEFAULT_EMAIL,
+  admin_default_password: process.env.ADMIN_DEFAULT_PASSWORD
 };

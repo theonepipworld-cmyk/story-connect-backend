@@ -4,12 +4,13 @@ const connectDB = require("../config/db.js");
 const Variables = require("../constants/variables.constants.js");
 const enums = require("../constants/enum.constants.js");
 const { hashPassword, getJWT } = require("../utils/commonFunctions.util.js");
+const secretVariables = require("../config/secretVariables.js");
 
 const seedAdminSignUp = async() => {
   try {
     await connectDB();
-    const defaultEmail = Variables.ADMIN_DEFAULT_EMAIL;
-    const defaultPassword = Variables.ADMIN_DEFAULT_PASSWORD;
+    const defaultEmail = secretVariables.admin_default_email;
+    const defaultPassword = secretVariables.admin_default_password;
     let admin = await User.findOne({ email: defaultEmail });
 
     if (!admin) {
