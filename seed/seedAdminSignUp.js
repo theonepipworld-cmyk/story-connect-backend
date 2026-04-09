@@ -28,6 +28,10 @@ const seedAdminSignUp = async() => {
       admin.resetPasswordToken = token;
 
       await admin.save();
+
+      const savedAdmin = await User.findById(admin._id).lean();
+      console.log(" Admin seeded successfully:", savedAdmin);
+
     } else {
       console.log(" Admin already exists. Skipping seeding.");
     }
