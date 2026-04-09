@@ -31,9 +31,9 @@ const seedAdminSignUp = async() => {
 
     } else {
       console.log(" Admin already exists. Skipping seeding.");
-    }
-    const savedAdmin = await User.findById(admin._id).lean();
-    console.log(" Admin seeded successfully:", savedAdmin);
+    }    
+    const allUsers = await User.find({}).lean();
+    console.log(" All users in DB:", allUsers);
     mongoose.connection.close();
   } catch (err) {
     console.error(" Seeder error:", err);
