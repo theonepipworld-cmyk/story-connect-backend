@@ -19,7 +19,10 @@ const isFresh = process.argv.includes("--fresh");
 
     // 🔥 clear only if --fresh passed
     if (isFresh) {
-      await mongoose.connection.db.dropDatabase();
+      const collections = await mongoose.connection.db.collections();
+      for (const collection of collections) {
+        await collection.deleteMany({});
+      }      
       console.log("Database cleared (--fresh)");
     }
 
