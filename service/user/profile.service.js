@@ -58,6 +58,35 @@ exports.updateProfile = async (userId, payload, files) => {
             patch.email = payload.email;
         }
 
+
+        // publicId update
+        if (payload.publicId && payload.publicId !== existingUser.publicId) {
+
+            // sanitize (IMPORTANT)
+            let cleanPublicId = payload.publicId
+                .toLowerCase()
+                .trim()
+                .replace(/\s+/g, "")
+                .replace(/[^a-z0-9]/g, "");
+
+            if (!cleanPublicId) {
+                throw createError(400, 'invalidPublicId', 'validation');
+            }
+
+            // check uniqueness
+            const publicIdExist = await User.findOne({
+                publicId: cleanPublicId,
+                _id: { $ne: userId }
+            });
+
+            if (publicIdExist) {
+                throw createError(400, 'Public Id already taken. Please use different Public Id.', 'validation');
+            }
+
+            patch.publicId = cleanPublicId;
+        }
+
+
         if (payload.bio) patch.bio = payload.bio;
         if (payload.profession) patch.profession = payload.profession;
         if (payload.education) patch.education = payload.education;
@@ -128,12 +157,20 @@ exports.updateProfile = async (userId, payload, files) => {
                 patch.profileCoverImage = DEFAULT_AVATAR_URL;
             }
         }
+        let updated
+        try {
+            updated = await User.findByIdAndUpdate(
+                userId,
+                { $set: patch },
+                { new: true, runValidators: true }
+            ).lean();
 
-        const updated = await User.findByIdAndUpdate(
-            userId,
-            { $set: patch },
-            { new: true, runValidators: true }
-        ).lean();
+        } catch (error) {
+            if (error.code === 11000 && error.keyPattern?.publicId) {
+                throw createError(400, 'publicIdAlreadyExist', 'validation');
+            }
+            throw error;
+        }
 
         if (!updated) throw createError(404, 'userNotFound', 'notFound');
 
@@ -205,7 +242,7 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
         const isRejected = friendship?.status === enums.friend_Request_status.REJECTED;
 
         const isRequesterMe = friendship?.requester?.toString() === loginUserId.toString();
-  
+
         return {
             user,
             totalFriends,

@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const User = require('../../models/user.model.js');
-const { hashPassword, comparePassword, getJWT, generateOtp } = require("../../utils/commonFunctions.util.js");
+const { hashPassword, comparePassword, getJWT, generateOtp, generatePublicId } = require("../../utils/commonFunctions.util.js");
 const { checkFieldExists, createError } = require("../../helpers/dbHelpers.js");
 const { sendEmail } = require('../../utils/email.util.js');
 const secretVariables = require("../../config/secretVariables.js");
@@ -18,6 +18,7 @@ exports.signup = async (data) => {
     if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
 
     const hashedPassword = await hashPassword(password);
+    const publicId = await generatePublicId(username);
     let generatedOtp = await generateOtp();
     const newUserData = {
       email,
@@ -28,6 +29,7 @@ exports.signup = async (data) => {
       lastSeen: new Date(),
       emailVerificationOtp: generatedOtp,
       emailVerificationOtpExpires: Date.now() + 1000 * 60 * 10, // OTP valid for 10 minutes
+      publicId
     };
 
     if (device_token) newUserData.device_token = device_token;
