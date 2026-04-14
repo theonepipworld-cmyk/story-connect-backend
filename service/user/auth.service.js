@@ -27,6 +27,7 @@ exports.signup = async (data) => {
       passwordHash: hashedPassword,
       lastSeen: new Date(),
       emailVerificationOtp: generatedOtp,
+      emailVerificationOtpExpires: Date.now() + 1000 * 60 * 10, // OTP valid for 10 minutes
     };
 
     if (device_token) newUserData.device_token = device_token;
@@ -154,6 +155,10 @@ exports.verifyEmail = async(email, otp)=>{
     const user = await User.findOne({email })
     if(!user) {
       return { success: false, message: "User not found "}
+    }
+
+    if(user.emailVerificationOtpExpires < Date.now()){
+      return { success: false, message: "OTP has expired. Please request a new one." }
     }
 
     if(user.emailVerificationOtp !== otp){

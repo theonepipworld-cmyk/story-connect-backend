@@ -4,6 +4,7 @@ const { Schema, model, Types } = mongoose;
 const userSchema = new Schema({
   isEmailVerified: { type: Boolean, default: false },
   emailVerificationOtp: { type: String },
+  emailVerificationOtpExpires: { type: Date },
   publicId: { type: String, unique: true, index: true },
   username: { type: String, index: true, trim: true },
   email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
