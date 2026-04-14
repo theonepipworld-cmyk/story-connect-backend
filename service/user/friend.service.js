@@ -622,7 +622,7 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
                 _id: { $in: paginatedIds },
                 ...(search ? { username: { $regex: search, $options: "i" } } : {})
             },
-            "username email avatarUrl currentCountry bio profession"
+            "username email avatarUrl currentCountry bio profession role"
         );
 
         const finalSuggestions = suggestions.map((u) => ({
