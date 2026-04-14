@@ -63,14 +63,14 @@ exports.signup = async (data) => {
 };
 
 
-exports.login = async ({ email, password, device_token, viaWeb }) => {
+exports.login = async ({ email, password, device_token, loginViaWeb }) => {
   try {
     const user = await checkFieldExists('email', email);
     if (!user) throw createError(404, 'emailNotFound', 'notFound');
 
     if (user.passwordHash == null) throw createError(400, 'registrationIncomplete', 'validation');
 
-    if (viaWeb) {
+    if (loginViaWeb) {
       if (user.isEmailVerified === false || user.isEmailVerified === undefined) throw createError(403, ' Please verify it to continue.', 'Your email is not verified');
     }
 
