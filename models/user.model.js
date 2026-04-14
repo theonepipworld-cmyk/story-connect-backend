@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const { Schema, model, Types } = mongoose;
 
 const userSchema = new Schema({
+  isEmailVerified: { type: Boolean, default: false },
+  emailVerificationOtp: { type: String },
   username: { type: String, index: true, trim: true },
   email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
   phone: { type: Number },

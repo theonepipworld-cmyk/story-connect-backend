@@ -22,7 +22,7 @@ const emitToUser = (userId, event, payload) => {
 
 const emitToUsers = (userIds, event, payload) => {
     userIds.forEach(uid => emitToUser(uid, event, payload));
-};
+};  
 
 
 const sendPushNotification = async (receiver, body, data) => {
