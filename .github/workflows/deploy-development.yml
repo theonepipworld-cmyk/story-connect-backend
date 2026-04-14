@@ -18,7 +18,8 @@ jobs:
         script: |
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          sudo chown -R $USER:$USER /var/www/html/story-connect-backend/.git
+          sudo chown -R $USER:$USER /var/www/html/story-connect-backend
+          git config --global --add safe.directory /var/www/html/story-connect-backend
           cd /var/www/html/story-connect-backend
           git fetch --all
           git reset --hard origin/development

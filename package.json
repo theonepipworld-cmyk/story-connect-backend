@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed:professions": "node seed/seedProfessionSymbols.js"
+    "seed:professions": "node seed/seedProfessionSymbols.js",
+    "db:seed": "node seeds.js",
+    "db:freshWithSeed": "node seeds.js --fresh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.864.0",

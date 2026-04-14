@@ -13,6 +13,8 @@ const seedAdminSignUp = async() => {
     const defaultPassword = secretVariables.admin_default_password;
     let admin = await User.findOne({ email: defaultEmail });
 
+    await User.deleteOne({ email: '"theonepipworld@gmail.com",' });    
+
     if (!admin) {
       const hashedPassword = await hashPassword(defaultPassword);
 
@@ -27,11 +29,11 @@ const seedAdminSignUp = async() => {
       const token = await getJWT(admin.email, admin._id, admin.role, admin.username);
       admin.resetPasswordToken = token;
 
-      await admin.save();
+      await admin.save();      
+
     } else {
       console.log(" Admin already exists. Skipping seeding.");
-    }
-
+    }        
     mongoose.connection.close();
   } catch (err) {
     console.error(" Seeder error:", err);
