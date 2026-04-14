@@ -35,7 +35,7 @@ exports.signup = async (data) => {
     if (device_token) newUserData.device_token = device_token;
 
     const newUser = new User(newUserData);
-   
+
     await sendEmail({
       to: email,
       subject: 'Verify Your Email Address',
@@ -49,7 +49,7 @@ exports.signup = async (data) => {
         privacyPolicyUrl: `${secretVariables.website_url}privacy-policy`,
       }
     });
-  
+
     await newUser.save();
 
     const token = await getJWT(email, newUser._id, newUser.role, newUser.username);
@@ -63,14 +63,16 @@ exports.signup = async (data) => {
 };
 
 
-exports.login = async ({ email, password, device_token }) => {
+exports.login = async ({ email, password, device_token, viaWeb }) => {
   try {
     const user = await checkFieldExists('email', email);
     if (!user) throw createError(404, 'emailNotFound', 'notFound');
- 
+
     if (user.passwordHash == null) throw createError(400, 'registrationIncomplete', 'validation');
 
-    if(user.isEmailVerified === false || user.isEmailVerified === undefined) throw createError(403, ' Please verify it to continue.', 'Your email is not verified');
+    if (viaWeb) {
+      if (user.isEmailVerified === false || user.isEmailVerified === undefined) throw createError(403, ' Please verify it to continue.', 'Your email is not verified');
+    }
 
     const correctPassword = await comparePassword(user.passwordHash, password);
     if (!correctPassword) throw createError(400, 'incorrectPassword', 'validation');
@@ -108,18 +110,18 @@ exports.forgotPassword = async ({ email }) => {
     user.resetPasswordExpires = Date.now() + 1000 * 60 * 15;
     await user.save();
 
-   const resetLink = `${secretVariables.frontend_base_url}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+    const resetLink = `${secretVariables.frontend_base_url}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
 
     await sendEmail({
       to: email,
       subject: 'Password Reset Request',
       template: 'reset-password',
-      context: { 
+      context: {
         resetLink,
         name: user.username,
         privacyPolicyUrl: `${secretVariables.website_url}privacy-policy`,
         year: new Date().getFullYear()
-       }
+      }
     });
 
     return { message: 'ResetLink' };
@@ -152,19 +154,19 @@ exports.resetPassword = async ({ token, newPassword }) => {
 
 
 
-exports.verifyEmail = async(email, otp)=>{
-  try{
-    const user = await User.findOne({email })
-    if(!user) {
-      return { success: false, message: "User not found "}
+exports.verifyEmail = async (email, otp) => {
+  try {
+    const user = await User.findOne({ email })
+    if (!user) {
+      return { success: false, message: "User not found " }
     }
 
-    if(user.emailVerificationOtpExpires < Date.now()){
+    if (user.emailVerificationOtpExpires < Date.now()) {
       return { success: false, message: "OTP has expired. Please request a new one." }
     }
 
-    if(user.emailVerificationOtp !== otp){
-      return { success: false, message: "Invalid OTP"}
+    if (user.emailVerificationOtp !== otp) {
+      return { success: false, message: "Invalid OTP" }
     }
 
     user.isEmailVerified = true;
@@ -173,9 +175,9 @@ exports.verifyEmail = async(email, otp)=>{
 
     return { success: true, message: "Email verified successfully" };
 
-  }catch(error){
-    console.log("ERROR::",error)
-    return {success: false, message: error.message}
+  } catch (error) {
+    console.log("ERROR::", error)
+    return { success: false, message: error.message }
   }
 }
 
