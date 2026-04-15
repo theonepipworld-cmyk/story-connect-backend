@@ -171,6 +171,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
            
 
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
+                console.log(" senderi side emiting ----------------------")
                 getIo().to(sid).emit("newMessage", {
                     ...basePayload,
                     senderName: sender.username,
