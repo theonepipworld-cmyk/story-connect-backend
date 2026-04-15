@@ -151,6 +151,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
 
 
         const emitNewMessage = (savedMessage) => {
+            console.log(" emit new messaeg called------------------")
             const basePayload = savedMessage.toObject();
             const conversationUpdate = {
                 conversationId: conversation._id.toString(),
