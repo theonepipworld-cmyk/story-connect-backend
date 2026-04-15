@@ -193,7 +193,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 )?.count || 0;
                  console.log(" here inside receiver -------------------------")
                 receiverSocketIds.forEach(sid => {
-                    console.log("Emitting newMessage to receiver socket:------------------", sid);
+                    console.log("Emitting newMessage to receiver socket:------------------", sid, receiverId );
                     getIo().to(sid).emit("newMessage", {
                         ...basePayload,
                         senderName: sender.username,
