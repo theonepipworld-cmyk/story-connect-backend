@@ -189,9 +189,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const currentUnseen = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
-
+                 console.log(" here inside receiver -------------------------")
                 receiverSocketIds.forEach(sid => {
-                    console.log("Emitting newMessage to receiver socket:", sid);
+                    console.log("Emitting newMessage to receiver socket:------------------", sid);
                     getIo().to(sid).emit("newMessage", {
                         ...basePayload,
                         senderName: sender.username,
