@@ -39,7 +39,6 @@ const mediaTransformStage = {
                 as: "media",
                 in: {
                     $cond: {
-
                         if: { $eq: [{ $type: "$$media" }, "object"] },
                         then: "$$media.url",
                         else: "$$media"
