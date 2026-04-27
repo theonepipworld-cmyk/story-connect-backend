@@ -32,6 +32,7 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const lang = getLang(req);
+
     const result = await profileService.updateProfile(req.user.id, req.body, req.files);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
   } catch (err) {
@@ -166,5 +167,32 @@ exports.getSearchUser = async (req, res) => {
         : message || "Something went wrong";
 
     return res.status(statusCode).json(errorResponse(finalMessage));
+  }
+};
+
+
+
+
+
+exports.updateOthersProfile = async (req, res) => {
+  try {
+    const lang = getLang(req);
+    const userId = req.query.userId;
+
+    const result = await profileService.updateOthersProfile(userId, req.body, req.files);
+    return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
+  } catch (err) {
+    const lang = getLang(req);
+    const statusCode = err.statusCode || err.status || 500;
+    const category = err.category || "error";
+    let message = err.message;
+    const translated = getMessage(lang, category, message);
+    const finalMessage = translated && translated !== message
+      ? translated
+      : message || "Something went wrong";
+
+    return res
+      .status(statusCode)
+      .json(errorResponse(finalMessage));
   }
 };

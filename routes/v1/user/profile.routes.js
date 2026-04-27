@@ -10,12 +10,13 @@ router.get('/', isAuthenticated, authorizeRoles('user', 'admin'), profileControl
 router.put(
   '/',
   avatarUpload,
-  isAuthenticated, authorizeRoles('user'),
+  isAuthenticated, authorizeRoles('user', 'admin'),
   updateProfileValidator,
   profileController.updateProfile
 );
 router.get('/otherprofile/:userId', isAuthenticated, authorizeRoles('user', 'admin'), profileController.getOtherProfile);
 router.get('/search',isAuthenticated,authorizeRoles('user', 'admin'), profileController.getSearchUser);
+router.get('/update-others-profile', isAuthenticated, authorizeRoles('admin'), profileController.updateOthersProfile);
 
 // Soft delete user profile (deactivate)
 router.delete('/', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);
