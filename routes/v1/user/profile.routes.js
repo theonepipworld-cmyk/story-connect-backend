@@ -16,7 +16,7 @@ router.put(
 );
 router.get('/otherprofile/:userId', isAuthenticated, authorizeRoles('user', 'admin'), profileController.getOtherProfile);
 router.get('/search',isAuthenticated,authorizeRoles('user', 'admin'), profileController.getSearchUser);
-router.get('/update-others-profile', isAuthenticated, authorizeRoles('admin'), profileController.updateOthersProfile);
+router.put('/update-others-profile', isAuthenticated, authorizeRoles('admin'), profileController.updateOthersProfile);
 
 // Soft delete user profile (deactivate)
 router.delete('/', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);

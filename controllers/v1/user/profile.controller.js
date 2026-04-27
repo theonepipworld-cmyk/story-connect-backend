@@ -179,6 +179,10 @@ exports.updateOthersProfile = async (req, res) => {
     const lang = getLang(req);
     const userId = req.query.userId;
 
+    if(!userId) {
+      return res.status(400).json(errorResponse(getMessage(lang, 'validation', 'userIdRequired')));
+    }
+
     const result = await profileService.updateOthersProfile(userId, req.body, req.files);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));
   } catch (err) {
