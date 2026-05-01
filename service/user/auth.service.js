@@ -15,7 +15,7 @@ exports.signup = async (data) => {
     ]);
 
     if (emailExist) throw createError(400, 'emailAlreadyExist', 'validation');
-    if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
+    // if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
 
     const hashedPassword = await hashPassword(password);
     const publicId = await generatePublicId(username);
