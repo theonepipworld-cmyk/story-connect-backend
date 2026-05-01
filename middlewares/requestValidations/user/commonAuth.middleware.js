@@ -2,6 +2,7 @@ const { check } = require('express-validator');
 const resMessages = require("../../../constants/resMessages.constants.js")
 const { validate } = require("../../../middlewares/requestValidations/user/validate")
 
+
 // Login Validator
 const loginValidator = [
   check("email")
@@ -15,13 +16,14 @@ const loginValidator = [
 
 // Signup Validator
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-const phoneRegex = /^\+?[0-9]{4,15}$/;
+const phoneRegex = /^\+?[1-9]\d{7,14}$/;
 
 const signupValidator = [
 
   // Username
   check("username")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: username`),
+    .notEmpty().withMessage(`${resMessages.validation.missingFields}: username`)
+    .isLength({ min: 3, max: 30 }).withMessage(resMessages.validation.usernameLength),
 
   // Email
   check("email")
@@ -31,7 +33,7 @@ const signupValidator = [
   // Password
   check("password")
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: password`)
-    .isLength({ min: 6 }).withMessage(resMessages.validation.passwordMinLength),
+    .isLength({ min: 8 }).withMessage(resMessages.validation.passwordMinLength),
 
   // Confirm Password
   check("confirmPassword")
@@ -44,11 +46,13 @@ const signupValidator = [
     }),
 
 
-
   // Phone number
-  // check("phone")
-  //   .notEmpty().withMessage(`${resMessages.validation.missingFields}: phone`)
-  //   .matches(phoneRegex).withMessage(resMessages.validation.invalidPhoneNumber),
+check("phone")
+  .exists().withMessage(`${resMessages.validation.missingFields}: phone`)
+  .notEmpty().withMessage("Phone cannot be empty")
+  .trim()
+  .matches(phoneRegex)
+  .withMessage(resMessages.validation.invalidPhoneNumber),
 
   // Date of birth
   // check("dateOfBirth")
@@ -84,7 +88,7 @@ const forgotPasswordValidator = [
 const resetPasswordValidator = [
   check("newPassword")
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: newPassword`)
-    .isLength({ min: 6 })
+    .isLength({ min: 8 })
     .withMessage(resMessages.validation.passwordTooShort),
   validate
 ];
