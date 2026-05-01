@@ -166,7 +166,7 @@ exports.verifyEmail = async (email, otp) => {
     }
 
     if (user.emailVerificationOtp !== otp) {
-      return { success: false, message: "Invalid OTP" }
+      return { success: false, message: "Incorrect OTP" }
     }
 
     user.isEmailVerified = true;
@@ -200,6 +200,7 @@ exports.resendVerificationOtp = async (email) => {
     const generatedOtp = await generateOtp();
 
     user.emailVerificationOtp = generatedOtp;
+    user.emailVerificationOtpExpires = Date.now() + 1000 * 60 * 10; // OTP valid for 10 minutes
     await user.save();
 
     // send email
