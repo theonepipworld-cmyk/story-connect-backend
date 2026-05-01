@@ -171,6 +171,7 @@ exports.verifyEmail = async (email, otp) => {
 
     user.isEmailVerified = true;
     user.emailVerificationOtp = null;
+    user.status = 'active';
     await user.save();
 
     return { success: true, message: "Email verified successfully" };
