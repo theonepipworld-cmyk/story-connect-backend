@@ -5,6 +5,8 @@ const socketToUser = new Map(); // O(1) reverse lookup
 
 const { incrementHourlyActiveUser, decrementHourlyActiveUser } = require("./helpers/dbHelpers");
 const User = require("./models/user.model");
+const conversationModel = require("./models/conversations.model");
+const mongoose = require("mongoose");
 
 
 function addUserSocket(userId, socketId) {
@@ -47,9 +49,13 @@ function initIo(server) {
         User.findByIdAndUpdate(userId, { isOnline: true }).catch(console.error);
         incrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} is now online (first device)`);
+
+        emitUserOnline(userId);
+
       } else {
         console.log(`User ${userId} connected from another device (total: ${onlineUsers.get(userId).size})`);
       }
+
     });
 
     socket.on("offline", (data) => {
@@ -61,6 +67,7 @@ function initIo(server) {
         User.findByIdAndUpdate(userId, { isOnline: false }).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} is now offline (all devices disconnected)`);
+
       } else {
         console.log(`User ${userId} disconnected one device (remaining: ${onlineUsers.get(userId)?.size || 0})`);
       }
@@ -79,7 +86,10 @@ function initIo(server) {
         ).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} logged out — token cleared & offline`);
+        emitUserOffline(userId);
+
       } else {
+        emitUserOffline(userId);
         console.log(`User ${userId} logged out from one device (others still active)`);
       }
     });
@@ -127,6 +137,7 @@ function initIo(server) {
         User.findByIdAndUpdate(userId, { isOnline: false }).catch(console.error);
         decrementHourlyActiveUser().catch(console.error);
         console.log(`User ${userId} fully disconnected (all devices gone)`);
+
       } else {
         console.log(`User ${userId} lost one connection (others still active)`);
       }
@@ -161,6 +172,68 @@ function getAllUserSocketIds(userId) {
 function isUserOnline(userId) {
   const sockets = onlineUsers.get(userId.toString());
   return !!sockets && sockets.size > 0;
+}
+
+
+
+async function emitUserOnline(userId) {
+  console.log(" userid in online funciton ----", userId);
+
+  const conversations = await conversationModel.find(
+    { participants: new mongoose.Types.ObjectId(userId) },
+    { participants: 1 }
+  );
+
+  const partnerIds = new Set();
+  console.log("partner ids online-------", conversations);
+
+  conversations.forEach(conv => {
+    conv.participants.forEach(p => {
+      if (p.toString() !== userId) {
+        partnerIds.add(p.toString());
+      }
+    });
+  });
+
+  // 👉 emit to partners
+  partnerIds.forEach(partnerId => {
+    const sockets = getAllUserSocketIds(partnerId);
+
+    sockets.forEach(sid => {
+      io.to(sid).emit("user_online", { userId });
+    });
+  });
+}
+
+
+
+async function emitUserOffline(userId) {
+  console.log(" user id in offline funciton ----", userId);
+  const conversations = await conversationModel.find(
+    { participants: new mongoose.Types.ObjectId(userId) },
+    { participants: 1 }
+  );
+
+  const partnerIds = new Set();
+
+  console.log("partner ids offline-------", conversations);
+
+  conversations.forEach(conv => {
+    conv.participants.forEach(p => {
+      if (p.toString() !== userId) {
+        partnerIds.add(p.toString());
+      }
+    });
+  });
+
+  // 👉 emit to partners
+  partnerIds.forEach(partnerId => {
+    const sockets = getAllUserSocketIds(partnerId);
+
+    sockets.forEach(sid => {
+      io.to(sid).emit("user_offline", { userId });
+    });
+  });
 }
 
 module.exports = { initIo, getIo, getOnlineUsers, getUserSocketId, getAllUserSocketIds, isUserOnline };

@@ -25,8 +25,9 @@
     "removeSuccessfully": "Removed successfully.",
     "ResetLink": "Password reset link sent to your email.",
     "userUnsuspended": "User unsuspended successfully",
-    "ResetPassword":"password reset successfully",
-    "registrationSuccessful":"Registration successful."
+    "ResetPassword": "password reset successfully",
+    "registrationSuccessful": "Registration successful.",
+    "leaveMember": "user leave the community successfully"
   },
   "notifications": {
     "acceptedFriendReq": "accepted your friend request.",
@@ -119,7 +120,9 @@
     "registrationIncomplete": "Registration is incomplete. Please complete your registration.",
     "invalidOrExpiredToken": "Reset token is invalid or has expired.",
     "invalidLanguage": "invalid language code",
-    "sameUser": "You cannot view mutual friends with yourself"
+    "sameUser": "You cannot view mutual friends with yourself",
+    "youHaveBeenBlocked": "You have been blocked by this user",
+    "youHaveBlockedThisUser": "You have blocked this user"
   },
   "auth": {
     "unauthorizedAccess": "Unauthorized access.",

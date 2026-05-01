@@ -89,7 +89,6 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 
         if (type === userActivityStats.userStats.Likes) {
             const liked = togglePostLike(stats, user);
-
             if (liked && post.userId.toString() !== userId.toString()) {
                 const postOwner = await isUserExist(post.userId);
 
@@ -217,7 +216,82 @@ exports.addStatsService = async (postId, type, commentId, userId, username, pare
 };
 
 
-exports.getAllLikedUserService = async (postId, type, userId, commentId) => {
+// exports.getAllLikedUserService = async (
+//     postId,
+//     type,
+//     userId,
+//     commentId,
+//     page = 1,
+//     limit = 10
+// ) => {
+//     try {
+//         const isPostIdExist = await isPostExist(postId);
+//         if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
+
+//         const blocked = await Block.find({
+//             $or: [{ blocker: userId }, { blocked: userId }]
+//         });
+
+//         const blockedUserIds = (blocked || [])
+//             .map(b => b.blocker.toString() === userId.toString() ? b.blocked : b.blocker)
+//             .filter(Boolean);
+
+//         let resultArr = [];
+
+//         if (type === userActivityStats.userStats.Likes) {
+//             const stats = await userStats.findOne({ postId }).select("likes");
+//             if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+//             resultArr = stats.likes;
+
+//         } else if (type === userActivityStats.userStats.Views) {
+//             const stats = await userStats.findOne({ postId }).select("views");
+//             if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+//             resultArr = stats.views;
+
+//         } else if (type === userActivityStats.userStats.CommentLikes) {
+//             if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
+
+//             const stats = await userStats.findOne({ postId }).select("commentLikes");
+//             if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
+
+//             const commentStat = stats.commentLikes.find(
+//                 c => c.commentId === commentId.toString()
+//             );
+
+//             if (!commentStat) return [];
+//             const users = await User.find(
+//                 { _id: { $in: commentStat.userIds } },
+//                 "username avatarUrl currentCountry"
+//             ).lean();
+
+//             resultArr = users.map(u => ({ userId: u._id, ...u }));
+
+//         } else {
+//             throw createError(400, 'invalidType', 'validation');
+//         }
+
+//         resultArr = resultArr.filter(u =>
+//             !blockedUserIds.some(bid => bid.toString() === u.userId.toString())
+//         );
+
+//         return resultArr;
+
+//     } catch (error) {
+//         if (error.statusCode) throw error;
+//         throw createError(500, 'serverError', 'error');
+//     }
+// };
+
+
+
+exports.getAllLikedUserService = async (
+    postId,
+    type,
+    userId,
+    commentId,
+    page = 1,
+    limit = 10
+) => {
     try {
         const isPostIdExist = await isPostExist(postId);
         if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
@@ -227,7 +301,11 @@ exports.getAllLikedUserService = async (postId, type, userId, commentId) => {
         });
 
         const blockedUserIds = (blocked || [])
-            .map(b => b.blocker.toString() === userId.toString() ? b.blocked : b.blocker)
+            .map(b =>
+                b.blocker.toString() === userId.toString()
+                    ? b.blocked
+                    : b.blocker
+            )
             .filter(Boolean);
 
         let resultArr = [];
@@ -253,6 +331,7 @@ exports.getAllLikedUserService = async (postId, type, userId, commentId) => {
             );
 
             if (!commentStat) return [];
+
             const users = await User.find(
                 { _id: { $in: commentStat.userIds } },
                 "username avatarUrl currentCountry"
@@ -264,17 +343,37 @@ exports.getAllLikedUserService = async (postId, type, userId, commentId) => {
             throw createError(400, 'invalidType', 'validation');
         }
 
+        // ❗ Filter blocked users
         resultArr = resultArr.filter(u =>
-            !blockedUserIds.some(bid => bid.toString() === u.userId.toString())
+            !blockedUserIds.some(
+                bid => bid.toString() === u.userId.toString()
+            )
         );
 
-        return resultArr;
+        // ✅ Pagination logic
+        const total = resultArr.length;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+
+        const paginatedData = resultArr.slice(startIndex, endIndex);
+
+        return {
+            pagination: {
+                total,
+                currentPage: page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+            data: paginatedData
+        };
 
     } catch (error) {
+        console.error("getAllLikedUserService error:", error);
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
+
 
 
 exports.getBadgeCountsService = async (userId) => {

@@ -58,11 +58,11 @@ exports.createPostValidator = [
     .notEmpty().withMessage(`${resMessages.validation.missingFields}: postType`)
     .isIn(["profile", "community"]).withMessage(`${resMessages.validation.postForError}`),
 
-  check("postHeading")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: postHeading`),
+  // check("postHeading")
+  //   .notEmpty().withMessage(`${resMessages.validation.missingFields}: postHeading`),
 
-  check("postDescription")
-    .notEmpty().withMessage(`${resMessages.validation.missingFields}: postDescription`),
+  // check("postDescription")
+  //   .notEmpty().withMessage(`${resMessages.validation.missingFields}: postDescription`),
 
   check("communityId").custom((value, { req }) => {
     if (req.body.postType === "community") {

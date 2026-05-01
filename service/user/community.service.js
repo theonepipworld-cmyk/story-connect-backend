@@ -13,6 +13,41 @@ const Block = require("../../models/block.model.js")
 const Friend = require("../../models/friends.model.js")
 const enums = require("../../constants/enum.constants.js")
 
+const mediaTransformStage = {
+    $addFields: {
+        thumbnails: {
+            $map: {
+                input: { $ifNull: ["$mediaUrls", []] },
+                as: "media",
+                in: {
+                    $cond: {
+
+                        if: { $eq: [{ $type: "$$media" }, "object"] },
+                        then: "$$media",
+                        else: {
+                            url: "$$media",
+                            thumbnailUrl: null,
+                            mediaType: null
+                        }
+                    }
+                }
+            }
+        },
+        mediaUrls: {
+            $map: {
+                input: { $ifNull: ["$mediaUrls", []] },
+                as: "media",
+                in: {
+                    $cond: {
+                        if: { $eq: [{ $type: "$$media" }, "object"] },
+                        then: "$$media.url",
+                        else: "$$media"
+                    }
+                }
+            }
+        }
+    }
+};
 
 exports.createCommunityService = async (communityDetails, userId, file) => {
     try {
@@ -422,7 +457,11 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-        if (blocked) throw createError(403, 'userBlocked', 'validation');
+        
+        if (blocked) {
+            const blockedByThem = blocked.blocker.toString() === community.userId.toString();
+            throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
+        }
 
         const userObjectId = new mongoose.Types.ObjectId(userId);
         const communityObjectId = new mongoose.Types.ObjectId(communityId);
@@ -666,6 +705,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
+        
         if (blocked) throw createError(403, 'userBlocked', 'validation');
 
         const allFriends = await getAllFriends(user._id);
@@ -687,23 +727,9 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
             {
                 $facet: {
                     paginatedResults: [
-                        {
-                            $lookup: {
-                                from: "users",
-                                localField: "userId",
-                                foreignField: "_id",
-                                as: "userInfo"
-                            }
-                        },
+                        { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userInfo" } },
                         { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-                        {
-                            $lookup: {
-                                from: "userstats",
-                                localField: "_id",
-                                foreignField: "postId",
-                                as: "stats"
-                            }
-                        },
+                        { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
                         { $unwind: { path: "$stats", preserveNullAndEmptyArrays: true } },
                         {
                             $addFields: {
@@ -720,14 +746,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 }
                             }
                         },
-                        {
-                            $lookup: {
-                                from: "comments",
-                                localField: "_id",
-                                foreignField: "postId",
-                                as: "comments"
-                            }
-                        },
+                        { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
                         { $addFields: { totalComments: { $size: "$comments" } } },
                         {
                             $addFields: {
@@ -739,12 +758,15 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 }
                             }
                         },
+                        // ✅ same transform as other post services
+                        mediaTransformStage,
                         {
                             $project: {
                                 _id: 1,
                                 postHeading: 1,
                                 postDescription: 1,
                                 mediaUrls: 1,
+                                thumbnails: 1, // ✅
                                 hashtags: 1,
                                 communityId: 1,
                                 type: 1,

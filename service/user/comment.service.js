@@ -14,6 +14,16 @@ const { getIo, getAllUserSocketIds } = require("../../socket");
 const enums = require("../../constants/enum.constants.js");
 
 
+
+const emitToUser = (userId, event, payload) => {
+    const io = getIo();
+    console.log("Emitting event -------", getAllUserSocketIds(userId.toString()));
+    getAllUserSocketIds(userId.toString()).forEach(sid => {
+        io.to(sid).emit(event, payload);
+    });
+};
+
+
 const safeEmit = (socketIds, event, payload) => {
     try {
         const io = getIo();
@@ -62,7 +72,10 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             ]
         });
 
-        if (blocked) throw createError(403, 'userBlocked', 'validation');
+        if (blocked) {
+            const blockedByThem = blocked.blocker.toString() === post.userId.toString();
+            throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
+        }
 
         const comment = await Comment.create({
             userId,
@@ -74,6 +87,9 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
         if (parentCommentId) {
             await Comment.findByIdAndUpdate(parentCommentId, { $inc: { replyCount: 1 } });
         }
+
+        const totalComments = await Comment.countDocuments({ postId });
+        console.log(`Total comments for post ${postId}: ${totalComments}`);
 
         if (post.userId.toString() !== userId.toString()) {
             const postOwner = await User.findById(post.userId);
@@ -91,6 +107,7 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
                                 postId: postId.toString(),
                                 commentId: comment._id.toString(),
                                 senderId: userId.toString(),
+                                avatarUrl: userId.avatarUrl,
                                 parentCommentId: parentCommentId ? parentCommentId.toString() : ""
                             }
                         );
@@ -118,6 +135,13 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
             ]);
 
             const postOwnerSocketIds = getAllUserSocketIds(post.userId.toString());
+            console.log(`Post owner socket IDs for user ${post.userId}:`, postOwnerSocketIds);
+
+            const postCommenterSocketIds = getAllUserSocketIds(userId.toString());
+
+            safeEmit(postCommenterSocketIds, "comment_added", { totalComments, postId: postId.toString() })
+        
+
             safeEmit(postOwnerSocketIds, "new_comment", {
                 type: "new_comment",
                 title: user.username,
@@ -131,20 +155,25 @@ exports.addCommentService = async (postId, userId, commentString, parentCommentI
 
                 senderId: userId.toString(),
                 senderName: user.username,
-                senderAvatar: user.avatarUrl || "/Avatar.svg",
+                senderAvatar: user.avatarUrl,
 
                 sender: {
                     _id: user._id,
                     username: user.username,
-                    avatarUrl: user.avatarUrl || "/Avatar.svg"
+                    avatarUrl: user.avatarUrl
                 }
             });
 
             await emitBellBadge(post.userId);
+
+
         }
+
+
 
         return comment;
     } catch (error) {
+        console.log("addCommentService error:>>>", error);
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }

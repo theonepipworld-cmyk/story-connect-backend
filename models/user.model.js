@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const { Schema, model, Types } = mongoose;
 
 const userSchema = new Schema({
+  isEmailVerified: { type: Boolean, default: false },
+  emailVerificationOtp: { type: String },
+  emailVerificationOtpExpires: { type: Date },
+  publicId: { type: String, unique: true, index: true },
   username: { type: String, index: true, trim: true },
   email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
   phone: { type: Number },
@@ -26,7 +30,7 @@ const userSchema = new Schema({
   settings: { type: Types.ObjectId, ref: 'UserSettings' },
   lastSeen: { type: Date, default: Date.now },
   dateOfBirth: { type: Date },
-  status: { type: String, enum: ['active', 'inactive', 'banned', 'deleted', 'suspended'], default: 'active' },
+  status: { type: String, enum: ['active', 'inactive', 'banned', 'deleted', 'suspended'], default: 'inactive' },
   resetPasswordToken: { type: String },
   countryOfOrigin: {
     _id: { type: mongoose.Schema.Types.ObjectId },

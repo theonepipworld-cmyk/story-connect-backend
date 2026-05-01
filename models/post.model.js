@@ -1,4 +1,26 @@
 const mongoose = require("mongoose");
+
+const mediaSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      trim: true,
+      required: true,
+    },
+    thumbnailUrl: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    mediaType: {
+      type: String,
+      enum: ["image", "video"],
+      required: true,
+    },
+  },
+  { _id: false } 
+);
+
 const postSchema = new mongoose.Schema(
   {
     userId: {
@@ -23,12 +45,7 @@ const postSchema = new mongoose.Schema(
     postType: {
       type: String,
     },
-    mediaUrls: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    mediaUrls: [mediaSchema],
     hashtags: [
       {
         type: String,
@@ -39,11 +56,10 @@ const postSchema = new mongoose.Schema(
     storyOfTheMonth: {
       type: Boolean,
       default: false,
-      
     },
     type: {
       type: String,
-      enum: ["video","image","both"],
+      enum: ["video", "image", "both"],
     },
     videoOfTheMonth: {
       type: Boolean,

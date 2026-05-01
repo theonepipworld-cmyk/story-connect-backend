@@ -9,13 +9,14 @@ const getLang = (req) => req.lang || 'en';
 exports.createPost = async (req, res) => {
   const lang = getLang(req);
   try {
-
     req.body.userId = req.user.id;
-    // console.log("mediaUrls-----------------", req.files)
     const mediaUrls = req.files?.length
-      ? req.files.map((f) => f.location)
+      ? req.files.map((f) => ({
+        url: f.location,
+        thumbnailUrl: f.thumbnailUrl || null,
+        mediaType: f.mimetype.startsWith("video/") ? "video" : "image",
+      }))
       : [];
-
 
     const cleanHashtags = Array.isArray(req.body.hashTags)
       ? [
@@ -28,7 +29,6 @@ exports.createPost = async (req, res) => {
       : [];
 
     const { hashTags: _, ...restBody } = req.body;
-
     const postData = { ...restBody, mediaUrls, hashtags: cleanHashtags };
 
     const post = await postService.createPost(postData, cleanHashtags);
@@ -170,13 +170,14 @@ exports.getAllPost = async (req, res) => {
     const lang = getLang(req);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || "";
+    const search = decodeURIComponent(req.query.search || "");
     let textSearch = search;
     let hashtagSearch = null;
 
     if (search && search.startsWith("#")) {
       hashtagSearch = search.replace("#", "").trim();
-      textSearch = null;
+      console.log(hashtagSearch)
+      textSearch = "";
     }
     const { data, pagination } = await postService.getAllPostService(textSearch, page, limit, req.user?.id, hashtagSearch);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), data, pagination));

@@ -13,6 +13,7 @@ const pushNotification = require("../../utils/pushNotification.js");
 
 const emitToUser = (userId, event, payload) => {
     const io = getIo();
+    console.log("Emitting event -------", getAllUserSocketIds(userId.toString()));
     getAllUserSocketIds(userId.toString()).forEach(sid => {
         io.to(sid).emit(event, payload);
     });
@@ -21,7 +22,7 @@ const emitToUser = (userId, event, payload) => {
 
 const emitToUsers = (userIds, event, payload) => {
     userIds.forEach(uid => emitToUser(uid, event, payload));
-};
+};  
 
 
 const sendPushNotification = async (receiver, body, data) => {
@@ -77,6 +78,15 @@ const validateMessageAction = async (conversationId, messageId, userId) => {
 };
 
 
+// Helper: map uploaded files to mediaUrls schema shape
+const mapFilesToMediaUrls = (files) => {
+    return files.map(file => ({
+        url: file.location,
+        thumbnailUrl: file.thumbnailUrl ?? null,
+        mediaType: file.mimetype.startsWith("image/") ? "image"
+            : file.mimetype.startsWith("video/") ? "video" : "file"
+    }));
+};
 
 
 exports.sendMessageToUserService = async (senderId, receiverId, messageText, type, files = []) => {
@@ -84,6 +94,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         if (!senderId || !receiverId || (!messageText && files.length === 0)) {
             throw createError(400, 'missingFields', 'validation');
         }
+        let isFirstMessage = false;
 
         const [sender, receiver] = await Promise.all([
             isUserExist(senderId),
@@ -124,6 +135,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         });
 
         if (!conversation) {
+            isFirstMessage = true;
             conversation = new Conversation({
                 participants: [senderId, receiverId],
                 unseenCount: [
@@ -132,10 +144,14 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 ]
             });
             await conversation.save();
+            
         }
+
+         console.log("is first message _________________", isFirstMessage);
 
 
         const emitNewMessage = (savedMessage) => {
+            console.log(" emit new messaeg called------------------")
             const basePayload = savedMessage.toObject();
             const conversationUpdate = {
                 conversationId: conversation._id.toString(),
@@ -147,16 +163,22 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     _id: sender._id,
                     username: sender.username,
                     avatarUrl: sender.avatarUrl,
-                }
-            };
+                },
+                receiverId: receiverId.toString(),
+                isFirstMessage: isFirstMessage || false
 
+            };
+           
 
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
+                console.log(" senderi side emiting ----------------------")
                 getIo().to(sid).emit("newMessage", {
                     ...basePayload,
                     senderName: sender.username,
                     senderAvatar: sender.avatarUrl,
-                    isFromMe: true
+                    isFromMe: true,
+                    receiverId: receiverId.toString(),
+                    isFirstMessage: isFirstMessage || false
                 });
                 getIo().to(sid).emit("conversationUpdated", {
                     ...conversationUpdate,
@@ -169,17 +191,20 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const currentUnseen = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
-
+                 console.log(" here inside receiver -------------------------")
                 receiverSocketIds.forEach(sid => {
+                    console.log("Emitting newMessage to receiver socket:------------------", sid, receiverId );
                     getIo().to(sid).emit("newMessage", {
                         ...basePayload,
                         senderName: sender.username,
                         senderAvatar: sender.avatarUrl,
-                        isFromMe: false
+                        isFromMe: false,
+                        receiverId: receiverId.toString(),
+                        isFirstMessage: isFirstMessage || false
                     });
                     getIo().to(sid).emit("conversationUpdated", {
                         ...conversationUpdate,
-                        unseenCount: currentUnseen + 1
+                        unseenCount: currentUnseen
                     });
                     getIo().to(sid).emit("badgeCountUpdate", {
                         chatUnread: currentUnseen + 1
@@ -208,24 +233,21 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         const messages = [];
 
 
+        // Case 1: text + files together → type "post"
         if (messageText && Array.isArray(files) && files.length > 0) {
-            const uploadedFiles = files.map(file => ({
-                url: file.location,
-                mimeType: file.mimetype
-            }));
-
             const savedMessage = await new Message({
                 conversationId: conversation._id,
                 sender: senderId,
                 text: messageText,
                 type: "post",
-                files: uploadedFiles,
+                mediaUrls: mapFilesToMediaUrls(files),
                 status: messageStatus
             }).save();
 
             messages.push(savedMessage);
-            emitNewMessage(savedMessage);
             updateConversationState(savedMessage);
+            emitNewMessage(savedMessage);
+
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
@@ -241,6 +263,7 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
         }
 
 
+        // Case 2: text only → type "text"
         if (messageText && (!files || files.length === 0)) {
             const savedMessage = await new Message({
                 conversationId: conversation._id,
@@ -251,20 +274,22 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             }).save();
 
             messages.push(savedMessage);
-            emitNewMessage(savedMessage);
             updateConversationState(savedMessage);
+            emitNewMessage(savedMessage);
+
 
             await sendPushNotification(receiver, messageText, {
                 conversationId: conversation._id.toString(),
-                senderId: senderId.toString()
+                senderId: senderId.toString(),
+                senderImage: sender.avatarUrl?.toString(),
             });
         }
 
 
+        // Case 3: files only → one message per file
         if ((!messageText || messageText.trim() === "") && Array.isArray(files) && files.length > 0) {
             for (const file of files) {
-                const fileType = file.mimetype.startsWith("image/")
-                    ? "image"
+                const fileType = file.mimetype.startsWith("image/") ? "image"
                     : file.mimetype.startsWith("video/") ? "video" : "file";
 
                 const savedMessage = await new Message({
@@ -272,16 +297,23 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                     sender: senderId,
                     text: file.location,
                     type: fileType,
+                    mediaUrls: [{
+                        url: file.location,
+                        thumbnailUrl: file.thumbnailUrl ?? null,
+                        mediaType: fileType
+                    }],
                     status: messageStatus
                 }).save();
 
                 messages.push(savedMessage);
-                emitNewMessage(savedMessage);
                 updateConversationState(savedMessage);
+                emitNewMessage(savedMessage);
+
 
                 await sendPushNotification(receiver, `Sent a ${fileType}`, {
                     conversationId: conversation._id.toString(),
-                    senderId: senderId.toString()
+                    senderId: senderId.toString(),
+                    senderImage: sender.avatarUrl?.toString(),
                 });
             }
         }
@@ -439,7 +471,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
 
 exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10, page = 1) => {
     try {
-        if (!userId || !conversationId || !lastMessageId) {
+        if (!userId || !conversationId ) {
             throw createError(400, 'missingFields', 'validation');
         }
 
@@ -452,9 +484,11 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         if (!conversation.participants.some(p => p.toString() === userId.toString())) {
             throw createError(403, 'unauthorizedAccess', 'auth');
         }
-
+            
+        if(lastMessageId){
         const lastMessage = await Message.findById(lastMessageId);
         if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
+        }
 
         const skip = (page - 1) * limit;
         const [totalMessages, messages] = await Promise.all([
@@ -467,29 +501,16 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         ]);
 
         const totalPages = Math.ceil(totalMessages / limit);
-        await Promise.all([
-            Conversation.updateOne(
-                { _id: conversationId, "unseenCount.userId": userId },
-                { $set: { "unseenCount.$.count": 0 } },
-                { timestamps: false }
-            ),
-            Message.updateMany(
-                { conversationId, sender: { $ne: userId }, status: { $ne: enums.messages_Status.SEEN } },
-                { $set: { status: enums.messages_Status.SEEN, updatedAt: new Date() } }
-            )
-        ]);
+        const hasUnread = await Message.exists({
+            conversationId,
+            sender: { $ne: userId },
+            status: { $ne: enums.messages_Status.SEEN }
+        });
 
+    
         const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
-        if (senderId) {
-            const conversationUpdate = {
-                conversationId: conversation._id.toString(),
-                lastMessageStatus: "seen",
-                unseenCount: 0
-            };
-            emitToUser(senderId.toString(), "messages_seen", { conversationId, seenBy: userId });
-            emitToUser(senderId.toString(), "conversationUpdated", conversationUpdate);
-            emitToUser(userId.toString(), "conversationUpdated", conversationUpdate);
-        }
+        console.log("senderId for seen update:----", senderId);
+      
 
         return {
             data: messages.reverse(),
@@ -502,6 +523,7 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             }
         };
     } catch (error) {
+        console.log("ERROR::", error);
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
@@ -510,49 +532,60 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
 
 
 
-exports.seenMessageService = async (conversationId, receiverId) => {
+exports.seenMessageService = async (conversationId, loggedInUserId) => {
     try {
-        if (!receiverId) throw createError(400, 'userNotFound', 'notFound');
+        if (!loggedInUserId) throw createError(400, 'userNotFound', 'notFound');
 
-        const receiver = await isUserExist(receiverId);
+        const receiver = await isUserExist(loggedInUserId);
         if (!receiver) throw createError(404, 'userNotFound', 'notFound');
 
         const conversation = await isConversationExist(conversationId);
-        if (!conversation.participants.some(p => p.toString() === receiverId.toString())) {
+        if (!conversation.participants.some(p => p.toString() === loggedInUserId.toString())) {
             throw createError(403, 'receiverNotPart', 'notFound');
         }
 
-        // Mark messages as seen first. If nothing matched, do not clear unseenCount
-        // and do not emit "seen" events (prevents ghost unseenCount=0).
+        // 🔥 1. Get last message sender
+        const lastMsg = await Message.findById(conversation.lastMessage).select("sender");
+
+        // 🚫 If last message is mine → DO NOTHING
+        if (!lastMsg || lastMsg.sender.toString() === loggedInUserId.toString()) {
+            return { message: "No need to mark as seen" };
+        }
+
+        console.log("Marking messages as seen for conversation:", conversationId, "by user:", loggedInUserId);
+
+        // 🔥 2. Mark messages as seen
         const result = await Message.updateMany(
-            { conversationId, sender: { $ne: receiverId }, status: { $ne: "seen" } },
-            { $set: { status: "seen" } }
+            {
+                conversationId,
+                sender: { $ne: loggedInUserId },
+                status: { $ne: "seen" }
+            },
+            { $set: { status: "seen", updatedAt: new Date() } }
         );
 
-        const matchedCount = Number(result?.matchedCount ?? 0);
         const modifiedCount = Number(result?.modifiedCount ?? 0);
-        if (matchedCount === 0 || modifiedCount === 0) {
+        if (modifiedCount === 0) {
             return { modifiedCount: 0 };
         }
 
+        // 🔥 3. Reset unseen count for logged-in user
         await Conversation.updateOne(
-            { _id: conversationId, "unseenCount.userId": receiverId },
+            { _id: conversationId, "unseenCount.userId": loggedInUserId },
             { $set: { "unseenCount.$.count": 0 } },
             { timestamps: false }
         );
 
+        // 🔥 4. Get other user (sender)
         const senderId = conversation.participants.find(
-            p => p.toString() !== receiverId.toString()
+            p => p.toString() !== loggedInUserId.toString()
         );
 
-        const senderUnseenCount = senderId
-            ? (conversation.unseenCount.find(u => u.userId.toString() === senderId.toString())?.count || 0)
-            : 0;
-
+        // 🔥 5. Prepare payloads
         const conversationUpdateForSender = {
             conversationId: conversation._id.toString(),
             lastMessageStatus: "seen",
-            unseenCount: senderUnseenCount
+            unseenCount: 0
         };
 
         const conversationUpdateForReceiver = {
@@ -561,29 +594,33 @@ exports.seenMessageService = async (conversationId, receiverId) => {
             unseenCount: 0
         };
 
-
+        // 🔥 6. Emit to sender (IMPORTANT)
         if (senderId) {
             emitToUser(senderId.toString(), "messages_seen", {
                 conversationId,
-                seenBy: receiverId,
-                data: result
+                seenBy: loggedInUserId,
+                userId: senderId
             });
+
             emitToUser(senderId.toString(), "conversationUpdated", conversationUpdateForSender);
         }
 
+        // 🔥 7. Emit to receiver (self)
+        const totalChatUnread = await getTotalUnseenCount(loggedInUserId.toString());
 
-        const totalChatUnread = await getTotalUnseenCount(receiverId.toString());
-        emitToUser(receiverId.toString(), "conversationUpdated", conversationUpdateForReceiver);
-        emitToUser(receiverId.toString(), "badgeCountUpdate", { chatUnread: totalChatUnread });
+        emitToUser(loggedInUserId.toString(), "conversationUpdated", conversationUpdateForReceiver);
+
+        emitToUser(loggedInUserId.toString(), "badgeCountUpdate", {
+            chatUnread: totalChatUnread
+        });
 
         return result;
+
     } catch (error) {
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }
 };
-
-
 
 
 exports.deliveredMessageService = async (conversationId, receiverId) => {

@@ -15,6 +15,8 @@ router.post('/save-device-token', authController.savedDeviceToken);
 router.post('/forgot-password', forgotPasswordValidator, authController.forgotPassword);
 router.post('/reset-password', resetPasswordValidator, authController.resetPassword);
 router.get('/reset-password/:token', authController.renderPasswordSubmitPage);
+router.patch('/verify-email', authController.verifyEmail);
+router.patch('/resend-verification-otp', authController.resendVerificationOtp);
 
 // router.post('/google', authController.googleAuth);
 

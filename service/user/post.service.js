@@ -2,17 +2,55 @@ const Post = require("../../models/post.model");
 const UserStats = require("../../models/userActivityStats.model");
 const mongoose = require("mongoose");
 const Comment = require("../../models/Comments.model");
-const { isPostExist, createError, postAggregationPipeline, isUserExist, isCommunityExist, getAllFriends } = require("../../helpers/dbHelpers.js");
-const resMessages = require("../../constants/resMessages.constants.js");
+const { isPostExist, createError, isUserExist, isCommunityExist, getAllFriends } = require("../../helpers/dbHelpers.js");
 const HashTag = require("../../models/hashTag.models.js");
 const { deleteFileFromS3 } = require("../../utils/s3.util.js");
 const Block = require("../../models/block.model.js");
-const Community = require("../../models/community.model.js");
 const CommunityMember = require("../../models/communityMember.model.js");
 const enums = require("../../constants/enum.constants.js");
 const Friend = require("../../models/friends.model.js");
 
 const SAMPLE_POOL_SIZE = 300;
+
+
+const mediaTransformStage = {
+  $addFields: {
+    thumbnails: {
+      $map: {
+        input: { $ifNull: ["$mediaUrls", []] },
+        as: "media",
+        in: {
+          $cond: {
+
+            if: { $eq: [{ $type: "$$media" }, "object"] },
+            then: "$$media",
+            else: {
+              url: "$$media",
+              thumbnailUrl: null,
+              mediaType: null
+            }
+          }
+        }
+      }
+    },
+    mediaUrls: {
+      $map: {
+        input: { $ifNull: ["$mediaUrls", []] },
+        as: "media",
+        in: {
+          $cond: {
+
+            if: { $eq: [{ $type: "$$media" }, "object"] },
+            then: "$$media.url",
+            else: "$$media"
+          }
+        }
+      }
+    }
+  }
+};
+
+
 
 exports.createPost = async (data, cleanHashTags) => {
   try {
@@ -22,19 +60,27 @@ exports.createPost = async (data, cleanHashTags) => {
       if (!communityExists) throw createError(404, "communityNotFound", "notFound");
     }
 
+    if (!data.type && data.mediaUrls?.length) {
+      const hasVideo = data.mediaUrls.some((m) => m.mediaType === "video");
+      const hasImage = data.mediaUrls.some((m) => m.mediaType === "image");
+      if (hasVideo && hasImage) data.type = "both";
+      else if (hasVideo) data.type = "video";
+      else if (hasImage) data.type = "image";
+    }
+
     const post = new Post(data);
 
     await Promise.all([
       post.save(),
       ...(cleanHashTags?.length
-        ? cleanHashTags.map(tag =>
+        ? cleanHashTags.map((tag) =>
           HashTag.findOneAndUpdate(
             { tag },
             { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
             { upsert: true, new: true }
           )
         )
-        : [])
+        : []),
     ]);
 
     return post;
@@ -44,11 +90,11 @@ exports.createPost = async (data, cleanHashTags) => {
   }
 };
 
+
+
 exports.getUserFeedPostsService = async (page, limit, userId) => {
   try {
-
     if (!userId) throw createError(400, "userNotFound", "notFound");
-
 
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
@@ -57,24 +103,28 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
       getAllFriends(user._id),
       Friend.find({
         status: enums.friend_Request_status.PENDING,
-        $or: [{ requester: user._id }, { recipient: user._id }]
+        $or: [{ requester: user._id }, { recipient: user._id }],
       }),
       CommunityMember.find({ userId: user._id }).select("communityId"),
-      Block.find({ $or: [{ blocked: userId }, { blocker: userId }] })
+      Block.find({ $or: [{ blocked: userId }, { blocker: userId }] }),
     ]);
 
-    const allFriendIds = allFriends.map(f => f._id.toString());
+    const allFriendIds = allFriends.map((f) => f._id.toString());
 
     const pendingUserIds = pendingRequests
-      .map(req =>
-        req.requester._id.toString() === user._id.toString() ? req.recipient : req.requester
+      .map((req) =>
+        req.requester._id.toString() === user._id.toString()
+          ? req.recipient
+          : req.requester
       )
       .filter(Boolean);
 
-    const allCommunityIds = joinedCommunities.map(c => c.communityId.toString()).filter(Boolean);
+    const allCommunityIds = joinedCommunities
+      .map((c) => c.communityId.toString())
+      .filter(Boolean);
 
     const blockedUserIds = blocked
-      .map(b =>
+      .map((b) =>
         new mongoose.Types.ObjectId(
           b.blocker.toString() === userId.toString() ? b.blocked : b.blocker
         )
@@ -82,7 +132,9 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
       .filter(Boolean);
 
     const baseMatch = {
-      userId: { $nin: [...blockedUserIds, new mongoose.Types.ObjectId(userId)] }
+      userId: {
+        $nin: [...blockedUserIds, new mongoose.Types.ObjectId(userId)],
+      },
     };
 
     let finalMatch;
@@ -92,18 +144,18 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
       if (allCommunityIds.length > 0) {
         orConditions.push({
           $and: [
-            { communityId: { $in: allCommunityIds.map(id => new mongoose.Types.ObjectId(id)) } },
-            { userId: { $ne: new mongoose.Types.ObjectId(userId) } }
-          ]
+            { communityId: { $in: allCommunityIds.map((id) => new mongoose.Types.ObjectId(id)) } },
+            { userId: { $ne: new mongoose.Types.ObjectId(userId) } },
+          ],
         });
       }
 
       if (allFriendIds.length > 0) {
         orConditions.push({
           $and: [
-            { userId: { $in: allFriendIds.map(id => new mongoose.Types.ObjectId(id)) } },
-            { $or: [{ communityId: { $exists: false } }, { communityId: null }] }
-          ]
+            { userId: { $in: allFriendIds.map((id) => new mongoose.Types.ObjectId(id)) } },
+            { $or: [{ communityId: { $exists: false } }, { communityId: null }] },
+          ],
         });
       }
 
@@ -122,49 +174,17 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
           data: [
             { $skip: skip },
             { $limit: limit },
-            {
-              $lookup: {
-                from: "users",
-                localField: "userId",
-                foreignField: "_id",
-                as: "user"
-              }
-            },
+            { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: "communities",
-                localField: "communityId",
-                foreignField: "_id",
-                as: "community"
-              }
-            },
+            { $lookup: { from: "communities", localField: "communityId", foreignField: "_id", as: "community" } },
             { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: "communitycategories",
-                localField: "community.category",
-                foreignField: "_id",
-                as: "communityCategory"
-              }
-            },
+            { $lookup: { from: "communitycategories", localField: "community.category", foreignField: "_id", as: "communityCategory" } },
             { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: "userstats",
-                localField: "_id",
-                foreignField: "postId",
-                as: "stats"
-              }
-            },
+            { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
             {
               $addFields: {
-                totalLikes: {
-                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] }
-                },
-                totalViews: {
-                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] }
-                },
+                totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
+                totalViews: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] } },
                 isPostLikedByMe: {
                   $let: {
                     vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
@@ -173,22 +193,15 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
                         $map: {
                           input: { $ifNull: ["$$statsDoc.likes", []] },
                           as: "like",
-                          in: { $eq: ["$$like.userId", { $toString: user._id }] }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
-            {
-              $lookup: {
-                from: "comments",
-                localField: "_id",
-                foreignField: "postId",
-                as: "comments"
-              }
-            },
+            { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
             { $addFields: { totalComments: { $size: "$comments" } } },
             {
               $addFields: {
@@ -202,57 +215,37 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
                         $cond: {
                           if: { $eq: ["$communityCategory.name", "Others"] },
                           then: "$community.manualCategoryName",
-                          else: "$communityCategory.name"
-                        }
+                          else: "$communityCategory.name",
+                        },
                       },
                       isJoinedByMe: {
-                        $in: ["$communityId", allCommunityIds.map(id => new mongoose.Types.ObjectId(id))]
-                      }
+                        $in: ["$communityId", allCommunityIds.map((id) => new mongoose.Types.ObjectId(id))],
+                      },
                     },
-                    "$$REMOVE"
-                  ]
-                }
-              }
-            },
-            {
-              $addFields: {
-                isFriend: {
-                  $in: ["$userId", allFriendIds.map(id => new mongoose.Types.ObjectId(id))]
+                    "$$REMOVE",
+                  ],
                 },
-                isPendingRequest: {
-                  $in: ["$userId", pendingUserIds.map(id => new mongoose.Types.ObjectId(id))]
-                }
-              }
+                isFriend: { $in: ["$userId", allFriendIds.map((id) => new mongoose.Types.ObjectId(id))] },
+                isPendingRequest: { $in: ["$userId", pendingUserIds.map((id) => new mongoose.Types.ObjectId(id))] },
+              },
             },
+            mediaTransformStage,
             {
               $project: {
-                _id: 1,
-                postHeading: 1,
-                postDescription: 1,
-                mediaUrls: 1,
-                hashtags: 1,
-                communityId: 1,
-                type: 1,
-                createdAt: 1,
-                updatedAt: 1,
-                "user._id": 1,
-                "user.username": 1,
-                "user.email": 1,
-                "user.avatarUrl": 1,
-                "user.currentCountry": 1,
-                community: 1,
-                totalLikes: 1,
-                totalViews: 1,
-                totalComments: 1,
-                isPostLikedByMe: 1,
-                isFriend: 1,
-                isPendingRequest: 1
-              }
-            }
+                _id: 1, postHeading: 1, postDescription: 1,
+                mediaUrls: 1, thumbnails: 1, hashtags: 1,
+                communityId: 1, type: 1, createdAt: 1, updatedAt: 1,
+                "user._id": 1, "user.username": 1, "user.email": 1,
+                "user.avatarUrl": 1, "user.currentCountry": 1,
+                community: 1, totalLikes: 1, totalViews: 1,
+                totalComments: 1, isPostLikedByMe: 1,
+                isFriend: 1, isPendingRequest: 1,
+              },
+            },
           ],
-          totalCount: [{ $count: "count" }]
-        }
-      }
+          totalCount: [{ $count: "count" }],
+        },
+      },
     ]);
 
     const posts = result[0]?.data || [];
@@ -264,8 +257,8 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
         total,
         totalPages: Math.ceil(total / limit),
         currentPage: parseInt(page),
-        limit: parseInt(limit)
-      }
+        limit: parseInt(limit),
+      },
     };
   } catch (error) {
     if (error.statusCode) throw error;
@@ -273,9 +266,10 @@ exports.getUserFeedPostsService = async (page, limit, userId) => {
   }
 };
 
+
+
 exports.getPostById = async (id, userId) => {
   try {
-
     if (!userId) throw createError(400, "userNotFound", "notFound");
 
     const user = await isUserExist(userId);
@@ -287,71 +281,29 @@ exports.getPostById = async (id, userId) => {
     const isBlocked = await Block.findOne({
       $or: [
         { blocker: post.userId, blocked: userId },
-        { blocker: userId, blocked: post.userId }
-      ]
+        { blocker: userId, blocked: post.userId },
+      ],
     });
-    if (isBlocked) throw createError(403, "userBlocked", "validation");
+    
+    if (isBlocked) {
+      const blockedByThem = isBlocked.blocker.toString() === post.userId.toString();
+      throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
+    }
 
     const result = await Post.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
-
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user"
-        }
-      },
+      { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      {
-        $addFields: {
-          isAdmin: {
-            $cond: [
-              { $eq: ["$user.role", "admin"] },
-              true,
-              false
-            ]
-          }
-        }
-      },
-
-      {
-        $lookup: {
-          from: "communities",
-          localField: "communityId",
-          foreignField: "_id",
-          as: "community"
-        }
-      },
+      { $addFields: { isAdmin: { $cond: [{ $eq: ["$user.role", "admin"] }, true, false] } } },
+      { $lookup: { from: "communities", localField: "communityId", foreignField: "_id", as: "community" } },
       { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
-
-      {
-        $lookup: {
-          from: "communitycategories",
-          localField: "community.category",
-          foreignField: "_id",
-          as: "communityCategory"
-        }
-      },
+      { $lookup: { from: "communitycategories", localField: "community.category", foreignField: "_id", as: "communityCategory" } },
       { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
-
-      {
-        $lookup: {
-          from: "userstats",
-          localField: "_id",
-          foreignField: "postId",
-          as: "stats"
-        }
-      },
+      { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
       {
         $addFields: {
-          totalLikes: {
-            $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] }
-          },
-          totalViews: {
-            $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] }
-          },
+          totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
+          totalViews: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] } },
           isPostLikedByMe: {
             $let: {
               vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
@@ -360,57 +312,32 @@ exports.getPostById = async (id, userId) => {
                   $map: {
                     input: { $ifNull: ["$$statsDoc.likes", []] },
                     as: "like",
-                    in: { $eq: ["$$like.userId", { $toString: user._id }] }
-                  }
-                }
-              }
-            }
-          }
-        }
+                    in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
-
-      {
-        $lookup: {
-          from: "comments",
-          localField: "_id",
-          foreignField: "postId",
-          as: "comments"
-        }
-      },
+      { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
       { $addFields: { totalComments: { $size: "$comments" } } },
 
+      mediaTransformStage,
       {
         $project: {
-          _id: 1,
-          postHeading: 1,
-          postDescription: 1,
-          mediaUrls: 1,
-          hashtags: 1,
-          communityId: 1,
-          type: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          "user._id": 1,
-          "user.username": 1,
-          "user.avatarUrl": 1,
-          "user.email": 1,
-          "user.currentCountry": 1,
-          "community._id": 1,
-          "community.name": 1,
+          _id: 1, postHeading: 1, postDescription: 1,
+          mediaUrls: 1, thumbnails: 1, hashtags: 1,
+          communityId: 1, type: 1, createdAt: 1, updatedAt: 1,
+          "user._id": 1, "user.username": 1, "user.avatarUrl": 1,
+          "user.email": 1, "user.currentCountry": 1,
+          "community._id": 1, "community.name": 1,
           "communityCategory.name": 1,
-          totalLikes: 1,
-          totalViews: 1,
-          totalComments: 1,
-          isPostLikedByMe: 1,
-          isAdmin: 1 
-        }
+          totalLikes: 1, totalViews: 1, totalComments: 1,
+          isPostLikedByMe: 1, isAdmin: 1,
+        },
       },
-
-      {
-        $facet: {
-          data: [{ $limit: 1 }]
-        }
-      }
+      { $facet: { data: [{ $limit: 1 }] } },
     ]);
 
     const data = result[0]?.data?.[0];
@@ -423,6 +350,8 @@ exports.getPostById = async (id, userId) => {
   }
 };
 
+
+
 exports.updatePost = async (id, updateData, userId) => {
   try {
     if (!userId) throw createError(400, "userNotFound", "notFound");
@@ -434,11 +363,10 @@ exports.updatePost = async (id, updateData, userId) => {
       throw createError(403, "NotAuthorized", "error");
     }
 
-
     let cleanHashtags = [];
     if (updateData.hashtags && Array.isArray(updateData.hashtags)) {
       cleanHashtags = updateData.hashtags
-        .map(tag => tag.trim().toLowerCase().replace(/^#/, ""))
+        .map((tag) => tag.trim().toLowerCase().replace(/^#/, ""))
         .filter((tag, index, self) => tag && self.indexOf(tag) === index);
       updateData.hashtags = cleanHashtags;
     } else {
@@ -446,39 +374,42 @@ exports.updatePost = async (id, updateData, userId) => {
       cleanHashtags = isPostIdExist.hashtags;
     }
 
-
     if (updateData.mediaUrls && Array.isArray(updateData.mediaUrls)) {
-      const oldUrls = isPostIdExist.mediaUrls || [];
-      const newUrls = updateData.mediaUrls;
 
+      const oldUrls = (isPostIdExist.mediaUrls || []).map((m) =>
+        typeof m === "string" ? m : m.url
+      );
 
-      const urlsToDelete = oldUrls.filter(url => !newUrls.includes(url));
+      const newUrls = updateData.mediaUrls.map((m) =>
+        typeof m === "string" ? m : m.url
+      );
+
+      const urlsToDelete = oldUrls.filter((url) => !newUrls.includes(url));
 
       if (urlsToDelete.length > 0) {
-        await Promise.allSettled(
-          urlsToDelete.map(url => deleteFileFromS3(url))
-        );
+        await Promise.allSettled(urlsToDelete.map((url) => deleteFileFromS3(url)));
       }
     }
 
-
-    const post = await Post.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const post = await Post.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
     if (!post) throw createError(404, "postNotFound", "notFound");
 
-
     const oldTags = isPostIdExist.hashtags;
-    const addTags = cleanHashtags.filter(tag => !oldTags.includes(tag));
-    const removeTags = oldTags.filter(tag => !cleanHashtags.includes(tag));
+    const addTags = cleanHashtags.filter((tag) => !oldTags.includes(tag));
+    const removeTags = oldTags.filter((tag) => !cleanHashtags.includes(tag));
 
     await Promise.all([
-      ...addTags.map(tag =>
+      ...addTags.map((tag) =>
         HashTag.findOneAndUpdate(
           { tag },
           { $inc: { usageCount: 1 }, $addToSet: { posts: post._id } },
           { upsert: true }
         )
       ),
-      ...removeTags.map(async tag => {
+      ...removeTags.map(async (tag) => {
         const updated = await HashTag.findOneAndUpdate(
           { tag },
           { $inc: { usageCount: -1 }, $pull: { posts: post._id } },
@@ -487,7 +418,7 @@ exports.updatePost = async (id, updateData, userId) => {
         if (updated?.usageCount <= 0) {
           await HashTag.deleteOne({ tag });
         }
-      })
+      }),
     ]);
 
     return post;
@@ -496,11 +427,12 @@ exports.updatePost = async (id, updateData, userId) => {
     throw createError(500, "serverError", "error");
   }
 };
+
+
+
 exports.deletePost = async (id, userId) => {
   try {
-
     if (!userId) throw createError(400, "userNotFound", "notFound");
-
 
     const isPostIdExist = await isPostExist(id);
     if (!isPostIdExist) throw createError(404, "postNotFound", "notFound");
@@ -509,14 +441,20 @@ exports.deletePost = async (id, userId) => {
       throw createError(403, "NotAuthorized", "customError");
     }
 
+
     if (isPostIdExist.mediaUrls && isPostIdExist.mediaUrls.length > 0) {
-      await Promise.all(isPostIdExist.mediaUrls.map(url => deleteFileFromS3(url)));
+      await Promise.all(
+        isPostIdExist.mediaUrls.map((media) => {
+          const url = typeof media === "string" ? media : media.url;
+          return deleteFileFromS3(url);
+        })
+      );
     }
 
     await Promise.all([
       Post.findByIdAndDelete(id),
       UserStats.findOneAndDelete({ postId: id }),
-      HashTag.updateMany({ posts: id }, { $pull: { posts: id } })
+      HashTag.updateMany({ posts: id }, { $pull: { posts: id } }),
     ]);
 
     return isPostIdExist;
@@ -526,6 +464,8 @@ exports.deletePost = async (id, userId) => {
   }
 };
 
+
+
 exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search = "") => {
   try {
     if (!userId) throw createError(400, "userNotFound", "notFound");
@@ -533,12 +473,11 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
 
-
     const isBlocked = await Block.findOne({
       $or: [
         { blocker: id, blocked: userId },
-        { blocker: userId, blocked: id }
-      ]
+        { blocker: userId, blocked: id },
+      ],
     });
 
     if (isBlocked) {
@@ -546,38 +485,33 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
       return {
         posts: [],
         pagination: { totalPosts: 0, totalPages: 0, currentPage: parseInt(page), limit: parseInt(limit) },
-        message: blockedByThem ? "You have been blocked by this user" : "You have blocked this user"
+        message: blockedByThem
+          ? "You have been blocked by this user"
+          : "You have blocked this user",
       };
     }
 
     const joinedCommunities = await CommunityMember.find({ userId: user._id }).select("communityId");
-    const allCommunityIds = joinedCommunities.map(c => c.communityId).filter(Boolean);
+    const allCommunityIds = joinedCommunities.map((c) => c.communityId).filter(Boolean);
 
     const skip = (page - 1) * limit;
-
 
     const searchFilter = search
       ? {
         $or: [
           { postHeading: { $regex: search, $options: "i" } },
           { postDescription: { $regex: search, $options: "i" } },
-          { hashtags: { $regex: search, $options: "i" } }
-        ]
+          { hashtags: { $regex: search, $options: "i" } },
+        ],
       }
       : {};
 
     let matchStage = {};
-    if (type === "profile") {
+    if (type === "profile" || type === "community") {
       matchStage = {
         userId: new mongoose.Types.ObjectId(id),
         postType: type,
-        ...searchFilter
-      };
-    } else if (type === "community") {
-      matchStage = {
-        userId: new mongoose.Types.ObjectId(id),
-        postType: type,
-        ...searchFilter
+        ...searchFilter,
       };
     }
 
@@ -586,14 +520,7 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
       {
         $facet: {
           paginatedPosts: [
-            {
-              $lookup: {
-                from: "userstats",
-                localField: "_id",
-                foreignField: "postId",
-                as: "stats"
-              }
-            },
+            { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
             {
               $addFields: {
                 totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
@@ -606,66 +533,32 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
                         $map: {
                           input: { $ifNull: ["$$statsDoc.likes", []] },
                           as: "like",
-                          in: { $eq: ["$$like.userId", { $toString: user._id }] }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
-            {
-              $lookup: {
-                from: "comments",
-                localField: "_id",
-                foreignField: "postId",
-                as: "comments"
-              }
-            },
-            {
-              $addFields: {
-                totalComments: { $size: { $ifNull: ["$comments", []] } }
-              }
-            },
+            { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
+            { $addFields: { totalComments: { $size: { $ifNull: ["$comments", []] } } } },
             ...(type === "community"
               ? [
-                {
-                  $lookup: {
-                    from: "communities",
-                    localField: "communityId",
-                    foreignField: "_id",
-                    as: "communityInfo"
-                  }
-                },
+                { $lookup: { from: "communities", localField: "communityId", foreignField: "_id", as: "communityInfo" } },
                 { $unwind: { path: "$communityInfo", preserveNullAndEmptyArrays: true } },
-                {
-                  $lookup: {
-                    from: "communitycategories",
-                    localField: "communityInfo.category",
-                    foreignField: "_id",
-                    as: "categoryInfo"
-                  }
-                },
-                { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } }
+                { $lookup: { from: "communitycategories", localField: "communityInfo.category", foreignField: "_id", as: "categoryInfo" } },
+                { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
               ]
-              : []
-            ),
+              : []),
+            mediaTransformStage,
             {
               $project: {
-                _id: 1,
-                postHeading: 1,
-                postDescription: 1,
-                mediaUrls: 1,
-                hashtags: 1,
-                communityId: 1,
-                type: 1,
-                storyOfTheMonth: 1,
-                videoOfTheMonth: 1,
-                createdAt: 1,
-                updatedAt: 1,
-                totalLikes: 1,
-                totalViews: 1,
-                totalComments: 1,
+                _id: 1, postHeading: 1, postDescription: 1,
+                mediaUrls: 1, thumbnails: 1, hashtags: 1,
+                communityId: 1, type: 1, storyOfTheMonth: 1,
+                videoOfTheMonth: 1, createdAt: 1, updatedAt: 1,
+                totalLikes: 1, totalViews: 1, totalComments: 1,
                 isPostLikedByMe: 1,
                 ...(type === "community"
                   ? {
@@ -676,22 +569,22 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
                         $cond: {
                           if: { $eq: ["$categoryInfo.name", "Others"] },
                           then: "$communityInfo.manualCategoryName",
-                          else: "$categoryInfo.name"
-                        }
+                          else: "$categoryInfo.name",
+                        },
                       },
-                      isJoinedByMe: { $in: ["$communityId", allCommunityIds] }
-                    }
+                      isJoinedByMe: { $in: ["$communityId", allCommunityIds] },
+                    },
                   }
-                  : {})
-              }
+                  : {}),
+              },
             },
             { $sort: { createdAt: -1 } },
             { $skip: skip },
-            { $limit: limit }
+            { $limit: limit },
           ],
-          totalCount: [{ $count: "count" }]
-        }
-      }
+          totalCount: [{ $count: "count" }],
+        },
+      },
     ];
 
     const result = await Post.aggregate(pipeline);
@@ -704,8 +597,8 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
         totalPosts,
         totalPages: Math.ceil(totalPosts / limit),
         currentPage: parseInt(page),
-        limit: parseInt(limit)
-      }
+        limit: parseInt(limit),
+      },
     };
   } catch (error) {
     if (error.statusCode) throw error;
@@ -714,29 +607,29 @@ exports.getProfilePost = async (id, page = 1, limit = 10, userId, type, search =
 };
 
 
-// service
+
 exports.getTrendingTagsService = async () => {
   try {
     let result = await HashTag.find({ usageCount: { $gt: 10 } })
       .sort({ usageCount: -1 })
       .limit(4)
-      .select('tag usageCount');
-
+      .select("tag usageCount");
 
     if (!result || result.length === 0) {
       result = await HashTag.find({ usageCount: { $gt: 0 } })
         .sort({ usageCount: -1 })
         .limit(4)
-        .select('tag usageCount');
+        .select("tag usageCount");
     }
 
     return result || [];
-
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, "serverError", "error");
   }
 };
+
+
 
 exports.getAllPostService = async (search = "", page, limit, userId, hashtagSearch = "") => {
   try {
@@ -749,16 +642,16 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
       getAllFriends(user._id),
       Friend.find({
         status: enums.friend_Request_status.PENDING,
-        $or: [{ requester: user._id }, { recipient: user._id }]
+        $or: [{ requester: user._id }, { recipient: user._id }],
       }),
       Block.find({ $or: [{ blocked: userId }, { blocker: userId }] }),
-      CommunityMember.find({ userId: user._id }).select("communityId")
+      CommunityMember.find({ userId: user._id }).select("communityId"),
     ]);
 
-    const allFriendIds = allFriends.map(f => f?._id?.toString()).filter(Boolean);
+    const allFriendIds = allFriends.map((f) => f?._id?.toString()).filter(Boolean);
 
     const pendingUserIds = pendingRequests
-      .map(req => {
+      .map((req) => {
         if (!req?.requester || !req?.recipient) return null;
         return req.requester._id.toString() === user._id.toString()
           ? req.recipient?._id?.toString()
@@ -767,13 +660,13 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
       .filter(Boolean);
 
     const blockedUserIds = blocked
-      .map(b => {
+      .map((b) => {
         const id = b.blocker.toString() === userId.toString() ? b.blocked : b.blocker;
         return id ? new mongoose.Types.ObjectId(id) : null;
       })
       .filter(Boolean);
 
-    const joinedCommunityIds = joinedCommunities.map(c => c.communityId);
+    const joinedCommunityIds = joinedCommunities.map((c) => c.communityId);
 
     const baseMatch = {
       $expr: {
@@ -781,18 +674,18 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
           $in: [
             { $toObjectId: "$userId" },
             [
-              ...blockedUserIds.map(id => new mongoose.Types.ObjectId(id)),
-              new mongoose.Types.ObjectId(userId)
-            ]
-          ]
-        }
-      }
+              ...blockedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+              new mongoose.Types.ObjectId(userId),
+            ],
+          ],
+        },
+      },
     };
 
     if (search) {
       baseMatch.$or = [
         { postHeading: { $regex: search, $options: "i" } },
-        { postDescription: { $regex: search, $options: "i" } }
+        { postDescription: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -802,67 +695,27 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
 
     const skip = (page - 1) * limit;
 
+
+    const isSearching = !!(search || hashtagSearch);
+
     const result = await Post.aggregate([
       { $match: baseMatch },
-      { $sample: { size: SAMPLE_POOL_SIZE } },
+      ...(isSearching ? [] : [{ $sample: { size: SAMPLE_POOL_SIZE } }]),
       {
         $facet: {
           data: [
-            {
-              $lookup: {
-                from: "users",
-                localField: "userId",
-                foreignField: "_id",
-                as: "user"
-              }
-            },
+            { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-            {
-              $addFields: {
-                isAdmin: {
-                  $cond: [
-                    { $eq: ["$user.role", "admin"] },
-                    true,
-                    false
-                  ]
-                }
-              }
-            },
-
-            {
-              $lookup: {
-                from: "communities",
-                localField: "communityId",
-                foreignField: "_id",
-                as: "community"
-              }
-            },
+            { $addFields: { isAdmin: { $cond: [{ $eq: ["$user.role", "admin"] }, true, false] } } },
+            { $lookup: { from: "communities", localField: "communityId", foreignField: "_id", as: "community" } },
             { $unwind: { path: "$community", preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: "communitycategories",
-                localField: "community.category",
-                foreignField: "_id",
-                as: "communityCategory"
-              }
-            },
+            { $lookup: { from: "communitycategories", localField: "community.category", foreignField: "_id", as: "communityCategory" } },
             { $unwind: { path: "$communityCategory", preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: "userstats",
-                localField: "_id",
-                foreignField: "postId",
-                as: "stats"
-              }
-            },
+            { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
             {
               $addFields: {
-                totalLikes: {
-                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] }
-                },
-                totalViews: {
-                  $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] }
-                },
+                totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
+                totalViews: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.views", 0] }, []] } },
                 isPostLikedByMe: {
                   $let: {
                     vars: { statsDoc: { $arrayElemAt: ["$stats", 0] } },
@@ -871,22 +724,15 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                         $map: {
                           input: { $ifNull: ["$$statsDoc.likes", []] },
                           as: "like",
-                          in: { $eq: ["$$like.userId", { $toString: user._id }] }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
-            {
-              $lookup: {
-                from: "comments",
-                localField: "_id",
-                foreignField: "postId",
-                as: "comments"
-              }
-            },
+            { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
             { $addFields: { totalComments: { $size: "$comments" } } },
             {
               $addFields: {
@@ -900,66 +746,40 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
                         $cond: {
                           if: { $eq: ["$communityCategory.name", "Others"] },
                           then: "$community.manualCategoryName",
-                          else: "$communityCategory.name"
-                        }
+                          else: "$communityCategory.name",
+                        },
                       },
                       isJoinedByMe: {
-                        $cond: [
-                          { $in: ["$communityId", joinedCommunityIds] },
-                          true,
-                          false
-                        ]
-                      }
+                        $cond: [{ $in: ["$communityId", joinedCommunityIds] }, true, false],
+                      },
                     },
-                    "$$REMOVE"
-                  ]
-                }
-              }
-            },
-            {
-              $addFields: {
-                isFriend: {
-                  $in: ["$userId", allFriendIds.map(id => new mongoose.Types.ObjectId(id))]
+                    "$$REMOVE",
+                  ],
                 },
-                isPendingRequest: {
-                  $in: ["$userId", pendingUserIds.map(id => new mongoose.Types.ObjectId(id))]
-                }
-              }
+                isFriend: { $in: ["$userId", allFriendIds.map((id) => new mongoose.Types.ObjectId(id))] },
+                isPendingRequest: { $in: ["$userId", pendingUserIds.map((id) => new mongoose.Types.ObjectId(id))] },
+              },
             },
+            mediaTransformStage,
             {
               $project: {
-                _id: 1,
-                postHeading: 1,
-                postDescription: 1,
-                mediaUrls: 1,
-                hashtags: 1,
-                communityId: 1,
-                type: 1,
-                storyOfTheMonth: 1,
-                videoOfTheMonth: 1,
-                createdAt: 1,
-                updatedAt: 1,
-                "user._id": 1,
-                "user.username": 1,
-                "user.email": 1,
-                "user.avatarUrl": 1,
-                "user.currentCountry": 1,
-                community: 1,
-                totalLikes: 1,
-                totalViews: 1,
-                totalComments: 1,
-                isPostLikedByMe: 1,
-                isFriend: 1,
-                isPendingRequest: 1,
-                isAdmin: 1
-              }
+                _id: 1, postHeading: 1, postDescription: 1,
+                mediaUrls: 1, thumbnails: 1, hashtags: 1,
+                communityId: 1, type: 1, storyOfTheMonth: 1,
+                videoOfTheMonth: 1, createdAt: 1, updatedAt: 1,
+                "user._id": 1, "user.username": 1, "user.email": 1,
+                "user.avatarUrl": 1, "user.currentCountry": 1,
+                community: 1, totalLikes: 1, totalViews: 1,
+                totalComments: 1, isPostLikedByMe: 1,
+                isFriend: 1, isPendingRequest: 1, isAdmin: 1,
+              },
             },
             { $skip: skip },
-            { $limit: limit }
+            { $limit: limit },
           ],
-          totalCount: [{ $count: "count" }]
-        }
-      }
+          totalCount: [{ $count: "count" }],
+        },
+      },
     ]);
 
     const data = result[0].data;
@@ -971,8 +791,8 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
         total,
         totalPages: Math.ceil(total / limit),
         currentPage: parseInt(page),
-        limit: parseInt(limit)
-      }
+        limit: parseInt(limit),
+      },
     };
   } catch (error) {
     if (error.statusCode) throw error;
@@ -980,29 +800,39 @@ exports.getAllPostService = async (search = "", page, limit, userId, hashtagSear
   }
 };
 
+
+
 exports.getHighlightedPostsService = async (userId) => {
   try {
-
     if (!userId) throw createError(400, "userNotFound", "notFound");
-
 
     const user = await isUserExist(userId);
     if (!user) throw createError(404, "userNotFound", "notFound");
 
     let matchStage = {
       $or: [
-        { $and: [{ $or: [{ type: enums.typePost.IMAGE }, { type: "both" }, { type: null }] }, { storyOfTheMonth: true }] },
-        { $and: [{ $or: [{ type: enums.typePost.VIDEO }, { type: "both" }] }, { videoOfTheMonth: true }] }
-      ]
+        {
+          $and: [
+            { $or: [{ type: enums.typePost.IMAGE }, { type: "both" }, { type: null }] },
+            { storyOfTheMonth: true },
+          ],
+        },
+        {
+          $and: [
+            { $or: [{ type: enums.typePost.VIDEO }, { type: "both" }] },
+            { videoOfTheMonth: true },
+          ],
+        },
+      ],
     };
 
     if (user.role === "user") {
       const blockedRelations = await Block.find({
-        $or: [{ blocker: userId }, { blocked: userId }]
+        $or: [{ blocker: userId }, { blocked: userId }],
       }).lean();
 
       const blockedUserIds = blockedRelations
-        .map(b =>
+        .map((b) =>
           b.blocker.toString() === userId.toString()
             ? b.blocked.toString()
             : b.blocker.toString()
@@ -1013,8 +843,8 @@ exports.getHighlightedPostsService = async (userId) => {
         matchStage = {
           $and: [
             matchStage,
-            { userId: { $nin: blockedUserIds.map(id => new mongoose.Types.ObjectId(id)) } }
-          ]
+            { userId: { $nin: blockedUserIds.map((id) => new mongoose.Types.ObjectId(id)) } },
+          ],
         };
       }
     }
@@ -1024,23 +854,9 @@ exports.getHighlightedPostsService = async (userId) => {
       {
         $facet: {
           paginatedPosts: [
-            {
-              $lookup: {
-                from: "users",
-                localField: "userId",
-                foreignField: "_id",
-                as: "userInfo"
-              }
-            },
+            { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userInfo" } },
             { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: "userstats",
-                localField: "_id",
-                foreignField: "postId",
-                as: "stats"
-              }
-            },
+            { $lookup: { from: "userstats", localField: "_id", foreignField: "postId", as: "stats" } },
             {
               $addFields: {
                 totalLikes: { $size: { $ifNull: [{ $arrayElemAt: ["$stats.likes", 0] }, []] } },
@@ -1053,67 +869,49 @@ exports.getHighlightedPostsService = async (userId) => {
                         $map: {
                           input: { $ifNull: ["$$statsDoc.likes", []] },
                           as: "like",
-                          in: { $eq: ["$$like.userId", { $toString: user._id }] }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+                          in: { $eq: ["$$like.userId", { $toString: user._id }] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
-            {
-              $lookup: {
-                from: "comments",
-                localField: "_id",
-                foreignField: "postId",
-                as: "comments"
-              }
-            },
-            {
-              $addFields: {
-                totalComments: { $size: { $ifNull: ["$comments", []] } }
-              }
-            },
+            { $lookup: { from: "comments", localField: "_id", foreignField: "postId", as: "comments" } },
+            { $addFields: { totalComments: { $size: { $ifNull: ["$comments", []] } } } },
+            // ✅ dual-format safe transform
+            mediaTransformStage,
             {
               $project: {
-                _id: 1,
-                postHeading: 1,
-                postDescription: 1,
-                mediaUrls: 1,
-                hashtags: 1,
-                communityId: 1,
-                type: 1,
-                storyOfTheMonth: 1,
-                videoOfTheMonth: 1,
-                createdAt: 1,
-                updatedAt: 1,
-                totalLikes: 1,
-                totalViews: 1,
-                totalComments: 1,
+                _id: 1, postHeading: 1, postDescription: 1,
+                mediaUrls: 1, thumbnails: 1, hashtags: 1,
+                communityId: 1, type: 1, storyOfTheMonth: 1,
+                videoOfTheMonth: 1, createdAt: 1, updatedAt: 1,
+                totalLikes: 1, totalViews: 1, totalComments: 1,
                 isPostLikedByMe: 1,
                 user: {
                   _id: "$userInfo._id",
                   username: "$userInfo.username",
                   avatarUrl: "$userInfo.avatarUrl",
                   currentCountry: "$userInfo.currentCountry",
-                  email: "$userInfo.email"
-                }
-              }
+                  email: "$userInfo.email",
+                },
+              },
             },
-            { $sort: { createdAt: -1 } }
+            { $sort: { createdAt: -1 } },
           ],
-          totalCount: [{ $count: "count" }]
-        }
-      }
+          totalCount: [{ $count: "count" }],
+        },
+      },
     ];
 
     const result = await Post.aggregate(pipeline);
     const posts = result[0]?.paginatedPosts || [];
 
-    const storyOfTheMonthPosts = posts.filter(post => post.storyOfTheMonth);
-    const videoOfTheMonthPosts = posts.filter(post => post.videoOfTheMonth);
-
-    return { storyOfTheMonthPosts, videoOfTheMonthPosts };
+    return {
+      storyOfTheMonthPosts: posts.filter((p) => p.storyOfTheMonth),
+      videoOfTheMonthPosts: posts.filter((p) => p.videoOfTheMonth),
+    };
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, "serverError", "error");

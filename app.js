@@ -40,6 +40,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
+
 app.use(languageMiddleware)
 // app.use(fileUpload());
 app.get('/api/v1/test', (req, res) => {
@@ -94,11 +95,11 @@ app.use((err, req, res, next) => {
 });
 
 require("./utils/resetDailyStats.js")
-//const server = http.createServer(app);
-//const io = initIo(server);
+// const server = http.createServer(app);
+// const io = initIo(server);
 
 const PORT = secretVariables.port;
-//server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+// server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
 module.exports = { app };
 
 

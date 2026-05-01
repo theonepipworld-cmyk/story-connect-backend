@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const User = require('../../models/user.model.js');
-const { hashPassword, comparePassword, getJWT } = require("../../utils/commonFunctions.util.js");
+const { hashPassword, comparePassword, getJWT, generateOtp, generatePublicId } = require("../../utils/commonFunctions.util.js");
 const { checkFieldExists, createError } = require("../../helpers/dbHelpers.js");
-const resMessages = require('../../constants/resMessages.constants.js');
 const { sendEmail } = require('../../utils/email.util.js');
-const { RESET_PASS_LINK } = require("../../constants/variables.constants.js");
+const secretVariables = require("../../config/secretVariables.js");
+
 
 exports.signup = async (data) => {
   try {
@@ -18,6 +18,8 @@ exports.signup = async (data) => {
     if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
 
     const hashedPassword = await hashPassword(password);
+    const publicId = await generatePublicId(username);
+    let generatedOtp = await generateOtp();
     const newUserData = {
       email,
       username,
@@ -25,37 +27,52 @@ exports.signup = async (data) => {
       dateOfBirth,
       passwordHash: hashedPassword,
       lastSeen: new Date(),
+      emailVerificationOtp: generatedOtp,
+      emailVerificationOtpExpires: Date.now() + 1000 * 60 * 10, // OTP valid for 10 minutes
+      publicId
     };
 
     if (device_token) newUserData.device_token = device_token;
 
     const newUser = new User(newUserData);
-    await newUser.save();
+
     await sendEmail({
       to: email,
-      subject: 'Welcome to Our Platform 🎉',
-      template: 'welcome',
+      subject: 'Verify Your Email Address',
+      template: 'verify-email',
       context: {
         username: username,
         email: email,
+        otp: generatedOtp,
+        otpscreen: `secretVariables.frontend_base_url/verify-email?email=${encodeURIComponent(email)}`,
+        year: new Date().getFullYear(),
+        privacyPolicyUrl: `${secretVariables.website_url}privacy-policy`,
       }
     });
+
+    await newUser.save();
 
     const token = await getJWT(email, newUser._id, newUser.role, newUser.username);
 
     return { token };
   } catch (error) {
+    console.error('Signup failed:>>>> ', error);
     if (error.statusCode) throw error;
     throw createError(500, 'serverError', 'error');
   }
 };
 
-exports.login = async ({ email, password, device_token }) => {
+
+exports.login = async ({ email, password, device_token, loginViaWeb }) => {
   try {
     const user = await checkFieldExists('email', email);
     if (!user) throw createError(404, 'emailNotFound', 'notFound');
 
     if (user.passwordHash == null) throw createError(400, 'registrationIncomplete', 'validation');
+
+    if (loginViaWeb) {
+      if (user.isEmailVerified === false || user.isEmailVerified === undefined) throw createError(403, ' Please verify it to continue.', 'Your email is not verified');
+    }
 
     const correctPassword = await comparePassword(user.passwordHash, password);
     if (!correctPassword) throw createError(400, 'incorrectPassword', 'validation');
@@ -93,13 +110,18 @@ exports.forgotPassword = async ({ email }) => {
     user.resetPasswordExpires = Date.now() + 1000 * 60 * 15;
     await user.save();
 
-   const resetLink = `${RESET_PASS_LINK}?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+    const resetLink = `${secretVariables.frontend_base_url}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
 
     await sendEmail({
       to: email,
       subject: 'Password Reset Request',
       template: 'reset-password',
-      context: { resetLink }
+      context: {
+        resetLink,
+        name: user.username,
+        privacyPolicyUrl: `${secretVariables.website_url}privacy-policy`,
+        year: new Date().getFullYear()
+      }
     });
 
     return { message: 'ResetLink' };
@@ -127,5 +149,79 @@ exports.resetPassword = async ({ token, newPassword }) => {
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, 'serverError', 'error');
+  }
+};
+
+
+
+exports.verifyEmail = async (email, otp) => {
+  try {
+    const user = await User.findOne({ email })
+    if (!user) {
+      return { success: false, message: "User not found " }
+    }
+
+    if (user.emailVerificationOtpExpires < Date.now()) {
+      return { success: false, message: "OTP has expired. Please request a new one." }
+    }
+
+    if (user.emailVerificationOtp !== otp) {
+      return { success: false, message: "Incorrect OTP" }
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationOtp = null;
+    user.status = 'active';
+    await user.save();
+
+    return { success: true, message: "Email verified successfully" };
+
+  } catch (error) {
+    console.log("ERROR::", error)
+    return { success: false, message: error.message }
+  }
+}
+
+
+
+exports.resendVerificationOtp = async (email) => {
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return { success: false, message: "User not found" };
+    }
+
+    if (user.isEmailVerified) {
+      return { success: false, message: "Email is already verified" };
+    }
+
+    // generate new OTP
+    const generatedOtp = await generateOtp();
+
+    user.emailVerificationOtp = generatedOtp;
+    user.emailVerificationOtpExpires = Date.now() + 1000 * 60 * 10; // OTP valid for 10 minutes
+    await user.save();
+
+    // send email
+    await sendEmail({
+      to: email,
+      subject: "Verify Your Email Address",
+      template: "verify-email",
+      context: {
+        username: user.username,
+        email: email,
+        otp: generatedOtp,
+        otpscreen: `${secretVariables.frontend_base_url}/verify-email?email=${encodeURIComponent(email)}`,
+        year: new Date().getFullYear(),
+        privacyPolicyUrl: `${secretVariables.website_url}privacy-policy`,
+      },
+    });
+
+    return { success: true, message: "Verification OTP sent successfully" };
+
+  } catch (error) {
+    console.log("ERROR::", error);
+    return { success: false, message: error.message };
   }
 };

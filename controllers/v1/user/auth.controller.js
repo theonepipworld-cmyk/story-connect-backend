@@ -90,6 +90,53 @@ exports.forgotPassword = async (req, res) => {
   };
 
 
+  exports.verifyEmail = async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+
+      if(!email || !otp){
+        return res.status(400).json(errorResponse("Email and OTP are required"));
+      }
+
+      const userVeification = await authService.verifyEmail(email, otp);
+
+      if (!userVeification.success) {
+        return res.status(400).json(errorResponse(userVeification.message));
+      }
+
+      return res.status(200).json(successResponse("Email verified successfully"));
+
+    } catch (err) { 
+       console.log("ERROR::",err)
+       return res.status(500).json(errorResponse(getMessage(lang, `${err.message}`, 'somethingWentWrong')));
+    } 
+  };
+
+
+exports.resendVerificationOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(errorResponse("Email is required"));
+    }
+
+    const response = await authService.resendVerificationOtp(email);
+
+    if (!response.success) {
+      return res.status(400).json(errorResponse(response.message));
+    }
+
+    return res.status(200).json(successResponse(response.message));
+
+  } catch (err) {
+    console.log("ERROR::", err);
+    return res.status(500).json(errorResponse('Something went wrong while resending OTP',err.message));
+  }
+};
+
+
+
 
   exports.googleAuth = async (req, res) => {
     try {
@@ -108,13 +155,6 @@ exports.forgotPassword = async (req, res) => {
       const { email, name, picture, sub: googleId } = payload;
 
       let user = await User.findOne({ email });
-
-
-
-
-
-
-      
 
       if (!user) {
         user = new User({ email, name, googleId });

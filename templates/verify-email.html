@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify Your Email</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family: Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f6f8">
+    <tr>
+      <td align="center">
+
+        <!-- Main Container -->
+        <table width="600" cellpadding="0" cellspacing="0" border="0"
+          style="background:#ffffff; margin:30px 0; border-radius:8px; overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding:20px; background: linear-gradient(90deg, #fb923c, #ec4899);">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="color:#ffffff; font-size:22px; font-weight:bold;">
+                    Verify Your Email
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Greeting -->
+          <tr>
+            <td style="padding:30px 40px 10px; font-size:16px; color:#5f6368;">
+              Hi {{username}},
+            </td>
+          </tr>
+
+          <!-- Message -->
+          <tr>
+            <td style="padding:0 40px 20px; font-size:16px; color:#5f6368; line-height:1.6;">
+              Welcome to <strong>ProudDiaspoFace</strong> 🎉
+              <br /><br />
+              To complete your registration, please verify your email address using the OTP below:
+            </td>
+          </tr>
+
+          <!-- OTP Box -->
+          <tr>
+            <td align="center" style="padding:10px 20px;">
+              <div style="font-size:28px;
+                          font-weight:bold;
+                          letter-spacing:6px;
+                          color:#202124;
+                          background:#f4f6f8;
+                          display:inline-block;
+                          padding:12px 24px;
+                          border-radius:8px;">
+                {{otp}}
+              </div>
+            </td>
+          </tr>
+
+          <!-- OTP Note -->
+          <tr>
+            <td style="padding:20px 40px; font-size:14px; color:#5f6368; text-align:center;">
+              This OTP will expire in <strong>10 minutes</strong>.
+            </td>
+          </tr>
+
+          <!-- Button (Optional - redirect to OTP screen) -->
+          <tr>
+            <td align="center" style="padding:10px 20px;">
+              <!-- <a href="{{otpscreen}}" target="_blank"
+                style="background-color:#fb923c;
+                       color:#ffffff;
+                       text-decoration:none;
+                       padding:14px 28px;
+                       border-radius:50px;
+                       font-size:16px;
+                       font-weight:600;
+                       display:inline-block;">
+                Verify Email
+              </a> -->
+            </td>
+          </tr>
+
+          <!-- Note -->
+          <tr>
+            <td style="padding:20px 40px 30px; font-size:14px; color:#5f6368;">
+              If you did not create this account, you can safely ignore this email.
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" bgcolor="#f4f6f8"
+              style="padding:20px; font-size:12px; color:#999;">
+              © {{year}} ProudDiaspoFace. All rights reserved.<br />
+              <a href="{{privacyPolicyUrl}}"
+                style="color:#999; text-decoration:none;">
+                Privacy Policy
+              </a>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+
+</html>
