@@ -308,17 +308,40 @@ exports.getAllLikedUserService = async (
             )
             .filter(Boolean);
 
+        // ── Reusable: fetch full user details by IDs ──────────────────────────
+        const fetchUsers = async (userIds) => {
+            const users = await User.find(
+                { _id: { $in: userIds } },
+                "username publicId avatarUrl currentCountry profession"
+            ).lean();
+
+            return users.map(u => ({
+                userId:         u._id,
+                username:       u.username,
+                publicId:       u.publicId,
+                avatarUrl:      u.avatarUrl,
+                currentCountry: u.currentCountry,
+                profession:     u.profession,
+            }));
+        };
+
         let resultArr = [];
 
         if (type === userActivityStats.userStats.Likes) {
             const stats = await userStats.findOne({ postId }).select("likes");
             if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
-            resultArr = stats.likes;
+
+            // ✅ Fetch full user details for liked user IDs
+            const likedUserIds = stats.likes.map(l => l.userId || l);
+            resultArr = await fetchUsers(likedUserIds);
 
         } else if (type === userActivityStats.userStats.Views) {
             const stats = await userStats.findOne({ postId }).select("views");
             if (!stats) throw createError(404, 'noUserStatsFound', 'notFound');
-            resultArr = stats.views;
+
+            // ✅ Fetch full user details for viewed user IDs
+            const viewedUserIds = stats.views.map(v => v.userId || v);
+            resultArr = await fetchUsers(viewedUserIds);
 
         } else if (type === userActivityStats.userStats.CommentLikes) {
             if (!commentId) throw createError(400, 'commentNotFound', 'notFound');
@@ -332,30 +355,24 @@ exports.getAllLikedUserService = async (
 
             if (!commentStat) return [];
 
-            const users = await User.find(
-                { _id: { $in: commentStat.userIds } },
-                "username avatarUrl currentCountry"
-            ).lean();
-
-            resultArr = users.map(u => ({ userId: u._id, ...u }));
+            // ✅ Fetch full user details
+            resultArr = await fetchUsers(commentStat.userIds);
 
         } else {
             throw createError(400, 'invalidType', 'validation');
         }
 
-        // ❗ Filter blocked users
+        // ── Filter blocked users ──────────────────────────────────────────────
         resultArr = resultArr.filter(u =>
             !blockedUserIds.some(
                 bid => bid.toString() === u.userId.toString()
             )
         );
 
-        // ✅ Pagination logic
-        const total = resultArr.length;
+        // ── Pagination ────────────────────────────────────────────────────────
+        const total      = resultArr.length;
         const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + limit;
-
-        const paginatedData = resultArr.slice(startIndex, endIndex);
+        const endIndex   = startIndex + limit;
 
         return {
             pagination: {
@@ -364,7 +381,7 @@ exports.getAllLikedUserService = async (
                 limit,
                 totalPages: Math.ceil(total / limit),
             },
-            data: paginatedData
+            data: resultArr.slice(startIndex, endIndex),
         };
 
     } catch (error) {

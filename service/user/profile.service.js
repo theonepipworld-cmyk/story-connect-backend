@@ -62,6 +62,7 @@ exports.updateProfile = async (userId, payload, files) => {
         // publicId update
         if (payload.publicId && payload.publicId !== existingUser.publicId) {
 
+            const usernameRegex = /^[a-zA-Z0-9._-]+$/;
             // sanitize (IMPORTANT)
             let cleanPublicId = payload.publicId
                 .toLowerCase()
