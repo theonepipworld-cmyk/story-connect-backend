@@ -80,7 +80,7 @@ exports.updateProfile = async (userId, payload, files) => {
             });
 
             if (publicIdExist) {
-                throw createError(400, 'Public Id already taken. Please use different Public Id.', 'validation');
+                throw createError(400, ' Please try different username.', 'This username already taken');
             }
 
             patch.publicId = cleanPublicId;
