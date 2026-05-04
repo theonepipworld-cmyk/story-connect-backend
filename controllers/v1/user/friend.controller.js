@@ -101,6 +101,7 @@ exports.getAllMutualFriends = async (req, res) => {
 
 exports.getSuggestionFriends = async (req, res) => {
     try {
+        console.log("suggestion friends controller called---")
         const lang = getLang(req);
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;

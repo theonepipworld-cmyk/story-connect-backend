@@ -375,12 +375,15 @@ exports.postAggregationPipeline = (
 
 exports.getAllFriends = async (id) => {
   try {
+   
     const result = await Friend.find({
       status: enums.friend_Request_status.ACCEPTED,
       $or: [{ requester: id }, { recipient: id }]
     })
       .populate("requester", "username avatarUrl currentCountry bio")
       .populate("recipient", "username avatarUrl currentCountry bio");
+
+      
 
     const friendsList = result
       .map(f => {
@@ -391,9 +394,12 @@ exports.getAllFriends = async (id) => {
             ? f.recipient
             : f.requester;
 
+            
+
         return {
           _id: friend._id,
           username: friend.username || "",
+          publicId: friend.publicId || null,
           avatarUrl: friend.avatarUrl || "",
           bio: friend.bio || "",
           currentCountry: friend.currentCountry && friend.currentCountry.code

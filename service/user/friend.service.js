@@ -519,8 +519,10 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         if (!user) throw createError(404, "userNotFound", "notFound");
 
         const allFriends = await getAllFriends(user._id);
+        
         const allFriendIds = allFriends.map((f) => f._id.toString());
         allFriendIds.push(user._id.toString());
+        
 
         const [pendingRequests, blockedUsers] = await Promise.all([
             Friend.find({
@@ -622,7 +624,7 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
                 _id: { $in: paginatedIds },
                 ...(search ? { username: { $regex: search, $options: "i" } } : {})
             },
-            "username email avatarUrl currentCountry bio profession role"
+            "username email avatarUrl currentCountry bio profession role publicId"
         );
 
         const finalSuggestions = suggestions.map((u) => ({

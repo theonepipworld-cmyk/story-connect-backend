@@ -651,7 +651,8 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 profession: "$userInfo.profession",
                                 manualProfession: "$userInfo.manualProfession",
                                 bio: "$userInfo.bio",
-                                userId: "$userInfo._id"
+                                userId: "$userInfo._id",
+                                publicId: { $ifNull: ["$userInfo.publicId", null] }
                             }
                         }
                     ],
