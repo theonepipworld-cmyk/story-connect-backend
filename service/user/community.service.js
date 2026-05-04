@@ -780,6 +780,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 "userInfo.email": 1,
                                 "userInfo.avatarUrl": 1,
                                 "userInfo.currentCountry": 1,
+                                "userInfo.publicId": { $ifNull: ["$userInfo.publicId", null] },
                                 totalLikes: 1,
                                 totalViews: 1,
                                 totalComments: 1,
