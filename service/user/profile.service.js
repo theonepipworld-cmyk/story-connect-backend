@@ -62,26 +62,21 @@ exports.updateProfile = async (userId, payload, files) => {
         // publicId update
         if (payload.publicId && payload.publicId !== existingUser.publicId) {
 
-            const usernameRegex = /^[a-zA-Z0-9._-]+$/;
-            // sanitize (IMPORTANT)
             let cleanPublicId = payload.publicId
-                .toLowerCase()
                 .trim()
-                .replace(/\s+/g, "")
-                .replace(/[^a-z0-9]/g, "");
+                .replace(/\s+/g, "_");   // spaces → underscore, keep everything else
 
             if (!cleanPublicId) {
                 throw createError(400, 'invalidPublicId', 'validation');
             }
 
-            // check uniqueness
             const publicIdExist = await User.findOne({
                 publicId: cleanPublicId,
                 _id: { $ne: userId }
             });
 
             if (publicIdExist) {
-                throw createError(400, ' Please try different username.', 'This username already taken');
+                throw createError(400, 'Please try different username.', 'This username already taken');
             }
 
             patch.publicId = cleanPublicId;
