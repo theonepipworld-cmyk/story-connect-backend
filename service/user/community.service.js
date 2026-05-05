@@ -290,6 +290,10 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
+        const userRole = user.role || enums.userRole.USER;
+        const isAdmin = userRole === enums.userRole.ADMIN;
+
+
         const userObjectId = new mongoose.Types.ObjectId(userId);
         const offset = (page - 1) * limit;
 
@@ -300,7 +304,13 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
         const blockedObjectIds = blockedUserIds.map(id => new mongoose.Types.ObjectId(id));
 
         const result = await Community.aggregate([
-            { $match: { userId: { $nin: blockedObjectIds } } },
+            {
+                $match:
+                {
+                    userId: { $nin: blockedObjectIds },
+                    ...(!isAdmin && { isActive: true }),
+                },
+            },
             {
                 $lookup: {
                     from: "communitycategories",
@@ -457,7 +467,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-        
+
         if (blocked) {
             const blockedByThem = blocked.blocker.toString() === community.userId.toString();
             throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
@@ -706,7 +716,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-        
+
         if (blocked) throw createError(403, 'userBlocked', 'validation');
 
         const allFriends = await getAllFriends(user._id);

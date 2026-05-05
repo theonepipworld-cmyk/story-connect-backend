@@ -26,6 +26,7 @@ exports.getDashBoardData = async (req, res) => {
 
 exports.getAllUser = async (req, res) => {
     try {
+        console.log(" here in this api ----", req.query);
         const lang = getLang(req);
         const {
             page = 1,
