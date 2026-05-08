@@ -329,10 +329,11 @@ exports.searchUser = async (loginUserId, search) => {
 
         const friendshipMap = {};
         for (const f of friendships) {
-            const otherId = f.requester.toString() === loginUserId.toString()
+            const isRequesterMe = f.requester.toString() === loginUserId.toString();
+            const otherId = isRequesterMe
                 ? f.recipient.toString()
                 : f.requester.toString();
-            friendshipMap[otherId] = f.status;
+            friendshipMap[otherId] = { status: f.status, isRequesterMe };
         }
 
 
@@ -353,11 +354,17 @@ exports.searchUser = async (loginUserId, search) => {
                 loginFriendIds.has(f._id.toString())
             ).length;
 
+            const friendship = friendshipMap[uid];
+            const isPending = friendship?.status === enums.friend_Request_status.PENDING;
+            const isRequesterMe = !!friendship?.isRequesterMe;
+
             result.push({
                 ...u,
 
-                isThisUserFriend: friendshipMap[uid] === enums.friend_Request_status.ACCEPTED,
-                isreqPending: friendshipMap[uid] === enums.friend_Request_status.PENDING,
+                isThisUserFriend: friendship?.status === enums.friend_Request_status.ACCEPTED,
+                isreqPending: isPending,
+                iSentRequest: isPending && isRequesterMe,
+                isThisUserRequestedMe: isPending && !isRequesterMe,
                 mutualFriendsCount
             });
         }
