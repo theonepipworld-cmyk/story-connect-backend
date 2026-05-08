@@ -542,6 +542,20 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             )
         );
 
+        // Pending requests sent BY me to other users
+        const iSentRequestIds = new Set(
+            pendingRequests
+                .filter((req) => req.requester.toString() === user._id.toString())
+                .map((req) => req.recipient.toString())
+        );
+
+        // Pending requests sent TO me by other users
+        const requestedMeIds = new Set(
+            pendingRequests
+                .filter((req) => req.recipient.toString() === user._id.toString())
+                .map((req) => req.requester.toString())
+        );
+
         const blockedIds = blockedUsers.map((b) =>
             b.blocker.toString() === userId.toString()
                 ? b.blocked.toString()
@@ -627,12 +641,17 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
             "username email avatarUrl currentCountry bio profession role publicId"
         );
 
-        const finalSuggestions = suggestions.map((u) => ({
-            ...u.toObject(),
-            isThisUserFriend: allFriendIds.includes(u._id.toString()),
-            isreqPending: pendingUserIds.has(u._id.toString()),
-            mutualFriendsCount: fofCountMap[u._id.toString()] || 0
-        }));
+        const finalSuggestions = suggestions.map((u) => {
+            const uid = u._id.toString();
+            return {
+                ...u.toObject(),
+                isThisUserFriend: allFriendIds.includes(uid),
+                isreqPending: pendingUserIds.has(uid),
+                iSentRequest: iSentRequestIds.has(uid),
+                isThisUserRequestedMe: requestedMeIds.has(uid),
+                mutualFriendsCount: fofCountMap[uid] || 0
+            };
+        });
 
         return {
             suggestions: finalSuggestions,

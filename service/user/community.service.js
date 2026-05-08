@@ -602,10 +602,16 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         communityId = new mongoose.Types.ObjectId(communityId);
 
         const loginUserFriends = await getAllFriends(userId);
-        const loginUserSendedRequest = await Friend.find({
-            requester: userId,
-            status: enums.friend_Request_status.PENDING
-        });
+        const [loginUserSendedRequest, loginUserReceivedRequest] = await Promise.all([
+            Friend.find({
+                requester: userId,
+                status: enums.friend_Request_status.PENDING
+            }),
+            Friend.find({
+                recipient: userId,
+                status: enums.friend_Request_status.PENDING
+            })
+        ]);
 
         const loginUserFriendIds = new Set(
             loginUserFriends.map(f => f?._id ? f._id.toString() : null).filter(Boolean)
@@ -613,6 +619,10 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
 
         const allPendingFriendIds = new Set(
             loginUserSendedRequest.map(f => f?.recipient ? f.recipient.toString() : null).filter(Boolean)
+        );
+
+        const incomingPendingFriendIds = new Set(
+            loginUserReceivedRequest.map(f => f?.requester ? f.requester.toString() : null).filter(Boolean)
         );
 
         const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] }) || [];
@@ -678,7 +688,8 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             return {
                 ...f,
                 isThisUserFriend: uid ? loginUserFriendIds.has(uid) : false,
-                isReqPending: uid ? allPendingFriendIds.has(uid) : false
+                isReqPending: uid ? allPendingFriendIds.has(uid) : false,
+                isThisUserRequestedMe: uid ? incomingPendingFriendIds.has(uid) : false
             };
         });
 

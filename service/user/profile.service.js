@@ -257,6 +257,9 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             //  ONLY true when pending AND sent by me
             iSentRequest: isPending && isRequesterMe,
 
+            //  ONLY true when pending AND sent by the other user
+            isThisUserRequestedMe: isPending && !isRequesterMe,
+
             requestSentBy: friendship ? {
                 _id: friendship.requester,
                 isMe: isRequesterMe
