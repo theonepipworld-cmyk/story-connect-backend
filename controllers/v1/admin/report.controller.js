@@ -51,13 +51,10 @@ exports.reportAction = async (req, res) => {
         const { reportId, action, reason } = req.body
         const updateReportStatus = await adminReportServices.reportActionService(reportId, action, reason);
         
-        return res.status(200).json(successReponse("Report action taken successfully", updateReportStatus))
+        return res.status(200).json(successResponse("Report action taken successfully", updateReportStatus))
     }catch(err) {
-            const lang = getLang(req);
-            const statusCode = err.statusCode || err.status || 500;
-            const category = err.category || 'error';
-            const finalMessage = getMessage(lang, category, err.message) || err.message;
-            return res.status(statusCode).json(errorResponse(finalMessage));
+        console.log("ERROR::", err)
+        return res.status(500).json(errorResponse("Something went wrong, please try again later",err.message));
         }
     }
 

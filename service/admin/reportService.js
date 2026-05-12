@@ -316,8 +316,6 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(404, 'reportNotFound', 'notFound');
         }
 
-        console.log("-------", report.status, action, reason)
-
         if (
             report.status === enums.reportStatus.RESOLVED ||
             report.status === enums.reportStatus.DISMISSED
