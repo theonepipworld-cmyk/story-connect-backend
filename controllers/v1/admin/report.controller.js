@@ -49,7 +49,8 @@ exports.reportAction = async (req, res) => {
         const lang = getLang(req);
         const { reportId, action, reason } = req.body
         const updateReportStatus = await adminReportServices.reportActionService(reportId, action, reason);
-        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), updateReportStatus));
+        return res.status(200).json(successReponse("Report action taken successfully", updateReportStatus));
+        // return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), updateReportStatus));
     }
     catch (err) {
         const lang = getLang(req);
