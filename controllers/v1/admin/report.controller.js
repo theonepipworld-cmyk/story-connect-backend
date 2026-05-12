@@ -53,7 +53,11 @@ exports.reportAction = async (req, res) => {
         
         return res.status(200).json(successResponse("Report action taken successfully", updateReportStatus))
     }catch(err) {
-        console.log("ERROR::", err)
+
+        console.log("ERROR:::", err)
+        if(err.message === "actionNotAllowedOnClosedReport") {
+            return res.status(400).json(errorResponse("Action cannot be performed on closed report"));
+        }
         return res.status(500).json(errorResponse("Something went wrong, please try again later",err.message));
         }
     }
