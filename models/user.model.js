@@ -30,7 +30,7 @@ const userSchema = new Schema({
   settings: { type: Types.ObjectId, ref: 'UserSettings' },
   lastSeen: { type: Date, default: Date.now },
   dateOfBirth: { type: Date },
-  status: { type: String, enum: ['active', 'inactive', 'banned', 'deleted', 'suspended'], default: 'inactive' },
+  status: { type: String, enum: ['active', 'inactive', 'banned', 'deleted', 'suspended', 'warning'], default: 'inactive' },
   resetPasswordToken: { type: String },
   countryOfOrigin: {
     _id: { type: mongoose.Schema.Types.ObjectId },

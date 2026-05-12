@@ -292,7 +292,7 @@ exports.searchUser = async (loginUserId, search) => {
                 { email: { $regex: search, $options: "i" } }
             ]
         })
-            .select("username email avatarUrl bio profession currentCountry")
+            .select("username email avatarUrl bio profession currentCountry publicId")
             .lean();
 
         if (users.length === 0) return [];
@@ -375,6 +375,10 @@ exports.searchUser = async (loginUserId, search) => {
         throw createError(500, 'serverError', 'error');
     }
 };
+
+
+
+
 exports.changeLanguageService = async (userId, newLang) => {
     try {
         if (!userId) throw createError(400, 'userNotFound', 'notFound');

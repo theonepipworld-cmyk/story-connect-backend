@@ -145,7 +145,7 @@ exports.resetPassword = async ({ token, newPassword }) => {
     user.resetPasswordToken = "";
     user.resetPasswordExpires = "";
     await user.save();
-    return { message: 'ResetPassword.' };
+    return { message: 'Password set successfully.' };
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, 'serverError', 'error');

@@ -65,7 +65,7 @@ exports.forgotPassword = async (req, res) => {
     try {
       const lang = getLang(req);
       const result = await authService.resetPassword(req.body);
-      return res.status(200).json(successResponse(getMessage(lang, 'success', result.message)));
+      return res.status(200).json(successResponse(result.message));
     } catch (err) {
       const lang = getLang(req);
     const statusCode = err.statusCode || err.status || 500;
