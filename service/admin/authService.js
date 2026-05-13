@@ -21,7 +21,7 @@ exports.login = async ({ email, password }) => {
         const correctPassword = await comparePassword(user.passwordHash, password);
         if (!correctPassword) throw createError(400, 'incorrectPassword', 'validation');
 
-        const token = await getJWT(email, user._id, user.role, user.username);
+        const token = await getJWT(email, user._id, user.role, user.username, user.status);
         if (!token) throw createError(500, 'somethingWentWrong', 'error');
         return { token };
     } catch (error) {
