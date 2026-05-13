@@ -80,7 +80,7 @@ exports.login = async ({ email, password, device_token, loginViaWeb }) => {
     if (user.status === 'banned') throw createError(403, 'accountBanned', 'forbidden');
     if (user.accountState === 'suspended') throw createError(403, 'accountSuspended', 'forbidden');
 
-    const token = await getJWT(email, user._id, user.role, user.username);
+    const token = await getJWT(email, user._id, user.role, user.username, user.status);
     if (!token) throw createError(500, 'somethingWentWrong', 'error');
 
     if (device_token) await User.updateOne({ _id: user._id }, { device_token });

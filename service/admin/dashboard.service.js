@@ -269,6 +269,7 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
             if (action === 'active') {
                 targetUser.dateOfSuspend = undefined;
                 targetUser.accountState = 'normal';
+                targetUser.status = "active";
             }
         }
 
