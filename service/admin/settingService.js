@@ -4,6 +4,8 @@ const { createError, isUserExist } = require("../../helpers/dbHelpers.js")
 const enums = require("../../constants/enum.constants.js")
 const User = require('../../models/user.model');
 const FAQ = require("../../models/faq.model.js")
+const bcrypt = require('bcrypt');
+const { hashPassword } = require("../../utils/commonFunctions.util.js");
 
 
 
@@ -206,3 +208,27 @@ exports.removeSuspensionUserService = async (userIdToUnsuspend, adminId) => {
     }
 }
 
+
+
+
+
+exports.changePassword = async (id, oldPassword, newPassword) => {
+  try {
+    const user = await User.findOne({ _id:id, role: 'admin' });
+    if (!user) return { success: false, message: 'Admin not exist' };
+   
+
+    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isMatch) return { success: false, message: 'Old password is incorrect' };
+    
+    const hashedPassword = await hashPassword(newPassword);
+
+    user.passwordHash = hashedPassword;
+    await user.save();
+
+    return { success: true, message: 'Password changed successfully' };
+  } catch (error) {
+    console.log('ERROR::', error);
+    return { success: false, message: error.message || 'Error changing password' };
+  }
+};

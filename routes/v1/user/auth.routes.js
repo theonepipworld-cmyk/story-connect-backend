@@ -17,6 +17,7 @@ router.post('/reset-password', resetPasswordValidator, authController.resetPassw
 router.get('/reset-password/:token', authController.renderPasswordSubmitPage);
 router.patch('/verify-email', authController.verifyEmail);
 router.patch('/resend-verification-otp', authController.resendVerificationOtp);
+router.put('/change-password', isAuthenticated, authorizeRoles("user"), authController.changePassword);
 
 // router.post('/google', authController.googleAuth);
 

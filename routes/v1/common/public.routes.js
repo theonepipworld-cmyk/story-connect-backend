@@ -4,4 +4,6 @@ const adminpostController = require("../../../controllers/v1/admin/post.controll
 
 
 router.get("/highlightedPost", adminpostController.getHighlightedPosts)
+
+
 module.exports = router;

@@ -4,6 +4,10 @@ const { hashPassword, comparePassword, getJWT, generateOtp, generatePublicId } =
 const { checkFieldExists, createError } = require("../../helpers/dbHelpers.js");
 const { sendEmail } = require('../../utils/email.util.js');
 const secretVariables = require("../../config/secretVariables.js");
+const bcrypt = require('bcrypt');
+const { errorResponse, successResponse } = require('../../utils/responseHandler.util.js');
+const resMessages = require("../../constants/resMessages.constants.js");
+
 
 
 exports.signup = async (data) => {
@@ -223,5 +227,29 @@ exports.resendVerificationOtp = async (email) => {
   } catch (error) {
     console.log("ERROR::", error);
     return { success: false, message: error.message };
+  }
+};
+
+
+
+
+exports.changePassword = async (id, oldPassword, newPassword) => {
+  try {
+    const user = await User.findOne({ _id:id });
+    if (!user) return { success: false, message: 'User not exist' };
+   
+
+    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isMatch) return { success: false, message: 'Old password is incorrect' };
+    
+    const hashedPassword = await hashPassword(newPassword);
+
+    user.passwordHash = hashedPassword;
+    await user.save();
+
+    return { success: true, message: 'Password changed successfully' };
+  } catch (error) {
+    console.log('ERROR::', error);
+    return { success: false, message: error.message || 'Error changing password' };
   }
 };

@@ -98,3 +98,25 @@ exports.userSuspensionAction = async (req, res) => {
     }
 }
 
+
+
+exports.changePassword = async (req, res) => {
+    try {
+        const id = req.user.id;
+        const { oldPassword, newPassword } = req.body;
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json(errorResponse("Old password and new password are required"));
+        }
+        
+        const result = await settingService.changePassword(id, oldPassword, newPassword);
+        if (!result.success) { return res.status(400).json(errorResponse("Something went wrong", result.message)); }
+        return res.status(200).json(successResponse(result.message));
+        
+    } catch (error) {
+        const lang = getLang(req);
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = getMessage(lang, category, err.message) || err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+};

@@ -49,7 +49,7 @@ const userSchema = new Schema({
   language: { type: String, enum: ['en', 'fr', 'es', 'cr'], default: 'en' },
   isOnline: { type: Boolean, default: false },
   isPushNotification: { type: Boolean, default: true },
-  accountState: { type: String, enum: ['normal', 'warning', 'suspended'], default: 'normal' },
+  accountState: { type: String, enum: ['normal', 'warning', 'suspended', 'active'], default: 'normal' },
   dateOfSuspend: { type: Date },
 }, { timestamps: true });
 
