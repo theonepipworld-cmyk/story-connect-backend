@@ -62,25 +62,21 @@ exports.updateProfile = async (userId, payload, files) => {
         // publicId update
         if (payload.publicId && payload.publicId !== existingUser.publicId) {
 
-            // sanitize (IMPORTANT)
             let cleanPublicId = payload.publicId
-                .toLowerCase()
                 .trim()
-                .replace(/\s+/g, "")
-                .replace(/[^a-z0-9]/g, "");
+                .replace(/\s+/g, "_");   // spaces → underscore, keep everything else
 
             if (!cleanPublicId) {
                 throw createError(400, 'invalidPublicId', 'validation');
             }
 
-            // check uniqueness
             const publicIdExist = await User.findOne({
                 publicId: cleanPublicId,
                 _id: { $ne: userId }
             });
 
             if (publicIdExist) {
-                throw createError(400, 'Public Id already taken. Please use different Public Id.', 'validation');
+                throw createError(400, 'Please try different username.', 'This username already taken');
             }
 
             patch.publicId = cleanPublicId;
@@ -261,6 +257,9 @@ exports.getOtherProfileService = async (otherUserId, loginUserId) => {
             //  ONLY true when pending AND sent by me
             iSentRequest: isPending && isRequesterMe,
 
+            //  ONLY true when pending AND sent by the other user
+            isThisUserRequestedMe: isPending && !isRequesterMe,
+
             requestSentBy: friendship ? {
                 _id: friendship.requester,
                 isMe: isRequesterMe
@@ -293,7 +292,7 @@ exports.searchUser = async (loginUserId, search) => {
                 { email: { $regex: search, $options: "i" } }
             ]
         })
-            .select("username email avatarUrl bio profession currentCountry")
+            .select("username email avatarUrl bio profession currentCountry publicId")
             .lean();
 
         if (users.length === 0) return [];
@@ -330,10 +329,11 @@ exports.searchUser = async (loginUserId, search) => {
 
         const friendshipMap = {};
         for (const f of friendships) {
-            const otherId = f.requester.toString() === loginUserId.toString()
+            const isRequesterMe = f.requester.toString() === loginUserId.toString();
+            const otherId = isRequesterMe
                 ? f.recipient.toString()
                 : f.requester.toString();
-            friendshipMap[otherId] = f.status;
+            friendshipMap[otherId] = { status: f.status, isRequesterMe };
         }
 
 
@@ -354,11 +354,17 @@ exports.searchUser = async (loginUserId, search) => {
                 loginFriendIds.has(f._id.toString())
             ).length;
 
+            const friendship = friendshipMap[uid];
+            const isPending = friendship?.status === enums.friend_Request_status.PENDING;
+            const isRequesterMe = !!friendship?.isRequesterMe;
+
             result.push({
                 ...u,
 
-                isThisUserFriend: friendshipMap[uid] === enums.friend_Request_status.ACCEPTED,
-                isreqPending: friendshipMap[uid] === enums.friend_Request_status.PENDING,
+                isThisUserFriend: friendship?.status === enums.friend_Request_status.ACCEPTED,
+                isreqPending: isPending,
+                iSentRequest: isPending && isRequesterMe,
+                isThisUserRequestedMe: isPending && !isRequesterMe,
                 mutualFriendsCount
             });
         }
@@ -369,6 +375,10 @@ exports.searchUser = async (loginUserId, search) => {
         throw createError(500, 'serverError', 'error');
     }
 };
+
+
+
+
 exports.changeLanguageService = async (userId, newLang) => {
     try {
         if (!userId) throw createError(400, 'userNotFound', 'notFound');

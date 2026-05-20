@@ -15,7 +15,7 @@ exports.signup = async (data) => {
     ]);
 
     if (emailExist) throw createError(400, 'emailAlreadyExist', 'validation');
-    if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
+    // if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
 
     const hashedPassword = await hashPassword(password);
     const publicId = await generatePublicId(username);
@@ -80,7 +80,7 @@ exports.login = async ({ email, password, device_token, loginViaWeb }) => {
     if (user.status === 'banned') throw createError(403, 'accountBanned', 'forbidden');
     if (user.accountState === 'suspended') throw createError(403, 'accountSuspended', 'forbidden');
 
-    const token = await getJWT(email, user._id, user.role, user.username);
+    const token = await getJWT(email, user._id, user.role, user.username, user.status);
     if (!token) throw createError(500, 'somethingWentWrong', 'error');
 
     if (device_token) await User.updateOne({ _id: user._id }, { device_token });
@@ -145,7 +145,7 @@ exports.resetPassword = async ({ token, newPassword }) => {
     user.resetPasswordToken = "";
     user.resetPasswordExpires = "";
     await user.save();
-    return { message: 'ResetPassword.' };
+    return { message: 'Password set successfully.' };
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, 'serverError', 'error');

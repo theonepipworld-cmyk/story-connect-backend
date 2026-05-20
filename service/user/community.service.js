@@ -290,6 +290,10 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
         const user = await isUserExist(userId);
         if (!user) throw createError(404, 'userNotFound', 'notFound');
 
+        const userRole = user.role || enums.userRole.USER;
+        const isAdmin = userRole === enums.userRole.ADMIN;
+
+
         const userObjectId = new mongoose.Types.ObjectId(userId);
         const offset = (page - 1) * limit;
 
@@ -300,7 +304,13 @@ exports.allCommunitiesService = async (userId, search, page = 1, limit = 10) => 
         const blockedObjectIds = blockedUserIds.map(id => new mongoose.Types.ObjectId(id));
 
         const result = await Community.aggregate([
-            { $match: { userId: { $nin: blockedObjectIds } } },
+            {
+                $match:
+                {
+                    userId: { $nin: blockedObjectIds },
+                    ...(!isAdmin && { isActive: true }),
+                },
+            },
             {
                 $lookup: {
                     from: "communitycategories",
@@ -457,7 +467,7 @@ exports.getCommunityDetailService = async (communityId, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-        
+
         if (blocked) {
             const blockedByThem = blocked.blocker.toString() === community.userId.toString();
             throw createError(403, blockedByThem ? 'youHaveBeenBlocked' : 'youHaveBlockedThisUser', 'validation');
@@ -592,10 +602,16 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
         communityId = new mongoose.Types.ObjectId(communityId);
 
         const loginUserFriends = await getAllFriends(userId);
-        const loginUserSendedRequest = await Friend.find({
-            requester: userId,
-            status: enums.friend_Request_status.PENDING
-        });
+        const [loginUserSendedRequest, loginUserReceivedRequest] = await Promise.all([
+            Friend.find({
+                requester: userId,
+                status: enums.friend_Request_status.PENDING
+            }),
+            Friend.find({
+                recipient: userId,
+                status: enums.friend_Request_status.PENDING
+            })
+        ]);
 
         const loginUserFriendIds = new Set(
             loginUserFriends.map(f => f?._id ? f._id.toString() : null).filter(Boolean)
@@ -603,6 +619,10 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
 
         const allPendingFriendIds = new Set(
             loginUserSendedRequest.map(f => f?.recipient ? f.recipient.toString() : null).filter(Boolean)
+        );
+
+        const incomingPendingFriendIds = new Set(
+            loginUserReceivedRequest.map(f => f?.requester ? f.requester.toString() : null).filter(Boolean)
         );
 
         const blocked = await Block.find({ $or: [{ blocker: userId }, { blocked: userId }] }) || [];
@@ -651,7 +671,8 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
                                 profession: "$userInfo.profession",
                                 manualProfession: "$userInfo.manualProfession",
                                 bio: "$userInfo.bio",
-                                userId: "$userInfo._id"
+                                userId: "$userInfo._id",
+                                publicId: { $ifNull: ["$userInfo.publicId", null] }
                             }
                         }
                     ],
@@ -667,7 +688,8 @@ exports.getCommunityMemberService = async (communityId, userId, page = 1, limit 
             return {
                 ...f,
                 isThisUserFriend: uid ? loginUserFriendIds.has(uid) : false,
-                isReqPending: uid ? allPendingFriendIds.has(uid) : false
+                isReqPending: uid ? allPendingFriendIds.has(uid) : false,
+                isThisUserRequestedMe: uid ? incomingPendingFriendIds.has(uid) : false
             };
         });
 
@@ -705,7 +727,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                 { blocker: userId, blocked: community.userId }
             ]
         });
-        
+
         if (blocked) throw createError(403, 'userBlocked', 'validation');
 
         const allFriends = await getAllFriends(user._id);
@@ -779,6 +801,7 @@ exports.getCommunityPostsService = async (communityId, page, limit, userId) => {
                                 "userInfo.email": 1,
                                 "userInfo.avatarUrl": 1,
                                 "userInfo.currentCountry": 1,
+                                "userInfo.publicId": { $ifNull: ["$userInfo.publicId", null] },
                                 totalLikes: 1,
                                 totalViews: 1,
                                 totalComments: 1,

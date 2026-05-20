@@ -45,33 +45,37 @@ exports.getReportDetails = async (req, res) => {
 
 
 exports.reportAction = async (req, res) => {
+   
     try {
         const lang = getLang(req);
         const { reportId, action, reason } = req.body
         const updateReportStatus = await adminReportServices.reportActionService(reportId, action, reason);
-        return res.status(200).json(successResponse(getMessage(lang, 'success', 'fetchSuccessfully'), updateReportStatus));
+        
+        return res.status(200).json(successResponse("Report action taken successfully", updateReportStatus))
+    }catch(err) {
+
+        console.log("ERROR:::", err)
+        if(err.message === "actionNotAllowedOnClosedReport") {
+            return res.status(400).json(errorResponse("Action cannot be performed on closed report"));
+        }
+        return res.status(500).json(errorResponse("Something went wrong, please try again later",err.message));
+        }
     }
-    catch (err) {
-        const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-    }
-}
+
 
 exports.updateReportStatus = async (req, res) => {
-    try {
-        const lang = getLang(req);
-        const { reportId, status} = req.body
-        const updateReportStatus = await adminReportServices.updateReportStatusService(reportId, status);
-        return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessfull'), updateReportStatus));
+        try {
+            const lang = getLang(req);
+            const { reportId, status } = req.body
+            const updateReportStatus = await adminReportServices.updateReportStatusService(reportId, status);
+            return res.status(200).json(successResponse("Report status updated successfully", { reportId, status }));
+            // return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessfull'), updateReportStatus));
+        }
+        catch (err) {
+            const lang = getLang(req);
+            const statusCode = err.statusCode || err.status || 500;
+            const category = err.category || 'error';
+            const finalMessage = getMessage(lang, category, err.message) || err.message;
+            return res.status(statusCode).json(errorResponse(finalMessage));
+        }
     }
-    catch (err) {
-        const lang = getLang(req);
-        const statusCode = err.statusCode || err.status || 500;
-        const category = err.category || 'error';
-        const finalMessage = getMessage(lang, category, err.message) || err.message;
-        return res.status(statusCode).json(errorResponse(finalMessage));
-    }
-}

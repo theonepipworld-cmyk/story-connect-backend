@@ -519,8 +519,10 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
         if (!user) throw createError(404, "userNotFound", "notFound");
 
         const allFriends = await getAllFriends(user._id);
+        
         const allFriendIds = allFriends.map((f) => f._id.toString());
         allFriendIds.push(user._id.toString());
+        
 
         const [pendingRequests, blockedUsers] = await Promise.all([
             Friend.find({
@@ -538,6 +540,20 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
                     ? req.recipient.toString()
                     : req.requester.toString()
             )
+        );
+
+        // Pending requests sent BY me to other users
+        const iSentRequestIds = new Set(
+            pendingRequests
+                .filter((req) => req.requester.toString() === user._id.toString())
+                .map((req) => req.recipient.toString())
+        );
+
+        // Pending requests sent TO me by other users
+        const requestedMeIds = new Set(
+            pendingRequests
+                .filter((req) => req.recipient.toString() === user._id.toString())
+                .map((req) => req.requester.toString())
         );
 
         const blockedIds = blockedUsers.map((b) =>
@@ -622,15 +638,20 @@ exports.getSuggestionFriendsService = async (page = 1, limit = 10, search, userI
                 _id: { $in: paginatedIds },
                 ...(search ? { username: { $regex: search, $options: "i" } } : {})
             },
-            "username email avatarUrl currentCountry bio profession role"
+            "username email avatarUrl currentCountry bio profession role publicId"
         );
 
-        const finalSuggestions = suggestions.map((u) => ({
-            ...u.toObject(),
-            isThisUserFriend: allFriendIds.includes(u._id.toString()),
-            isreqPending: pendingUserIds.has(u._id.toString()),
-            mutualFriendsCount: fofCountMap[u._id.toString()] || 0
-        }));
+        const finalSuggestions = suggestions.map((u) => {
+            const uid = u._id.toString();
+            return {
+                ...u.toObject(),
+                isThisUserFriend: allFriendIds.includes(uid),
+                isreqPending: pendingUserIds.has(uid),
+                iSentRequest: iSentRequestIds.has(uid),
+                isThisUserRequestedMe: requestedMeIds.has(uid),
+                mutualFriendsCount: fofCountMap[uid] || 0
+            };
+        });
 
         return {
             suggestions: finalSuggestions,

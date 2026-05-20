@@ -316,7 +316,6 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(404, 'reportNotFound', 'notFound');
         }
 
-
         if (
             report.status === enums.reportStatus.RESOLVED ||
             report.status === enums.reportStatus.DISMISSED
@@ -324,6 +323,7 @@ exports.reportActionService = async (reportId, action, reason) => {
             throw createError(400, 'actionNotAllowedOnClosedReport', 'validation');
         }
         const validActions = [enums.userAccountState.NORMAL, enums.userAccountState.WARNING, enums.userAccountState.SUSPENDED];
+        
         if (action && !validActions.includes(action)) {
             throw createError(400, 'invalidAction', 'validation');
         }
@@ -335,7 +335,6 @@ exports.reportActionService = async (reportId, action, reason) => {
         if (!reportedUser) {
             throw createError(404, 'reportedUserNotFound', 'notFound');
         }
-
 
 
         reportedUser.accountState = action;
@@ -354,6 +353,7 @@ exports.reportActionService = async (reportId, action, reason) => {
 
     }
     catch (error) {
+        console.log("ERROR::", error);
         if (error.statusCode) throw error;
         throw createError(500, 'serverError', 'error');
     }

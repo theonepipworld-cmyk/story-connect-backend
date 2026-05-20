@@ -182,10 +182,14 @@ exports.getAllUserService = async (
     pageNo = 1,
     pageSize = 10,
     search,
-    status
+    status,
+    userId
 ) => {
     try {
-        const query = { status: { $ne: 'deleted' } };
+        const query = {
+            status: { $ne: 'deleted' },
+            _id: { $ne: userId }
+        };
         if (status) {
             query.status = status;
         }
@@ -260,13 +264,16 @@ exports.updateStatusOfUser = async (loginUserId, action, userId) => {
 
         if (action === 'suspend') {
             targetUser.accountState = VALID_ACTIONS[action];
-            targetUser.status = VALID_ACTIONS[action]
+            targetUser.status = 'inactive';
             targetUser.dateOfSuspend = new Date();
+
+
         } else {
-            targetUser.status = VALID_ACTIONS[action];
+
             if (action === 'active') {
                 targetUser.dateOfSuspend = undefined;
                 targetUser.accountState = 'normal';
+                targetUser.status = "active";
             }
         }
 

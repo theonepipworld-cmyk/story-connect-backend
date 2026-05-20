@@ -26,6 +26,7 @@ exports.getDashBoardData = async (req, res) => {
 
 exports.getAllUser = async (req, res) => {
     try {
+        const userId= req.user.id;
         const lang = getLang(req);
         const {
             page = 1,
@@ -38,7 +39,8 @@ exports.getAllUser = async (req, res) => {
             page,
             limit,
             search,
-            status
+            status,
+            userId
         );
 
         return res.status(200).json(
