@@ -37,6 +37,7 @@ exports.signup = async (req, res) => {
       result.token
     ));
   } catch (err) {
+    console.log("ERROR::", err);
     const lang = getLang(req);
     const statusCode = err.statusCode || err.status || 500;
     const category = err.category || 'error';
