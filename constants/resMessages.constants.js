@@ -1,8 +1,9 @@
 module.exports = {
     success: {
+        fetchSuccessful: "Data fetched successfully",
         loginSuccessful: "Success",
         updateSuccessful: "update successfully",
-        createSuccessful: "create Sucessfully",
+        createSuccessful: "create Successfully",
         getSuccessful: "get Sucessfully",
         deleteSuccessful: "delete Sucessfully",
         likeSuccessful: "likes Sucessfully",

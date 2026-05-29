@@ -1,7 +1,8 @@
 const postService = require("../../../service/user/post.service.js");
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const { getMessage } = require("../../../constants/locales/index.js");
-
+const resMessages = require("../../../constants/resMessages.constants.js");
+const { uploadFileToS3 } = require("../../../utils/s3.util.js");  
 
 
 const getLang = (req) => req.lang || 'en';
@@ -13,7 +14,7 @@ exports.createPost = async (req, res) => {
     if (req.files && req.files.length > 0) {
       const uploadPromises = req.files.map(file => uploadFileToS3(file, "posts"));
       const uploadResults = await Promise.all(uploadPromises);
-      console.log("--------------",uploadResults)
+     
       mediaUrls = uploadResults.map(result => result.Location);
     }
     const postData = {
@@ -22,10 +23,10 @@ exports.createPost = async (req, res) => {
     };
 
     const post = await postService.createPost(postData);
-    return res.status(200).json(successResponse(resMessages.success.fetchSuccessful, post));
+    return res.status(200).json(successResponse(resMessages.success.createSuccessful, post));
   } catch (error) {
     console.log(error,"error")
-    return res.status(500).json(errorResponse(resMessages.serverError.processingError));
+    return res.status(500).json(errorResponse(resMessages.generalError.somethingWentWrong, error.message));
   }
 };
 
