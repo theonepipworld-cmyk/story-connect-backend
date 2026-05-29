@@ -44,7 +44,7 @@ app.use(cors());
 app.use(languageMiddleware)
 // app.use(fileUpload());
 app.get('/api/v1/test', (req, res) => {
-  console.log("Server is running successfully")
+  console.log("Server is running successfully....")
   res.status(200).json({
     success: true,
     message: 'Server is running successfully backend api is working',
