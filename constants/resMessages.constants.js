@@ -55,6 +55,9 @@ module.exports = {
         faqNotFound:"faq not found"
     },
     validation: {
+        invalidRelationshipDescription:"Invalid relationship description",
+        invalidEducation:"Invalid Education",
+        invalidProfessionSymbol:"Invalid Profession",
         missingFields: "Missing required fields",
         invalidUsername: "invalid username field",
         invalidBio: "invalid bio",
