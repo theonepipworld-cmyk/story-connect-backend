@@ -5,8 +5,8 @@ const blockController = require("../../../controllers/v1/user/block.controller.j
 const { authorizeRoles } = require('../../../middlewares/requestValidations/user/authorizeRoles.js');
 const blockMiddleware = require("../../../middlewares/requestValidations/user/block.middleware.js");
 
-router.post("/:id/blocked",isAuthenticated ,authorizeRoles("user"),blockMiddleware.validateUser,blockController.blockedUser)
-router.post("/:id/unblocked",isAuthenticated ,authorizeRoles("user"),blockMiddleware.validateUser,blockController.UnblockUser)
-router.get("/",isAuthenticated ,authorizeRoles("user"),blockController.getBlockUsers)
+router.post("/:id/blocked",isAuthenticated ,authorizeRoles("admin","user"),blockMiddleware.validateUser,blockController.blockedUser)
+router.post("/:id/unblocked",isAuthenticated ,authorizeRoles("admin","user"),blockMiddleware.validateUser,blockController.UnblockUser)
+router.get("/",isAuthenticated ,authorizeRoles("admin","user"),blockController.getBlockUsers)
 
 module.exports = router

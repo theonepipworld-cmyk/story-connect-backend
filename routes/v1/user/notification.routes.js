@@ -7,10 +7,10 @@ const chatMiddleware = require("../../../middlewares/requestValidations/user/cha
 const { mediaUploadHandler } = require("../../../middlewares/requestValidations/user/mediaUploadHandler.js");
 
 //notification screen
-router.get("/all-users-notifications", isAuthenticated, authorizeRoles('user'), notificationController.getUserNotifications)
-router.post("/seen-users-notifications", isAuthenticated, authorizeRoles('user'), notificationController.makeAllUserNotificationRead)
+router.get("/all-users-notifications", isAuthenticated, authorizeRoles('admin','user'), notificationController.getUserNotifications)
+router.post("/seen-users-notifications", isAuthenticated, authorizeRoles('admin','user'), notificationController.makeAllUserNotificationRead)
 
 
 // pushNotifcation enabled and disabled
-router.post("/status-push-notification",isAuthenticated,authorizeRoles('user'),notificationController.changeStatusPushNotification)
+router.post("/status-push-notification",isAuthenticated,authorizeRoles('admin','user'),notificationController.changeStatusPushNotification)
 module.exports = router;

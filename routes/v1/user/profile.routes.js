@@ -16,11 +16,11 @@ router.put(
 );
 router.get('/otherprofile/:userId', isAuthenticated, authorizeRoles('user', 'admin'), profileController.getOtherProfile);
 router.get('/search',isAuthenticated,authorizeRoles('user', 'admin'), profileController.getSearchUser);
-router.put('/update-others-profile', isAuthenticated, authorizeRoles('admin'), profileController.updateOthersProfile);
+router.put('/update-others-profile', isAuthenticated, authorizeRoles('admin','user'), profileController.updateOthersProfile);
 
 // Soft delete user profile (deactivate)
-router.delete('/', isAuthenticated, authorizeRoles('user'), profileController.deleteProfile);
-router.post("/update-lang", isAuthenticated, authorizeRoles('user'), profileController.changeLanguage)
+router.delete('/', isAuthenticated, authorizeRoles('admin','user'), profileController.deleteProfile);
+router.post("/update-lang", isAuthenticated, authorizeRoles('admin','user'), profileController.changeLanguage)
 
 
 module.exports = router;

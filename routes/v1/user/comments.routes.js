@@ -7,10 +7,10 @@ const commentMiddleware =require("../../../middlewares/requestValidations/user/c
 
 
  router.post("/add-comments",isAuthenticated,authorizeRoles('user','admin'),commentMiddleware.createCommentValidator,commentController.addComment);
- router.put("/edit-comments",isAuthenticated,authorizeRoles('user'),commentMiddleware.updateCommentValidator,commentController.updateComment);
- router.delete("/delete-comments" ,isAuthenticated,authorizeRoles('user'),commentMiddleware.deleteCommentValidator,commentController.deleteComment);
- router.get("/get-comments",isAuthenticated,commentMiddleware.getCommentValidator,commentController.getTopLevelComment)
- router.get("/get-reply-comments",isAuthenticated,commentMiddleware.getCommentValidator,commentController.getReplyComments)
+ router.put("/edit-comments",isAuthenticated,authorizeRoles('user','admin'),commentMiddleware.updateCommentValidator,commentController.updateComment);
+ router.delete("/delete-comments" ,isAuthenticated,authorizeRoles('user','admin'),commentMiddleware.deleteCommentValidator,commentController.deleteComment);
+ router.get("/get-comments",isAuthenticated,authorizeRoles('user','admin'),commentMiddleware.getCommentValidator,commentController.getTopLevelComment)
+ router.get("/get-reply-comments",isAuthenticated,authorizeRoles('user','admin'),commentMiddleware.getCommentValidator,commentController.getReplyComments)
 
  
 

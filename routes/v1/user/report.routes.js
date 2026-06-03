@@ -8,8 +8,8 @@ const reportMiddleware = require("../../../middlewares/requestValidations/user/r
 
 
 
-router.post("/report-user", isAuthenticated, authorizeRoles('user'), reportUploadHandler,reportMiddleware.reportUserValidator,reportController.reportUser);
-router.get("/report-categories", isAuthenticated, authorizeRoles('user'),reportController.getReportCategories);
+router.post("/report-user", isAuthenticated, authorizeRoles('admin','user'), reportUploadHandler,reportMiddleware.reportUserValidator,reportController.reportUser);
+router.get("/report-categories", isAuthenticated, authorizeRoles('admin','user'),reportController.getReportCategories);
 
 
 module.exports = router;

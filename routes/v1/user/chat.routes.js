@@ -7,14 +7,14 @@ const chatMiddleware = require("../../../middlewares/requestValidations/user/cha
 const { chatUploadHandler } = require("../../../middlewares/requestValidations/user/mediaUploadHandler.js");
 
 
-router.post("/send-message", isAuthenticated, authorizeRoles('user'),chatUploadHandler,chatMiddleware.sendMessageValidator,chatController.sendMessageToUser);
-router.get("/converations", isAuthenticated, authorizeRoles('user'),chatController.getConversations);
-router.get("/chat-history", isAuthenticated, authorizeRoles('user'),chatController.getloadMoreMessages);
-router.put("/update-message", isAuthenticated, authorizeRoles('user'),chatMiddleware.updateMessageValidator,chatController.updateMessage)
-router.delete("/:conversationId/:messageId", isAuthenticated, authorizeRoles('user'),chatMiddleware.deleteMessageValidator,chatController.deleteMessage)
-router.delete("/delete-conversation/:conversationId/", isAuthenticated, authorizeRoles('user'),chatMiddleware.MessageValidator,chatController.deleteConversation)
-router.patch("/seen-message/:conversationId", isAuthenticated, authorizeRoles('user'),chatMiddleware.MessageValidator,chatController.seenMessage);
-router.patch("/delivered-message/:conversationId", isAuthenticated, authorizeRoles('user'),chatMiddleware.MessageValidator,chatController.deliveredMessage);
+router.post("/send-message", isAuthenticated, authorizeRoles('admin','user'),chatUploadHandler,chatMiddleware.sendMessageValidator,chatController.sendMessageToUser);
+router.get("/converations", isAuthenticated, authorizeRoles('admin','user'),chatController.getConversations);
+router.get("/chat-history", isAuthenticated, authorizeRoles('admin','user'),chatController.getloadMoreMessages);
+router.put("/update-message", isAuthenticated, authorizeRoles('admin','user'),chatMiddleware.updateMessageValidator,chatController.updateMessage)
+router.delete("/:conversationId/:messageId", isAuthenticated, authorizeRoles('admin','user'),chatMiddleware.deleteMessageValidator,chatController.deleteMessage)
+router.delete("/delete-conversation/:conversationId/", isAuthenticated, authorizeRoles('admin','user'),chatMiddleware.MessageValidator,chatController.deleteConversation)
+router.patch("/seen-message/:conversationId", isAuthenticated, authorizeRoles('admin','user'),chatMiddleware.MessageValidator,chatController.seenMessage);
+router.patch("/delivered-message/:conversationId", isAuthenticated, authorizeRoles('admin','user'),chatMiddleware.MessageValidator,chatController.deliveredMessage);
 
 module.exports = router;
 
