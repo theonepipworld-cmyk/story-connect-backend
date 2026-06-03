@@ -22,7 +22,7 @@ const emitToUser = (userId, event, payload) => {
 
 const emitToUsers = (userIds, event, payload) => {
     userIds.forEach(uid => emitToUser(uid, event, payload));
-};  
+};
 
 
 const sendPushNotification = async (receiver, body, data) => {
@@ -144,14 +144,12 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 ]
             });
             await conversation.save();
-            
+
         }
 
-         console.log("is first message _________________", isFirstMessage);
 
 
         const emitNewMessage = (savedMessage) => {
-           
             const basePayload = savedMessage.toObject();
             const conversationUpdate = {
                 conversationId: conversation._id.toString(),
@@ -166,12 +164,11 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 },
                 receiverId: receiverId.toString(),
                 isFirstMessage: isFirstMessage || false
-
             };
-           
+
 
             getAllUserSocketIds(senderId.toString()).forEach(sid => {
-                console.log(" senderi side emiting ----------------------")
+
                 getIo().to(sid).emit("newMessage", {
                     ...basePayload,
                     senderName: sender.username,
@@ -191,9 +188,9 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 const currentUnseen = conversation.unseenCount.find(
                     u => u.userId.toString() === receiverId.toString()
                 )?.count || 0;
-                 console.log(" here inside receiver -------------------------")
+
                 receiverSocketIds.forEach(sid => {
-                    console.log("Emitting newMessage to receiver socket:------------------", sid, receiverId );
+
                     getIo().to(sid).emit("newMessage", {
                         ...basePayload,
                         senderName: sender.username,
@@ -248,15 +245,15 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             updateConversationState(savedMessage);
             emitNewMessage(savedMessage);
 
-
-            await sendPushNotification(receiver, messageText, {
-                conversationId: conversation._id.toString(),
-                senderId: senderId.toString(),
-                senderName: sender.username?.toString(),
-                senderImage: sender.avatarUrl?.toString(),
-                type: "post"
-            });
-
+            if (receiver.isPushNotification) {
+                await sendPushNotification(receiver, messageText, {
+                    conversationId: conversation._id.toString(),
+                    senderId: senderId.toString(),
+                    senderName: sender.username?.toString(),
+                    senderImage: sender.avatarUrl?.toString(),
+                    type: "post"
+                });
+            }
             conversation.updatedAt = new Date();
             await conversation.save();
             return messages;
@@ -277,12 +274,13 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
             updateConversationState(savedMessage);
             emitNewMessage(savedMessage);
 
-
-            await sendPushNotification(receiver, messageText, {
-                conversationId: conversation._id.toString(),
-                senderId: senderId.toString(),
-                senderImage: sender.avatarUrl?.toString(),
-            });
+            if (receiver.isPushNotification) {
+                await sendPushNotification(receiver, messageText, {
+                    conversationId: conversation._id.toString(),
+                    senderId: senderId.toString(),
+                    senderImage: sender.avatarUrl?.toString(),
+                });
+            }
         }
 
 
@@ -309,12 +307,13 @@ exports.sendMessageToUserService = async (senderId, receiverId, messageText, typ
                 updateConversationState(savedMessage);
                 emitNewMessage(savedMessage);
 
-
-                await sendPushNotification(receiver, `Sent a ${fileType}`, {
-                    conversationId: conversation._id.toString(),
-                    senderId: senderId.toString(),
-                    senderImage: sender.avatarUrl?.toString(),
-                });
+                if (receiver.isPushNotification) {
+                    await sendPushNotification(receiver, `Sent a ${fileType}`, {
+                        conversationId: conversation._id.toString(),
+                        senderId: senderId.toString(),
+                        senderImage: sender.avatarUrl?.toString(),
+                    });
+                }
             }
         }
 
@@ -471,7 +470,7 @@ exports.getUserConversationService = async (userId, page = 1, limit = 10, search
 
 exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, limit = 10, page = 1) => {
     try {
-        if (!userId || !conversationId ) {
+        if (!userId || !conversationId) {
             throw createError(400, 'missingFields', 'validation');
         }
 
@@ -484,10 +483,10 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
         if (!conversation.participants.some(p => p.toString() === userId.toString())) {
             throw createError(403, 'unauthorizedAccess', 'auth');
         }
-            
-        if(lastMessageId){
-        const lastMessage = await Message.findById(lastMessageId);
-        if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
+
+        if (lastMessageId) {
+            const lastMessage = await Message.findById(lastMessageId);
+            if (!lastMessage) throw createError(404, 'invalidMessageId', 'validation');
         }
 
         const skip = (page - 1) * limit;
@@ -507,10 +506,10 @@ exports.loadMoreMessagesService = async (userId, conversationId, lastMessageId, 
             status: { $ne: enums.messages_Status.SEEN }
         });
 
-    
+
         const senderId = conversation.participants.find(p => p.toString() !== userId.toString());
         console.log("senderId for seen update:----", senderId);
-      
+
 
         return {
             data: messages.reverse(),
