@@ -19,7 +19,7 @@ const seedAdminSignUp = async() => {
       const hashedPassword = await hashPassword(defaultPassword);
 
       admin = new User({
-        username: "john_doe_admin",
+        username: "Admin",
         email: defaultEmail,
         passwordHash: hashedPassword,
         role: enums.userRole.ADMIN,
