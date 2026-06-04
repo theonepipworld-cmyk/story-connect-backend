@@ -31,7 +31,8 @@ exports.getProfile = async (req, res) => {
 // Update profile
 exports.updateProfile = async (req, res) => {
   try {
-    const lang = getLang(req);
+    const lang = getLang(req); 
+    console.log(" payload ----",req.body)
 
     const result = await profileService.updateProfile(req.user.id, req.body, req.files);
     return res.status(200).json(successResponse(getMessage(lang, 'success', 'updateSuccessful'), result));

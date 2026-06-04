@@ -30,45 +30,218 @@ exports.getProfile = async (userId) => {
     }
 };
 
+// exports.updateProfile = async (userId, payload, files) => {
+//     try {
+
+//         console.log( "details ----", userId, payload,)
+//         const patch = {};
+
+
+//         const existingUser = await User.findById(userId).lean();
+//         if (!existingUser) throw createError(404, 'userNotFound', 'notFound');
+
+//         if (payload.username && payload.username !== existingUser.username) {
+//             const usernameExist = await User.findOne({
+//                 username: payload.username,
+//                 _id: { $ne: userId }
+//             });
+//             if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
+
+//             patch.username = payload.username;
+//         }
+
+//         if (payload.email && payload.email !== existingUser.email) {
+//             const emailExist = await User.findOne({
+//                 email: payload.email,
+//                 _id: { $ne: userId }
+//             });
+//             if (emailExist) throw createError(400, 'emailAlreadyExist', 'validation');
+
+//             patch.email = payload.email;
+//         }
+
+
+//         // publicId update
+//         if (payload.publicId && payload.publicId !== existingUser.publicId) {
+
+//             let cleanPublicId = payload.publicId
+//                 .trim()
+//                 .replace(/\s+/g, "_");   // spaces → underscore, keep everything else
+
+//             if (!cleanPublicId) {
+//                 throw createError(400, 'invalidPublicId', 'validation');
+//             }
+
+//             const publicIdExist = await User.findOne({
+//                 publicId: cleanPublicId,
+//                 _id: { $ne: userId }
+//             });
+
+//             if (publicIdExist) {
+//                 throw createError(400, 'Please try different username.', 'This username already taken');
+//             }
+
+//             patch.publicId = cleanPublicId;
+//         }
+
+
+//         if (payload.bio) patch.bio = payload.bio;
+//         if (payload.profession) patch.profession = payload.profession;
+//         if (payload.education) patch.education = payload.education;
+//         if (payload.relationship) patch.relationship = payload.relationship;
+//         if (payload.entryYear) patch.entryYear = payload.entryYear;
+//         if (payload.phone) patch.phone = payload.phone;
+//         if (payload.status) patch.status = payload.status;
+//         if (payload.relationshipDescription) patch.relationshipDescription = payload.relationshipDescription;
+
+//         if (payload.profession && payload.profession.toLowerCase() === 'other') {
+//             if (!payload.manualProfession) throw createError(400, 'professionName', 'validation');
+//             patch.manualProfession = payload.manualProfession.trim();
+//         } else if (payload.profession) {
+//             patch.manualProfession = null;
+//         }
+
+//         if (payload.countryOfOrigin) {
+//             const countryOrigin = await CountryList.findById(payload.countryOfOrigin).lean();
+//             if (countryOrigin) {
+//                 patch.countryOfOrigin = {
+//                     _id: countryOrigin._id,
+//                     code: countryOrigin.code,
+//                     name: countryOrigin.name
+//                 };
+//             }
+//         }
+
+//         if (payload.currentCountry) {
+//             const currentCountry = await CountryList.findById(payload.currentCountry).lean();
+//             if (currentCountry) {
+//                 patch.currentCountry = {
+//                     _id: currentCountry._id,
+//                     code: currentCountry.code,
+//                     name: currentCountry.name
+//                 };
+//             }
+//         }
+
+//         if (payload.professionSymbol) {
+//             const symbol = await professionalSymbol.findById(payload.professionSymbol);
+//             if (symbol) {
+//                 patch.professionSymbol = {
+//                     _id: symbol._id,
+//                     name: symbol.name,
+//                     iconUrl: symbol.iconUrl
+//                 };
+//             }
+//         }
+
+//         if (payload.dateOfBirth) {
+//             patch.dateOfBirth = payload.dateOfBirth;
+//         }
+
+//         if (files?.avatar?.[0]) {
+//             try {
+//                 const s3Res = await uploadFileToS3(files.avatar[0], "profile");
+//                 patch.avatarUrl = s3Res?.Location || DEFAULT_AVATAR_URL;
+//             } catch {
+//                 patch.avatarUrl = DEFAULT_AVATAR_URL;
+//             }
+//         }
+
+//         if (files?.profileCoverImage?.[0]) {
+//             try {
+//                 const s3Res = await uploadFileToS3(files.profileCoverImage[0], "profileCoverImage");
+//                 patch.profileCoverImage = s3Res?.Location || DEFAULT_AVATAR_URL;
+//             } catch {
+//                 patch.profileCoverImage = DEFAULT_AVATAR_URL;
+//             }
+//         }
+//         let updated
+//         try {
+//             updated = await User.findByIdAndUpdate(
+//                 userId,
+//                 { $set: patch },
+//                 { new: true, runValidators: true }
+//             ).lean();
+
+//         } catch (error) {
+//             if (error.code === 11000 && error.keyPattern?.publicId) {
+//                 throw createError(400, 'publicIdAlreadyExist', 'validation');
+//             }
+//             throw error;
+//         }
+
+//         if (!updated) throw createError(404, 'userNotFound', 'notFound');
+
+//         return { message: resMessages.success.updateSuccessful };
+//     } catch (error) {
+//         if (error.statusCode) throw error;
+//         throw createError(500, 'serverError', 'error');
+//     }
+// };
+
+
 exports.updateProfile = async (userId, payload, files) => {
     try {
         const patch = {};
 
-
         const existingUser = await User.findById(userId).lean();
-        if (!existingUser) throw createError(404, 'userNotFound', 'notFound');
 
-        if (payload.username && payload.username !== existingUser.username) {
-            const usernameExist = await User.findOne({
-                username: payload.username,
-                _id: { $ne: userId }
-            });
-            if (usernameExist) throw createError(400, 'usernameAlreadyExist', 'validation');
+        if (!existingUser) {
+            throw createError(404, 'userNotFound', 'notFound');
+        }
+
+        // Username
+        if (Object.prototype.hasOwnProperty.call(payload, "username")) {
+            if (
+                payload.username &&
+                payload.username !== existingUser.username
+            ) {
+                const usernameExist = await User.findOne({
+                    username: payload.username,
+                    _id: { $ne: userId }
+                });
+
+                if (usernameExist) {
+                    throw createError(
+                        400,
+                        'usernameAlreadyExist',
+                        'validation'
+                    );
+                }
+            }
 
             patch.username = payload.username;
         }
 
-        if (payload.email && payload.email !== existingUser.email) {
-            const emailExist = await User.findOne({
-                email: payload.email,
-                _id: { $ne: userId }
-            });
-            if (emailExist) throw createError(400, 'emailAlreadyExist', 'validation');
+        // Email
+        if (Object.prototype.hasOwnProperty.call(payload, "email")) {
+            if (
+                payload.email &&
+                payload.email !== existingUser.email
+            ) {
+                const emailExist = await User.findOne({
+                    email: payload.email,
+                    _id: { $ne: userId }
+                });
+
+                if (emailExist) {
+                    throw createError(
+                        400,
+                        'emailAlreadyExist',
+                        'validation'
+                    );
+                }
+            }
 
             patch.email = payload.email;
         }
 
-
-        // publicId update
-        if (payload.publicId && payload.publicId !== existingUser.publicId) {
+        // Public ID
+        if (Object.prototype.hasOwnProperty.call(payload, "publicId")) {
 
             let cleanPublicId = payload.publicId
-                .trim()
-                .replace(/\s+/g, "_");   // spaces → underscore, keep everything else
-
-            if (!cleanPublicId) {
-                throw createError(400, 'invalidPublicId', 'validation');
-            }
+                ? payload.publicId.trim().replace(/\s+/g, "_")
+                : "";
 
             const publicIdExist = await User.findOne({
                 publicId: cleanPublicId,
@@ -76,104 +249,211 @@ exports.updateProfile = async (userId, payload, files) => {
             });
 
             if (publicIdExist) {
-                throw createError(400, 'Please try different username.', 'This username already taken');
+                throw createError(
+                    400,
+                    'Please try different username.',
+                    'This username already taken'
+                );
             }
 
             patch.publicId = cleanPublicId;
         }
 
+        // Generic Fields
+        const allowedFields = [
+            "bio",
+            "profession",
+            "education",
+            "relationship",
+            "entryYear",
+            "phone",
+            "status",
+            "relationshipDescription",
+            "dateOfBirth"
+        ];
 
-        if (payload.bio) patch.bio = payload.bio;
-        if (payload.profession) patch.profession = payload.profession;
-        if (payload.education) patch.education = payload.education;
-        if (payload.relationship) patch.relationship = payload.relationship;
-        if (payload.entryYear) patch.entryYear = payload.entryYear;
-        if (payload.phone) patch.phone = payload.phone;
-        if (payload.status) patch.status = payload.status;
-        if (payload.relationshipDescription) patch.relationshipDescription = payload.relationshipDescription;
+        allowedFields.forEach(field => {
+            if (Object.prototype.hasOwnProperty.call(payload, field)) {
+                patch[field] = payload[field];
+            }
+        });
 
-        if (payload.profession && payload.profession.toLowerCase() === 'other') {
-            if (!payload.manualProfession) throw createError(400, 'professionName', 'validation');
-            patch.manualProfession = payload.manualProfession.trim();
-        } else if (payload.profession) {
-            patch.manualProfession = null;
-        }
+        // Profession Logic
+        if (
+            Object.prototype.hasOwnProperty.call(payload, "profession")
+        ) {
+            if (
+                payload.profession &&
+                payload.profession.toLowerCase() === "other"
+            ) {
+                if (!payload.manualProfession) {
+                    throw createError(
+                        400,
+                        'professionName',
+                        'validation'
+                    );
+                }
 
-        if (payload.countryOfOrigin) {
-            const countryOrigin = await CountryList.findById(payload.countryOfOrigin).lean();
-            if (countryOrigin) {
-                patch.countryOfOrigin = {
-                    _id: countryOrigin._id,
-                    code: countryOrigin.code,
-                    name: countryOrigin.name
-                };
+                patch.manualProfession =
+                    payload.manualProfession.trim();
+            } else {
+                patch.manualProfession = null;
             }
         }
 
-        if (payload.currentCountry) {
-            const currentCountry = await CountryList.findById(payload.currentCountry).lean();
-            if (currentCountry) {
-                patch.currentCountry = {
-                    _id: currentCountry._id,
-                    code: currentCountry.code,
-                    name: currentCountry.name
-                };
+        // Country Of Origin
+        if (
+            Object.prototype.hasOwnProperty.call(
+                payload,
+                "countryOfOrigin"
+            )
+        ) {
+            if (!payload.countryOfOrigin) {
+                patch.countryOfOrigin = null;
+            } else {
+                const countryOrigin =
+                    await CountryList.findById(
+                        payload.countryOfOrigin
+                    ).lean();
+
+                if (countryOrigin) {
+                    patch.countryOfOrigin = {
+                        _id: countryOrigin._id,
+                        code: countryOrigin.code,
+                        name: countryOrigin.name
+                    };
+                }
             }
         }
 
-        if (payload.professionSymbol) {
-            const symbol = await professionalSymbol.findById(payload.professionSymbol);
-            if (symbol) {
-                patch.professionSymbol = {
-                    _id: symbol._id,
-                    name: symbol.name,
-                    iconUrl: symbol.iconUrl
-                };
+        // Current Country
+        if (
+            Object.prototype.hasOwnProperty.call(
+                payload,
+                "currentCountry"
+            )
+        ) {
+            if (!payload.currentCountry) {
+                patch.currentCountry = null;
+            } else {
+                const currentCountry =
+                    await CountryList.findById(
+                        payload.currentCountry
+                    ).lean();
+
+                if (currentCountry) {
+                    patch.currentCountry = {
+                        _id: currentCountry._id,
+                        code: currentCountry.code,
+                        name: currentCountry.name
+                    };
+                }
             }
         }
 
-        if (payload.dateOfBirth) {
-            patch.dateOfBirth = payload.dateOfBirth;
+        // Profession Symbol
+        if (
+            Object.prototype.hasOwnProperty.call(
+                payload,
+                "professionSymbol"
+            )
+        ) {
+            if (!payload.professionSymbol) {
+                patch.professionSymbol = null;
+            } else {
+                const symbol =
+                    await professionalSymbol.findById(
+                        payload.professionSymbol
+                    );
+
+                if (symbol) {
+                    patch.professionSymbol = {
+                        _id: symbol._id,
+                        name: symbol.name,
+                        iconUrl: symbol.iconUrl
+                    };
+                }
+            }
         }
 
+        // Avatar
         if (files?.avatar?.[0]) {
             try {
-                const s3Res = await uploadFileToS3(files.avatar[0], "profile");
-                patch.avatarUrl = s3Res?.Location || DEFAULT_AVATAR_URL;
+                const s3Res = await uploadFileToS3(
+                    files.avatar[0],
+                    "profile"
+                );
+
+                patch.avatarUrl =
+                    s3Res?.Location || DEFAULT_AVATAR_URL;
             } catch {
                 patch.avatarUrl = DEFAULT_AVATAR_URL;
             }
         }
 
+        // Cover Image
         if (files?.profileCoverImage?.[0]) {
             try {
-                const s3Res = await uploadFileToS3(files.profileCoverImage[0], "profileCoverImage");
-                patch.profileCoverImage = s3Res?.Location || DEFAULT_AVATAR_URL;
+                const s3Res = await uploadFileToS3(
+                    files.profileCoverImage[0],
+                    "profileCoverImage"
+                );
+
+                patch.profileCoverImage =
+                    s3Res?.Location || DEFAULT_AVATAR_URL;
             } catch {
                 patch.profileCoverImage = DEFAULT_AVATAR_URL;
             }
         }
-        let updated
+
+        let updated;
+
         try {
             updated = await User.findByIdAndUpdate(
                 userId,
                 { $set: patch },
-                { new: true, runValidators: true }
+                {
+                    new: true,
+                    runValidators: true
+                }
             ).lean();
-
         } catch (error) {
-            if (error.code === 11000 && error.keyPattern?.publicId) {
-                throw createError(400, 'publicIdAlreadyExist', 'validation');
+            if (
+                error.code === 11000 &&
+                error.keyPattern?.publicId
+            ) {
+                throw createError(
+                    400,
+                    'publicIdAlreadyExist',
+                    'validation'
+                );
             }
+
             throw error;
         }
 
-        if (!updated) throw createError(404, 'userNotFound', 'notFound');
+        if (!updated) {
+            throw createError(
+                404,
+                'userNotFound',
+                'notFound'
+            );
+        }
 
-        return { message: resMessages.success.updateSuccessful };
+        return {
+            message: resMessages.success.updateSuccessful
+        };
+
     } catch (error) {
-        if (error.statusCode) throw error;
-        throw createError(500, 'serverError', 'error');
+        if (error.statusCode) {
+            throw error;
+        }
+
+        throw createError(
+            500,
+            'serverError',
+            'error'
+        );
     }
 };
 

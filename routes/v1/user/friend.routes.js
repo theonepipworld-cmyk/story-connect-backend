@@ -15,4 +15,5 @@ router.get("/:id/Mutual-friends", isAuthenticated, authorizeRoles('admin','user'
 router.get("/suggestion-friends", isAuthenticated, authorizeRoles('admin','user'), friendsController.getSuggestionFriends)
 router.delete("/un-friend/:id", isAuthenticated, authorizeRoles('admin','user'), friendMiddleware.sendFriendReq, friendsController.unfriendReq)
 router.post("/cancel/:id", isAuthenticated, authorizeRoles('admin','user'), friendMiddleware.sendFriendReq, friendsController.cancelFriendReq)
+
 module.exports = router;
