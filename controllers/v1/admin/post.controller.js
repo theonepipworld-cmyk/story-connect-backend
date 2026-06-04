@@ -77,3 +77,25 @@ exports.actionOnCommunityController = async (req, res) => {
         return res.status(statusCode).json(errorResponse(finalMessage));
     }
 }
+
+
+
+exports.deletePost = async (req, res) => {
+    try {
+        const lang = getLang(req);
+        const postId = req.query.postId;
+        const userId = req.user.id;
+        const post = await adminPostService.deletePost(postId, userId);
+
+        if (!post) {
+            return res.status(400).json(errorResponse(getMessage(lang, 'notFound', 'postNotFound')));
+        }
+
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'deleteSuccessful'), post));
+    } catch (err) {
+        const statusCode = err.statusCode || err.status || 500;
+        const category = err.category || 'error';
+        const finalMessage = err.message;
+        return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+};

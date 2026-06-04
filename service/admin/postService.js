@@ -65,6 +65,35 @@ exports.removeStoryAndVideoOfMonthService = async (postId, type) => {
     }
 };
 
+exports.deletePost = async (postId, userId) => {
+    try {
+        if (!userId) throw createError(400, 'userNotFound', 'notFound');
+
+        const isPostIdExist = await isPostExist(postId);
+        if (!isPostIdExist) throw createError(404, 'postNotFound', 'notFound');
+
+        if (isPostIdExist.mediaUrls && isPostIdExist.mediaUrls.length > 0) {
+            await Promise.all(
+                isPostIdExist.mediaUrls.map((media) => {
+                    const url = typeof media === 'string' ? media : media.url;
+                    return deleteFileFromS3(url);
+                })
+            );
+        }
+
+        await Promise.all([
+            Post.findByIdAndDelete(postId),
+            UserStats.findOneAndDelete({ postId }),
+            HashTag.updateMany({ posts: postId }, { $pull: { posts: postId } }),
+        ]);
+
+        return isPostIdExist;
+    } catch (error) {
+        if (error.statusCode) throw error;
+        throw createError(500, 'serverError', 'error');
+    }
+};
+
 exports.getHighlightedPostsService = async () => {
     try {
         const matchStage = {
