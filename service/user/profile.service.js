@@ -296,6 +296,7 @@ exports.updateProfile = async (userId, payload, files) => {
         };
 
     } catch (error) {
+        console.log("Error in updateProfile service:", error);
         if (error.statusCode) {
             throw error;
         }
@@ -310,7 +311,7 @@ exports.updateProfile = async (userId, payload, files) => {
 
 exports.deleteProfile = async (userId) => {
     try {
-        const deleted = await User.findByIdAndUpdate(
+        const deleted = await User.findByIdAndUpdate(   
             userId,
             { $set: { status: 'deleted' } },
             { new: true, select: 'status' }
