@@ -45,7 +45,7 @@ exports.updateProfile = async (req, res) => {
     const finalMessage = translated && translated !== message
       ? translated
       : message || "Something went wrong";
-
+    console.error("Error in updateProfile controller:", err);
     return res
       .status(statusCode)
       .json(errorResponse(finalMessage));
