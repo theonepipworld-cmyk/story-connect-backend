@@ -47,7 +47,7 @@ exports.updateProfileValidator = [
     .optional()
     .if((value) => hasValue(value))
     .custom(value => {
-      const allowedValues = ['single', 'married', 'divorced', 'widowed', 'separated', 'other'];
+      const allowedValues = ['single', 'married', 'divorced', 'widowed', 'separated', 'other', ''];
       return allowedValues.includes(value.toLowerCase());
     })
     .withMessage(`${resMessages.validation.invalidEnum} : relationship`),

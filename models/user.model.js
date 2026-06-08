@@ -19,7 +19,7 @@ const userSchema = new Schema({
     enum: ['nurse', 'doctor', 'scientist', 'professor', 'artist', 'chef', 'manager', 'pilot', 'firefighter', 'developer', 'other']
   },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  relationship: { type: String, enum: ['single', 'married', 'divorced', 'widowed', 'separated', 'other'] },
+  relationship: { type: String, enum: ['single', 'married', 'divorced', 'widowed', 'separated', 'other', ''], default: '' },
   relationshipDescription: { type: String },
   professionSymbol: {
     _id: { type: mongoose.Schema.Types.ObjectId },
