@@ -5,7 +5,7 @@ const secretVariables = require("./config/secretVariables");
 
 const server = http.createServer(app);
 
-// ✅ attach socket
+// attach socket
 initIo(server);
 
 const PORT = secretVariables.port;
