@@ -4,6 +4,8 @@ const resMessages = require("../../../constants/resMessages.constants.js");
 
 const { getMessage } = require("../../../constants/locales/index.js")
 const adminPostService = require("../../../service/admin/postService.js")
+const envVariables = require("../../../config/secretVariables.js");
+const dbHelper = require("../../../helpers/dbHelpers.js");
 
 const getLang = (req) => req.lang || 'en';
 exports.addStoryAndVideoOfMonth = async (req, res) => {
@@ -97,5 +99,22 @@ exports.deletePost = async (req, res) => {
         const category = err.category || 'error';
         const finalMessage = err.message;
         return res.status(statusCode).json(errorResponse(finalMessage));
+    }
+};
+
+
+exports.createShareableLink = async (req, res) => {
+    try {
+        const lang = getLang(req);
+        const { postId } = req.body;
+        const post = await dbHelper.isPostExist(postId);
+  
+        const shareableLink = `${envVariables.shareable_link_base_url}/share/${postId}`;
+        console.log("shareableLink----------------", shareableLink)
+        return res.status(200).json(successResponse(getMessage(lang, 'success', 'shareableLinkCreated'), { shareableLink }));
+    }
+    catch (err) {   
+        console.log("Error in createShareableLink:", err); 
+        return res.status(500).json(errorResponse(getMessage(getLang(req), 'error',err.message)));
     }
 };

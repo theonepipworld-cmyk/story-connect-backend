@@ -4,6 +4,7 @@ const adminpostController = require("../../../controllers/v1/admin/post.controll
 
 
 router.get("/highlightedPost", adminpostController.getHighlightedPosts)
+router.post('/create-shareable-link', adminpostController.createShareableLink)
 
 
 module.exports = router;
