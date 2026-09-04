@@ -2,7 +2,8 @@ const postService = require("../../../service/user/post.service.js");
 const { successResponse, errorResponse } = require('../../../utils/responseHandler.util.js');
 const { getMessage } = require("../../../constants/locales/index.js");
 const resMessages = require("../../../constants/resMessages.constants.js");
-const { uploadFileToS3 } = require("../../../utils/s3.util.js");  
+const { uploadFileToS3 } = require("../../../utils/s3.util.js");
+const dbHelpers = require("../../../helpers/dbHelpers.js");
 
 
 const getLang = (req) => req.lang || 'en';
@@ -118,6 +119,26 @@ exports.getPostById = async (req, res) => {
     return res.status(statusCode).json(errorResponse(finalMessage));
   }
 };
+
+
+exports.getPublicPost = async (req, res) => {
+  try {
+  
+    const postId = req.query.postId;
+    const post = await dbHelpers.isPostExist(postId);
+    if (!post) {
+      return res.status(400).json(errorResponse("Post not found"));
+    }
+
+    return res.status(200).json(successResponse("Post fetched successfully", post));
+  } catch (err) {
+    console.log(err, "err")
+    return res.status(500).json(errorResponse( "Internal Server Error", 500, "error"));
+
+  }
+};
+
+
 
 
 exports.updatePost = async (req, res) => {

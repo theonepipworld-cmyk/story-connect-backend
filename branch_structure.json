@@ -1,0 +1,36 @@
+{
+  "default_branch": "feature/koushal",
+  "branches": [
+    "akshitaDev",
+    "backup/production-08042026",
+    "development",
+    "feature/koushal",
+    "feature/production-deployment",
+    "feature/profile-rahul",
+    "feature/updates_and_enhancements",
+    "production",
+    "rahulDev"
+  ],
+  "parent": {
+    "akshitaDev": "feature/koushal",
+    "backup/production-08042026": "feature/koushal",
+    "development": "feature/koushal",
+    "feature/koushal": null,
+    "feature/production-deployment": "feature/koushal",
+    "feature/profile-rahul": "feature/koushal",
+    "feature/updates_and_enhancements": "feature/koushal",
+    "production": "feature/koushal",
+    "rahulDev": "feature/koushal"
+  },
+  "order": [
+    "feature/koushal",
+    "akshitaDev",
+    "backup/production-08042026",
+    "development",
+    "feature/production-deployment",
+    "feature/profile-rahul",
+    "feature/updates_and_enhancements",
+    "production",
+    "rahulDev"
+  ]
+}
