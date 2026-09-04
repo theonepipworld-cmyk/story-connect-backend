@@ -19,4 +19,5 @@ router.put("/:id", isAuthenticated, authorizeRoles('user', 'admin'), updatePostV
 router.delete("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.deletePost);
 router.get("/:id", isAuthenticated, authorizeRoles('user', 'admin'), postController.getPostById);
 
+
 module.exports = router;
