@@ -89,7 +89,7 @@ exports.login = async ({ email, password, device_token, loginViaWeb }) => {
 
     if (device_token) await User.updateOne({ _id: user._id }, { device_token });
 
-    return { token };
+    return { token , status: user.status };
   } catch (error) {
     if (error.statusCode) throw error;
     throw createError(500, 'serverError', 'error');

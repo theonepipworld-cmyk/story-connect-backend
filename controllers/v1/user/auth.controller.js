@@ -17,7 +17,9 @@ exports.login = async (req, res) => {
     const result = await authService.login(req.body);
     return res.status(200).json(successResponse(
       getMessage(lang, 'success', 'loginSuccessful'),
-      result.token
+      result.token,
+      "No-data",
+      result.status
     ));
   } catch (err) {
    const lang = getLang(req);
