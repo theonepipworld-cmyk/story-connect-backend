@@ -31,11 +31,15 @@ exports.login = async (req, res) => {
 exports.signup = async (req, res) => {
   try {
     const lang = getLang(req);
+    consolde.log("Signup result:", req.body);
     const result = await authService.signup(req.body);
+    console.log("Signup result:", result); 
     return res.status(200).json(successResponse(
       getMessage(lang, 'success', 'registrationSuccessful'),
       result.token
     ));
+
+
   } catch (err) {
     console.log("ERROR::", err);
     const lang = getLang(req);
