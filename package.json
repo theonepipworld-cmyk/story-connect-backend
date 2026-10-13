@@ -3,9 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node api.js && node ./bin/www",
-    "dev": "node api.js && nodemon ./bin/www",
-    "preinstall": "node dist/setup.js"
+    "start": "node ./bin/www",
+    "dev": "nodemon ./bin/www"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.864.0",
